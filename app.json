@@ -1,0 +1,17 @@
+{
+  "expo": {
+    "name": "Grillerz",
+    "slug": "grillerz-v2",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#FFFFFF"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": false
+    },
+    "android": {}
+  }
+}
