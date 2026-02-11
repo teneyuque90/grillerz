@@ -1,6 +1,6 @@
-# Grillerz v2 - Base Scaffold
+# Grillerz v2
 
-Base inicial para construir la app completa estilo Grillerz (fondo blanco, acentos rojos, cards limpias, enfoque mobile).
+App mobile estilo Grillerz (white + fire red) con 32 pantallas, flujo de reserva conectado y backend local para pruebas.
 
 ## Pantallas incluidas (32)
 
@@ -37,29 +37,55 @@ Base inicial para construir la app completa estilo Grillerz (fondo blanco, acent
 - Favorites
 - Settings
 
-## Estructura
+## Estado actual
 
-- `App.tsx`: entrada principal con NavigationContainer.
-- `src/navigation/AppNavigator.tsx`: stack con las 32 pantallas.
-- `src/navigation/screenConfig.ts`: metadata por pantalla (titulo, subtitulo, badge).
-- `src/components/ScreenTemplate.tsx`: layout base tipo Grillerz (white + fire red).
-- `src/screens/<ScreenName>/index.tsx`: carpeta individual por pantalla.
-- `src/theme/*`: colores y espaciado base.
+- UI implementada para las 32 pantallas.
+- Flujo conectado con estado global y persistencia local (`AsyncStorage`):
+  - auth
+  - seleccion de chef
+  - draft de reserva
+  - creacion de reservas
+- API client listo para backend real (`src/api/*`).
+- Backend local de pruebas en `backend/`.
 
-## Arranque
+## Estructura relevante
+
+- `src/state/AppStateContext.tsx`: estado global de la app.
+- `src/api/grillerzApi.ts`: llamadas HTTP al backend.
+- `src/config/api.ts`: `BASE_URL` por entorno.
+- `backend/src/server.js`: backend local Express.
+
+## Variables de entorno app
+
+1. Copia `.env.example` a `.env`.
+2. Ajusta `EXPO_PUBLIC_API_URL` segun donde corra tu backend.
+
+Valores comunes:
+
+- iOS simulator: `http://localhost:3000`
+- Android emulator: `http://10.0.2.2:3000`
+- Celular fisico: `http://TU_IP_LOCAL:3000`
+
+## Ejecutar backend local
 
 ```bash
+cd backend
+npm install
+npm run dev
+```
+
+## Ejecutar app
+
+```bash
+# raiz del proyecto
 npm install
 npm run start
 ```
 
-## Siguiente fase recomendada
+## Credenciales seed (backend local)
 
-1. Crear navegacion real por flujos: Auth, Explore, Booking, Account.
-2. Convertir Browse/Map/Profile en pantallas funcionales con data mock.
-3. Agregar TabBar custom con iconografia Grillerz.
-4. Integrar backend (auth, reservas, chat, pagos).
-5. Pulir UI 1:1 con el diseno final.
+- email: `gabriel@email.com`
+- password: `123456`
 
 ## Idea producto Grillerz (sugerencia)
 

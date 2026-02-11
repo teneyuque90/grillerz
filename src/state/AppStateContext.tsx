@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ReactNode, createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
+import { grillerzApi } from '../api/grillerzApi';
 import { createInitialDraft, defaultUser, mockChefs, seedBookings } from '../data/mockData';
 import { Booking, BookingDraft, BookingSummary, Chef, PaymentMethod, User } from '../types/domain';
 
@@ -50,6 +51,7 @@ type PersistedState = {
 type PendingRegistration = {
   name: string;
   email: string;
+  password: string;
 };
 
 const STORAGE_KEY = 'grillerz.app.state.v1';
@@ -89,6 +91,7 @@ function parseStoredState(raw: string | null): PersistedState | null {
 export function AppStateProvider({ children }: { children: ReactNode }) {
   const [isHydrated, setIsHydrated] = useState(false);
   const [authUser, setAuthUser] = useState<User | null>(null);
+  const [chefs, setChefs] = useState<Chef[]>(mockChefs);
   const [selectedChefId, setSelectedChefId] = useState<string>(DEFAULT_CHEF_ID);
   const [bookingDraft, setBookingDraft] = useState<BookingDraft>(createInitialDraft(DEFAULT_CHEF_ID));
   const [bookings, setBookings] = useState<Booking[]>(seedBookings(defaultUser.id));
@@ -114,6 +117,28 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         setSelectedBookingId(parsed.selectedBookingId);
       }
 
+      try {
+        const remoteChefs = await grillerzApi.getChefs();
+
+        if (active && remoteChefs.length > 0) {
+          setChefs(remoteChefs);
+        }
+      } catch {
+        // keep local fallback
+      }
+
+      if (parsed?.authUser) {
+        try {
+          const remoteBookings = await grillerzApi.getBookings(parsed.authUser.id);
+
+          if (active) {
+            setBookings(remoteBookings.length > 0 ? remoteBookings : parsed.bookings);
+          }
+        } catch {
+          // keep local fallback
+        }
+      }
+
       setIsHydrated(true);
     }
 
@@ -125,8 +150,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const selectedChef = useMemo(() => {
-    return mockChefs.find((chef) => chef.id === selectedChefId) ?? mockChefs[0];
-  }, [selectedChefId]);
+    return chefs.find((chef) => chef.id === selectedChefId) ?? chefs[0] ?? mockChefs[0];
+  }, [chefs, selectedChefId]);
 
   const bookingSummary = useMemo<BookingSummary>(() => {
     const serviceFee = selectedChef.basePrice;
@@ -171,17 +196,22 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     await wait(WAIT_MS);
 
     const normalizedEmail = sanitizeEmail(email);
-    const fallbackName = normalizedEmail.split('@')[0] || 'Usuario Grillerz';
 
-    setAuthUser({
-      id: normalizedEmail,
-      name: fallbackName,
-      email: normalizedEmail,
-      phone: '+52 867 000 0000',
-      city: 'Nuevo Laredo'
-    });
+    try {
+      const user = await grillerzApi.login({ email: normalizedEmail, password });
+      setAuthUser(user);
 
-    return { ok: true };
+      try {
+        const remoteBookings = await grillerzApi.getBookings(user.id);
+        setBookings(remoteBookings.length > 0 ? remoteBookings : seedBookings(user.id));
+      } catch {
+        setBookings(seedBookings(user.id));
+      }
+
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, message: error instanceof Error ? error.message : 'No se pudo iniciar sesion.' };
+    }
   }, []);
 
   const beginSignUp = useCallback(async ({ name, email, password }: SignUpPayload): Promise<ActionResult> => {
@@ -191,9 +221,18 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
 
     await wait(WAIT_MS);
 
+    const normalizedEmail = sanitizeEmail(email);
+
+    try {
+      await grillerzApi.signup({ name: name.trim(), email: normalizedEmail, password });
+    } catch (error) {
+      return { ok: false, message: error instanceof Error ? error.message : 'No se pudo crear la cuenta.' };
+    }
+
     setPendingRegistration({
       name: name.trim(),
-      email: sanitizeEmail(email)
+      email: normalizedEmail,
+      password
     });
 
     return { ok: true };
@@ -210,17 +249,16 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       return { ok: false, message: 'No hay registro pendiente. Intenta crear cuenta otra vez.' };
     }
 
-    setAuthUser({
-      id: pendingRegistration.email,
-      name: pendingRegistration.name,
-      email: pendingRegistration.email,
-      phone: '+52 867 000 0000',
-      city: 'Nuevo Laredo'
-    });
+    try {
+      const user = await grillerzApi.verify({ email: pendingRegistration.email, code });
+      setAuthUser(user);
+      setPendingRegistration(null);
+      setBookings(seedBookings(user.id));
 
-    setPendingRegistration(null);
-
-    return { ok: true };
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, message: error instanceof Error ? error.message : 'No se pudo verificar.' };
+    }
   }, [pendingRegistration]);
 
   const signOut = useCallback(async () => {
@@ -235,7 +273,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const selectChef = useCallback((chefId: string) => {
-    const chef = mockChefs.find((candidate) => candidate.id === chefId);
+    const chef = chefs.find((candidate) => candidate.id === chefId);
 
     if (!chef) {
       return;
@@ -246,7 +284,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       ...prev,
       chefId: chef.id
     }));
-  }, []);
+  }, [chefs]);
 
   const selectBooking = useCallback((bookingId: string) => {
     setSelectedBookingId(bookingId);
@@ -265,12 +303,11 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
 
       const user = authUser ?? defaultUser;
 
-      const nextBooking: Booking = {
-        id: buildBookingId(bookings),
+      const payload = {
         userId: user.id,
         chefId: selectedChef.id,
         chefName: selectedChef.name,
-        status: 'Confirmada',
+        status: 'Confirmada' as const,
         dateLabel: bookingDraft.dateLabel,
         timeLabel: bookingDraft.timeLabel,
         mode: bookingDraft.mode,
@@ -281,14 +318,25 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         serviceFee: bookingSummary.serviceFee,
         transferFee: bookingSummary.transferFee,
         total: bookingSummary.total,
-        paymentMethod,
-        createdAt: new Date().toISOString()
+        paymentMethod
       };
 
-      setBookings((prev) => [nextBooking, ...prev]);
-      setSelectedBookingId(nextBooking.id);
+      let createdBooking: Booking | null = null;
 
-      return nextBooking;
+      try {
+        createdBooking = await grillerzApi.createBooking(payload);
+      } catch {
+        createdBooking = {
+          id: buildBookingId(bookings),
+          createdAt: new Date().toISOString(),
+          ...payload
+        };
+      }
+
+      setBookings((prev) => [createdBooking, ...prev]);
+      setSelectedBookingId(createdBooking.id);
+
+      return createdBooking;
     },
     [authUser, bookingDraft.address, bookingDraft.dateLabel, bookingDraft.durationHours, bookingDraft.guests, bookingDraft.mode, bookingDraft.packageName, bookingDraft.timeLabel, bookingSummary.serviceFee, bookingSummary.total, bookingSummary.transferFee, bookings, selectedChef.id, selectedChef.name]
   );
@@ -297,7 +345,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     () => ({
       isHydrated,
       authUser,
-      chefs: mockChefs,
+      chefs,
       selectedChef,
       bookingDraft,
       bookingSummary,
@@ -318,6 +366,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       bookingDraft,
       bookingSummary,
       bookings,
+      chefs,
       completeVerification,
       confirmBooking,
       isHydrated,
