@@ -6,7 +6,7 @@ export const screenConfig = {
   },
   Onboarding01: {
     title: 'Onboarding 01',
-    subtitle: 'Presenta el valor principal para contratar parrilleros.',
+    subtitle: 'Presenta el valor principal para contratar grillers.',
     badge: 'Descubre'
   },
   Onboarding02: {
@@ -21,7 +21,7 @@ export const screenConfig = {
   },
   SignIn: {
     title: 'Sign In',
-    subtitle: 'Acceso con email y contrasena para clientes y chefs.',
+    subtitle: 'Acceso con email y contrasena para clientes y grillers.',
     badge: 'Acceso'
   },
   ForgotPassword: {
@@ -56,7 +56,7 @@ export const screenConfig = {
   },
   Browse01: {
     title: 'Browse 01',
-    subtitle: 'Home feed principal con parrilleros populares.',
+    subtitle: 'Home feed principal con grillers populares.',
     badge: 'Inicio'
   },
   Browse02: {
@@ -71,7 +71,7 @@ export const screenConfig = {
   },
   Map: {
     title: 'Map',
-    subtitle: 'Mapa de chefs cercanos y tiempo estimado.',
+    subtitle: 'Mapa de grillers cercanos y tiempo estimado.',
     badge: 'Cerca de ti'
   },
   Categories: {
@@ -81,7 +81,7 @@ export const screenConfig = {
   },
   Search: {
     title: 'Search',
-    subtitle: 'Busqueda por chef, platillo o ciudad.',
+    subtitle: 'Busqueda por griller, platillo o ciudad.',
     badge: 'Buscar'
   },
   Filter: {
@@ -91,8 +91,8 @@ export const screenConfig = {
   },
   Profile: {
     title: 'Profile',
-    subtitle: 'Perfil completo del parrillero con metrics.',
-    badge: 'Chef profile'
+    subtitle: 'Perfil completo del griller con metrics.',
+    badge: 'Griller profile'
   },
   Schedule: {
     title: 'Schedule',
@@ -126,12 +126,12 @@ export const screenConfig = {
   },
   Connect: {
     title: 'Connect',
-    subtitle: 'Listado de contactos y chefs recientes.',
+    subtitle: 'Listado de contactos y grillers recientes.',
     badge: 'Comunidad'
   },
   Chat: {
     title: 'Chat',
-    subtitle: 'Mensajeria directa entre cliente y parrillero.',
+    subtitle: 'Mensajeria directa entre cliente y griller.',
     badge: 'Mensajes'
   },
   Calls: {
@@ -151,7 +151,7 @@ export const screenConfig = {
   },
   Favorites: {
     title: 'Favorites',
-    subtitle: 'Parrilleros favoritos para acceso rapido.',
+    subtitle: 'Favoritos de grillers para acceso rapido.',
     badge: 'Favoritos'
   },
   Settings: {

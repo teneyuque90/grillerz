@@ -22,7 +22,7 @@ export function Map({ navigation }: Props) {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.screen}>
         <View style={styles.searchBar}>
-          <Text style={styles.searchText}>Buscar chef o direccion...</Text>
+          <Text style={styles.searchText}>Buscar griller o direccion...</Text>
           <Pressable onPress={() => navigation.navigate('Filter')}>
             <Text style={styles.filterText}>Filtro</Text>
           </Pressable>
@@ -39,7 +39,7 @@ export function Map({ navigation }: Props) {
 
         <View style={styles.sheet}>
           <View style={styles.sheetHandle} />
-          <Text style={styles.sheetTitle}>Chefs cerca de ti</Text>
+          <Text style={styles.sheetTitle}>Grillers cerca de ti</Text>
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.sheetList}>
             {nearby.map((item) => (

@@ -63,7 +63,7 @@ export function Profile({ navigation }: Props) {
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Sobre el chef</Text>
+              <Text style={styles.sectionTitle}>Sobre el griller</Text>
               <Text style={styles.bio}>{selectedChef.bio}</Text>
             </View>
 

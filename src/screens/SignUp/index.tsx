@@ -45,7 +45,7 @@ export function SignUp({ navigation }: Props) {
         <View style={styles.topArea}>
           <Text style={styles.brand}>GRILLERZ</Text>
           <Text style={styles.title}>Crea tu cuenta</Text>
-          <Text style={styles.subtitle}>Registra tus datos para empezar a reservar parrilleros.</Text>
+          <Text style={styles.subtitle}>Registra tus datos para empezar a reservar grillers.</Text>
         </View>
 
         <View style={styles.form}>

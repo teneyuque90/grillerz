@@ -74,7 +74,7 @@ export function Settings({ navigation }: Props) {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Preferencias</Text>
               <SectionRow label="Idioma" value="Espanol" onPress={() => navigation.navigate('ChooseLanguage')} />
-              <SectionRow label="Favoritos" value="3 chefs" onPress={() => navigation.navigate('Favorites')} />
+              <SectionRow label="Favoritos" value="3 grillers" onPress={() => navigation.navigate('Favorites')} />
               <SectionRow label="Notificaciones" value="Activadas" onPress={() => navigation.navigate('Notifications')} />
             </View>
 

@@ -12,7 +12,7 @@ export function OnboardingArt({ variant }: OnboardingArtProps) {
     return (
       <LinearGradient colors={['#FFF4F2', '#FFDCD5']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.base}>
         <View style={styles.cardLarge}>
-          <Text style={styles.cardTitle}>Parrilleros Verificados</Text>
+          <Text style={styles.cardTitle}>Grillers Verificados</Text>
           <Text style={styles.cardBody}>Encuentra especialistas para eventos en casa.</Text>
         </View>
         <View style={styles.chipRow}>
@@ -51,7 +51,7 @@ export function OnboardingArt({ variant }: OnboardingArtProps) {
       </View>
       <View style={styles.locationCard}>
         <Text style={styles.locationTitle}>Cerca de tu ubicacion</Text>
-        <Text style={styles.locationBody}>Mostraremos solo parrilleros disponibles en tu zona.</Text>
+        <Text style={styles.locationBody}>Mostraremos solo grillers disponibles en tu zona.</Text>
       </View>
     </LinearGradient>
   );

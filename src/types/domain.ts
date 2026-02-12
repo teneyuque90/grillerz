@@ -1,4 +1,4 @@
-export type ServiceMode = 'A domicilio' | 'En terraza del chef';
+export type ServiceMode = 'A domicilio' | 'En terraza del griller';
 export type PaymentMethod = 'Tarjeta' | 'Transferencia' | 'Efectivo';
 export type BookingStatus = 'Pendiente' | 'Confirmada' | 'Cancelada';
 

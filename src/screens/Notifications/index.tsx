@@ -16,7 +16,7 @@ const todayItems = [
 
 const previousItems = [
   { title: 'Recordatorio de pago', body: 'Tu reserva de este viernes esta pagada', route: 'Bookings' as const },
-  { title: 'Chef cercano', body: 'Martin Asador esta disponible hoy en tu zona', route: 'Profile' as const }
+  { title: 'Griller cercano', body: 'Martin Asador esta disponible hoy en tu zona', route: 'Profile' as const }
 ];
 
 export function Notifications({ navigation }: Props) {

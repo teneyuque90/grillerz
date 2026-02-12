@@ -31,7 +31,7 @@ export function ReviewBooking({ navigation }: Props) {
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
             <View style={styles.card}>
               <Text style={styles.cardTitle}>Detalle de reserva</Text>
-              <InfoRow label="Chef" value={selectedChef.name} />
+              <InfoRow label="Griller" value={selectedChef.name} />
               <InfoRow label="Servicio" value={bookingDraft.mode} />
               <InfoRow label="Fecha" value={bookingDraft.dateLabel} />
               <InfoRow label="Hora" value={bookingDraft.timeLabel} />

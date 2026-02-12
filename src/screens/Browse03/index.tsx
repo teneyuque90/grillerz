@@ -24,7 +24,7 @@ export function Browse03({ navigation }: Props) {
       <View style={styles.screen}>
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
           <View style={styles.headerRow}>
-            <Text style={styles.title}>descubre parrilleros</Text>
+            <Text style={styles.title}>descubre grillers</Text>
             <Pressable onPress={() => navigation.navigate('Browse02')}>
               <Text style={styles.link}>Lista</Text>
             </Pressable>

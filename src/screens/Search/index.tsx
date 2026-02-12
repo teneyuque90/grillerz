@@ -31,7 +31,7 @@ export function Search({ navigation }: Props) {
           </View>
 
           <View style={styles.searchBar}>
-            <Text style={styles.searchPlaceholder}>Chef, platillo, ciudad...</Text>
+            <Text style={styles.searchPlaceholder}>Griller, platillo, ciudad...</Text>
           </View>
 
           <View style={styles.sectionHeader}>

@@ -56,7 +56,7 @@ export function Payment({ navigation }: Props) {
               <Text style={styles.cardBrand}>{paymentMethod === 'Tarjeta' ? 'VISA' : paymentMethod.toUpperCase()}</Text>
               <Text style={styles.cardNumber}>{paymentMethod === 'Tarjeta' ? '**** **** **** 3902' : 'Pago directo en proceso'}</Text>
               <View style={styles.cardMetaRow}>
-                <Text style={styles.cardMeta}>Chef: {selectedChef.name}</Text>
+                <Text style={styles.cardMeta}>Griller: {selectedChef.name}</Text>
                 <Text style={styles.cardMeta}>Total: ${bookingSummary.total}</Text>
               </View>
             </View>

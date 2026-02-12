@@ -21,7 +21,7 @@ export function SetLocation({ navigation }: Props) {
             <View style={styles.pin} />
           </View>
           <Text style={styles.heroTitle}>Activa tu ubicacion</Text>
-          <Text style={styles.heroSubtitle}>Para mostrarte parrilleros disponibles cerca de ti.</Text>
+          <Text style={styles.heroSubtitle}>Para mostrarte grillers disponibles cerca de ti.</Text>
         </LinearGradient>
 
         <View style={styles.listCard}>

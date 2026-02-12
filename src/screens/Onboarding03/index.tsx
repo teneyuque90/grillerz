@@ -11,7 +11,7 @@ export function Onboarding03({ navigation }: Props) {
     <OnboardingBase
       step={3}
       title="Activa ubicacion y comienza"
-      subtitle="Te mostraremos chefs cercanos disponibles hoy para que reserves sin friccion."
+      subtitle="Te mostraremos grillers cercanos disponibles hoy para que reserves sin friccion."
       illustration={<OnboardingArt variant={3} />}
       onNext={() => navigation.navigate('SignIn')}
       onSkip={() => navigation.navigate('SignIn')}

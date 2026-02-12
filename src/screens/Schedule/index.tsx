@@ -13,7 +13,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Schedule'>;
 
 const dayOptions = ['Viernes 12 Abril 2026', 'Sabado 13 Abril 2026', 'Domingo 14 Abril 2026', 'Lunes 15 Abril 2026'];
 const timeOptions = ['6:00 PM', '7:00 PM', '8:00 PM', '9:00 PM'];
-const modes: ServiceMode[] = ['A domicilio', 'En terraza del chef'];
+const modes: ServiceMode[] = ['A domicilio', 'En terraza del griller'];
 
 function shortenDateLabel(label: string): string {
   return label

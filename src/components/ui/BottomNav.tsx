@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors } from '../../theme/colors';
 
@@ -8,12 +9,12 @@ type BottomNavProps = {
   onNavigate: (route: AppTab) => void;
 };
 
-const tabs: Array<{ route: AppTab; icon: string; label: string }> = [
-  { route: 'Browse01', icon: 'IN', label: 'Inicio' },
-  { route: 'Search', icon: 'SC', label: 'Buscar' },
-  { route: 'Bookings', icon: 'RS', label: 'Reservas' },
-  { route: 'Profile', icon: 'PF', label: 'Perfil' },
-  { route: 'Settings', icon: 'ST', label: 'Ajustes' }
+const tabs: Array<{ route: AppTab; icon: React.ComponentProps<typeof Ionicons>['name']; iconActive: React.ComponentProps<typeof Ionicons>['name']; label: string }> = [
+  { route: 'Browse01', icon: 'home-outline', iconActive: 'home', label: 'Inicio' },
+  { route: 'Search', icon: 'search-outline', iconActive: 'search', label: 'Buscar' },
+  { route: 'Bookings', icon: 'calendar-outline', iconActive: 'calendar', label: 'Reservas' },
+  { route: 'Profile', icon: 'person-outline', iconActive: 'person', label: 'Perfil' },
+  { route: 'Settings', icon: 'settings-outline', iconActive: 'settings', label: 'Ajustes' }
 ];
 
 export function BottomNav({ activeTab, onNavigate }: BottomNavProps) {
@@ -24,7 +25,11 @@ export function BottomNav({ activeTab, onNavigate }: BottomNavProps) {
 
         return (
           <Pressable key={tab.route} style={styles.tabItem} onPress={() => onNavigate(tab.route)}>
-            <Text style={[styles.tabIcon, active ? styles.tabActive : null]}>{tab.icon}</Text>
+            <Ionicons
+              name={active ? tab.iconActive : tab.icon}
+              size={19}
+              color={active ? colors.primary : colors.textSoft}
+            />
             <Text style={[styles.tabText, active ? styles.tabActive : null]}>{tab.label}</Text>
           </Pressable>
         );
@@ -53,11 +58,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 2,
     minWidth: 54
-  },
-  tabIcon: {
-    color: colors.textSoft,
-    fontSize: 16,
-    fontWeight: '700'
   },
   tabText: {
     color: colors.textSoft,

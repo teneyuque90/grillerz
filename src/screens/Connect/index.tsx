@@ -28,7 +28,7 @@ export function Connect({ navigation }: Props) {
           />
 
           <View style={styles.searchFake}>
-            <Text style={styles.searchText}>Buscar contacto o chef...</Text>
+            <Text style={styles.searchText}>Buscar contacto o griller...</Text>
           </View>
 
           <View style={styles.tabsRow}>

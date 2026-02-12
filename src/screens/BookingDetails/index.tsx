@@ -53,7 +53,7 @@ export function BookingDetails({ navigation }: Props) {
 
             <View style={styles.card}>
               <Text style={styles.cardTitle}>Evento</Text>
-              <DetailRow label="Chef" value={selectedBooking.chefName} />
+              <DetailRow label="Griller" value={selectedBooking.chefName} />
               <DetailRow label="Fecha" value={selectedBooking.dateLabel} />
               <DetailRow label="Hora" value={selectedBooking.timeLabel} />
               <DetailRow label="Duracion" value={`${selectedBooking.durationHours} horas`} />
@@ -75,7 +75,7 @@ export function BookingDetails({ navigation }: Props) {
         </View>
 
         <View style={styles.footer}>
-          <PrimaryButton label="Contactar chef" onPress={() => navigation.navigate('Chat')} />
+          <PrimaryButton label="Contactar griller" onPress={() => navigation.navigate('Chat')} />
           <Pressable style={styles.secondary} onPress={() => navigation.navigate('Schedule')}>
             <Text style={styles.secondaryLabel}>Reagendar</Text>
           </Pressable>

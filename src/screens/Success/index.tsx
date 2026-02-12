@@ -20,7 +20,7 @@ export function Success({ navigation }: Props) {
         </View>
 
         <Text style={styles.title}>Reserva confirmada</Text>
-        <Text style={styles.subtitle}>Tu parrillero recibio la solicitud. Te notificaremos cualquier actualizacion.</Text>
+        <Text style={styles.subtitle}>Tu griller recibio la solicitud. Te notificaremos cualquier actualizacion.</Text>
 
         <View style={styles.detailsCard}>
           <View style={styles.row}>

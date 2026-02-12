@@ -10,7 +10,7 @@ export function Onboarding01({ navigation }: Props) {
   return (
     <OnboardingBase
       step={1}
-      title="Los mejores parrilleros, en tu zona"
+      title="Los mejores grillers, en tu zona"
       subtitle="Descubre perfiles verificados, especialidades y reseñas reales antes de contratar."
       illustration={<OnboardingArt variant={1} />}
       onNext={() => navigation.navigate('Onboarding02')}

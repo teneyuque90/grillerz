@@ -22,7 +22,7 @@ export const mockChefs: Chef[] = [
     reviews: 102,
     basePrice: 3200,
     specialties: ['Parrilla Mixta', 'Costillas Ahumadas', 'Asado Norte'],
-    bio: 'Chef de parrilla para grupos grandes con enfoque en sabor ahumado y servicio premium.',
+    bio: 'Griller de parrilla para grupos grandes con enfoque en sabor ahumado y servicio premium.',
     stats: { services: 70, clients: 190, years: 6 }
   },
   {

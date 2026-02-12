@@ -10,7 +10,7 @@ import { colors } from '../../theme/colors';
 type Props = NativeStackScreenProps<RootStackParamList, 'Filter'>;
 
 const sortOptions = ['Popularidad', 'Precio bajo', 'Precio alto', 'Mayor rating'];
-const tags = ['Disponible hoy', 'Top rated', 'Eventos grandes', 'Chef verificado'];
+const tags = ['Disponible hoy', 'Top rated', 'Eventos grandes', 'Griller verificado'];
 
 export function Filter({ navigation }: Props) {
   return (

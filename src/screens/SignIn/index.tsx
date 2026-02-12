@@ -44,7 +44,7 @@ export function SignIn({ navigation }: Props) {
         <View style={styles.topArea}>
           <Text style={styles.brand}>GRILLERZ</Text>
           <Text style={styles.title}>Bienvenido de vuelta</Text>
-          <Text style={styles.subtitle}>Inicia sesion para contratar tu parrillero ideal.</Text>
+          <Text style={styles.subtitle}>Inicia sesion para contratar tu griller ideal.</Text>
         </View>
 
         <View style={styles.form}>

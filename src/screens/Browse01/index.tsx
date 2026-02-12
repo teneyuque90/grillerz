@@ -71,7 +71,7 @@ export function Browse01({ navigation }: Props) {
               navigation.navigate('Schedule');
             }}
           >
-            <Text style={styles.hireLabel}>Contratar al Parrillero</Text>
+            <Text style={styles.hireLabel}>Contratar al Griller</Text>
           </Pressable>
         </ScrollView>
 
