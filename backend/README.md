@@ -3,6 +3,14 @@
 Backend local para pruebas de app antes de tener dominio o despliegue publico.
 Ahora usa SQLite persistente (no memoria volatil).
 
+## Estructura (capas)
+
+- `src/routes`: endpoints HTTP
+- `src/services`: reglas de negocio
+- `src/repositories`: acceso a SQLite
+- `src/middleware`: auth y middlewares
+- `src/lib`: utilidades compartidas
+
 ## Run
 
 ```bash
