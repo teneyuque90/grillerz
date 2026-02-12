@@ -174,9 +174,21 @@ function createSchema() {
       created_at TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS sessions (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      token_id TEXT NOT NULL UNIQUE,
+      user_agent TEXT,
+      created_at TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      revoked_at TEXT
+    );
+
     CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
     CREATE INDEX IF NOT EXISTS idx_bookings_user_id ON bookings(user_id);
     CREATE INDEX IF NOT EXISTS idx_bookings_chef_id ON bookings(chef_id);
+    CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
+    CREATE INDEX IF NOT EXISTS idx_sessions_token_id ON sessions(token_id);
   `);
 }
 
@@ -277,6 +289,11 @@ function seedBookingsIfNeeded() {
 
 export function initializeDatabase() {
   createSchema();
+  db.prepare(`
+    UPDATE sessions
+    SET revoked_at = ?
+    WHERE revoked_at IS NULL AND datetime(expires_at) <= datetime('now')
+  `).run(nowIso());
   seedChefsIfNeeded();
   seedUsersIfNeeded();
   seedBookingsIfNeeded();
@@ -362,4 +379,43 @@ export function nextBookingId() {
 
 export function getDatabasePath() {
   return resolvedDbPath;
+}
+
+export function createSession({
+  id,
+  userId,
+  tokenId,
+  userAgent,
+  expiresAt
+}) {
+  db.prepare(`
+    INSERT INTO sessions (id, user_id, token_id, user_agent, created_at, expires_at, revoked_at)
+    VALUES (@id, @userId, @tokenId, @userAgent, @createdAt, @expiresAt, NULL)
+  `).run({
+    id,
+    userId,
+    tokenId,
+    userAgent: userAgent ?? null,
+    createdAt: nowIso(),
+    expiresAt
+  });
+}
+
+export function getActiveSessionByTokenId(tokenId) {
+  return db.prepare(`
+    SELECT *
+    FROM sessions
+    WHERE token_id = ?
+      AND revoked_at IS NULL
+      AND datetime(expires_at) > datetime('now')
+    LIMIT 1
+  `).get(tokenId);
+}
+
+export function revokeSession(tokenId) {
+  db.prepare(`
+    UPDATE sessions
+    SET revoked_at = ?
+    WHERE token_id = ? AND revoked_at IS NULL
+  `).run(nowIso(), tokenId);
 }

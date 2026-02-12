@@ -10,9 +10,17 @@ class HttpError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json'
+  };
+
+  if (authToken) {
+    headers.Authorization = `Bearer ${authToken}`;
+  }
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     headers: {
-      'Content-Type': 'application/json',
+      ...headers,
       ...(init?.headers ?? {})
     },
     ...init
@@ -25,6 +33,16 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   }
 
   return payload as T;
+}
+
+let authToken: string | null = null;
+
+export function setAuthToken(nextToken: string | null) {
+  authToken = nextToken;
+}
+
+export function getAuthToken() {
+  return authToken;
 }
 
 export const http = {

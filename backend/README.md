@@ -21,11 +21,14 @@ DB por defecto en `backend/data/grillerz.sqlite`.
 - `POST /auth/login`
 - `POST /auth/signup`
 - `POST /auth/verify`
+- `GET /auth/me` (requiere bearer token)
+- `POST /auth/logout` (requiere bearer token)
 - `GET /chefs`
 - `GET /chefs/:chefId`
-- `GET /bookings?userId=<id>`
-- `GET /bookings/:bookingId`
-- `POST /bookings`
+- `GET /bookings` (requiere bearer token)
+- `GET /bookings?userId=<id>` (solo tu propio userId)
+- `GET /bookings/:bookingId` (requiere bearer token)
+- `POST /bookings` (requiere bearer token)
 
 ## Credenciales seed para login
 
@@ -37,6 +40,8 @@ DB por defecto en `backend/data/grillerz.sqlite`.
 - `PORT` puerto del backend (`3000` por defecto)
 - `DATABASE_PATH` ruta SQLite relativa a `backend/` (`./data/grillerz.sqlite`)
 - `ALLOW_ANY_VERIFICATION_CODE` para pruebas locales (`true` por defecto fuera de produccion)
+- `JWT_SECRET` secreto para firmar tokens JWT
+- `JWT_EXPIRES_IN` expiracion JWT (ejemplo `7d`, `12h`)
 - `GOOGLE_AI_STUDIO_API_KEY` API key para generacion de imagenes
 - `GOOGLE_IMAGE_MODEL` modelo de imagen (`gemini-2.5-flash-image-preview` por defecto)
 

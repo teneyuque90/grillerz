@@ -1,21 +1,27 @@
 import express from 'express';
 import cors from 'cors';
 import bcrypt from 'bcryptjs';
-import { randomInt } from 'node:crypto';
+import jwt from 'jsonwebtoken';
+import { randomInt, randomUUID } from 'node:crypto';
 import 'dotenv/config';
 
 import {
+  createSession,
   db,
   getDatabasePath,
+  getActiveSessionByTokenId,
   initializeDatabase,
   mapBookingRow,
   mapChefRow,
   nextBookingId,
+  revokeSession,
   toPublicUser
 } from './db.js';
 
 const app = express();
 const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;
+const JWT_SECRET = process.env.JWT_SECRET ?? 'grillerz-dev-secret-change-in-production';
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN ?? '7d';
 const ALLOW_ANY_VERIFICATION_CODE = process.env.ALLOW_ANY_VERIFICATION_CODE
   ? process.env.ALLOW_ANY_VERIFICATION_CODE === 'true'
   : process.env.NODE_ENV !== 'production';
@@ -50,6 +56,83 @@ function numberOrFallback(value, fallbackValue) {
   return fallbackValue;
 }
 
+function extractBearerToken(req) {
+  const header = req.get('authorization') ?? '';
+  if (!header.startsWith('Bearer ')) {
+    return null;
+  }
+
+  return header.slice('Bearer '.length).trim() || null;
+}
+
+function buildAuthToken(userId, email, tokenId) {
+  return jwt.sign(
+    { sub: userId, email, jti: tokenId },
+    JWT_SECRET,
+    { expiresIn: JWT_EXPIRES_IN }
+  );
+}
+
+function issueSession(user, req) {
+  const tokenId = randomUUID();
+  const token = buildAuthToken(user.id, user.email, tokenId);
+  const decoded = jwt.decode(token);
+  const expSeconds = typeof decoded === 'object' && decoded?.exp
+    ? Number(decoded.exp)
+    : Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60);
+
+  createSession({
+    id: randomUUID(),
+    userId: user.id,
+    tokenId,
+    userAgent: req.get('user-agent') ?? null,
+    expiresAt: new Date(expSeconds * 1000).toISOString()
+  });
+
+  return token;
+}
+
+function requireAuth(req, res, next) {
+  const token = extractBearerToken(req);
+
+  if (!token) {
+    return res.status(401).json({ message: 'No autorizado.' });
+  }
+
+  let payload;
+
+  try {
+    payload = jwt.verify(token, JWT_SECRET);
+  } catch {
+    return res.status(401).json({ message: 'Sesion invalida o expirada.' });
+  }
+
+  if (typeof payload !== 'object' || !payload?.sub || !payload?.jti) {
+    return res.status(401).json({ message: 'Token invalido.' });
+  }
+
+  const userId = String(payload.sub);
+  const tokenId = String(payload.jti);
+  const session = getActiveSessionByTokenId(tokenId);
+
+  if (!session || session.user_id !== userId) {
+    return res.status(401).json({ message: 'Sesion no valida.' });
+  }
+
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+  if (!user) {
+    revokeSession(tokenId);
+    return res.status(401).json({ message: 'Usuario no encontrado.' });
+  }
+
+  req.auth = {
+    tokenId,
+    user
+  };
+
+  return next();
+}
+
 app.get('/health', (_req, res) => {
   res.json({
     ok: true,
@@ -74,7 +157,9 @@ app.post('/auth/login', (req, res) => {
     return res.status(401).json({ message: 'Credenciales invalidas.' });
   }
 
-  return res.json({ user: toPublicUser(user) });
+  const token = issueSession(user, req);
+
+  return res.json({ user: toPublicUser(user), token });
 });
 
 app.post('/auth/signup', (req, res) => {
@@ -160,7 +245,8 @@ app.post('/auth/verify', (req, res) => {
 
   if (existingUser) {
     db.prepare('DELETE FROM pending_signups WHERE email = ?').run(normalizedEmail);
-    return res.json({ user: toPublicUser(existingUser) });
+    const token = issueSession(existingUser, req);
+    return res.json({ user: toPublicUser(existingUser), token });
   }
 
   db.prepare(`
@@ -180,7 +266,18 @@ app.post('/auth/verify', (req, res) => {
 
   const newUser = db.prepare('SELECT * FROM users WHERE id = ?').get(normalizedEmail);
 
-  return res.json({ user: toPublicUser(newUser) });
+  const token = issueSession(newUser, req);
+
+  return res.json({ user: toPublicUser(newUser), token });
+});
+
+app.get('/auth/me', requireAuth, (req, res) => {
+  return res.json({ user: toPublicUser(req.auth.user) });
+});
+
+app.post('/auth/logout', requireAuth, (req, res) => {
+  revokeSession(req.auth.tokenId);
+  return res.json({ ok: true });
 });
 
 app.get('/chefs', (_req, res) => {
@@ -203,40 +300,36 @@ app.get('/chefs/:chefId', (req, res) => {
   return res.json({ chef: mapChefRow(chefRow) });
 });
 
-app.get('/bookings', (req, res) => {
-  const userId = req.query.userId ? String(req.query.userId) : null;
+app.get('/bookings', requireAuth, (req, res) => {
+  const requestedUserId = req.query.userId ? String(req.query.userId) : req.auth.user.id;
 
-  if (!userId) {
-    const bookingRows = db
-      .prepare('SELECT * FROM bookings ORDER BY created_at DESC')
-      .all();
-
-    return res.json({ bookings: bookingRows.map(mapBookingRow) });
+  if (requestedUserId !== req.auth.user.id) {
+    return res.status(403).json({ message: 'No puedes consultar reservas de otro usuario.' });
   }
 
   const bookingRows = db
     .prepare('SELECT * FROM bookings WHERE user_id = ? ORDER BY created_at DESC')
-    .all(userId);
+    .all(requestedUserId);
 
   return res.json({ bookings: bookingRows.map(mapBookingRow) });
 });
 
-app.get('/bookings/:bookingId', (req, res) => {
+app.get('/bookings/:bookingId', requireAuth, (req, res) => {
   const bookingRow = db
     .prepare('SELECT * FROM bookings WHERE id = ?')
     .get(req.params.bookingId);
 
-  if (!bookingRow) {
+  if (!bookingRow || bookingRow.user_id !== req.auth.user.id) {
     return res.status(404).json({ message: 'Reserva no encontrada.' });
   }
 
   return res.json({ booking: mapBookingRow(bookingRow) });
 });
 
-app.post('/bookings', (req, res) => {
+app.post('/bookings', requireAuth, (req, res) => {
   const payload = req.body ?? {};
 
-  if (!payload.userId || !payload.chefId || !payload.dateLabel || !payload.timeLabel) {
+  if (!payload.chefId || !payload.dateLabel || !payload.timeLabel) {
     return res.status(400).json({ message: 'Faltan datos de reserva.' });
   }
 
@@ -255,7 +348,7 @@ app.post('/bookings', (req, res) => {
 
   const booking = {
     id: nextBookingId(),
-    userId: payload.userId,
+    userId: req.auth.user.id,
     chefId: payload.chefId,
     chefName: chef.name,
     status: stringOrFallback(payload.status, 'Confirmada'),

@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ReactNode, createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 import { grillerzApi } from '../api/grillerzApi';
+import { setAuthToken } from '../api/client';
 import { createInitialDraft, defaultUser, mockChefs, seedBookings } from '../data/mockData';
 import { Booking, BookingDraft, BookingSummary, Chef, PaymentMethod, User } from '../types/domain';
 
@@ -42,6 +43,7 @@ type AppStateContextValue = {
 
 type PersistedState = {
   authUser: User | null;
+  authToken: string | null;
   bookingDraft: BookingDraft;
   selectedChefId: string;
   bookings: Booking[];
@@ -91,6 +93,7 @@ function parseStoredState(raw: string | null): PersistedState | null {
 export function AppStateProvider({ children }: { children: ReactNode }) {
   const [isHydrated, setIsHydrated] = useState(false);
   const [authUser, setAuthUser] = useState<User | null>(null);
+  const [authToken, setAuthTokenState] = useState<string | null>(null);
   const [chefs, setChefs] = useState<Chef[]>(mockChefs);
   const [selectedChefId, setSelectedChefId] = useState<string>(DEFAULT_CHEF_ID);
   const [bookingDraft, setBookingDraft] = useState<BookingDraft>(createInitialDraft(DEFAULT_CHEF_ID));
@@ -102,6 +105,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     let active = true;
 
     async function hydrate() {
+      setAuthToken(null);
       const raw = await AsyncStorage.getItem(STORAGE_KEY);
       const parsed = parseStoredState(raw);
 
@@ -111,6 +115,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
 
       if (parsed) {
         setAuthUser(parsed.authUser);
+        setAuthTokenState(parsed.authToken ?? null);
+        setAuthToken(parsed.authToken ?? null);
         setSelectedChefId(parsed.selectedChefId);
         setBookingDraft(parsed.bookingDraft);
         setBookings(parsed.bookings);
@@ -127,9 +133,9 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         // keep local fallback
       }
 
-      if (parsed?.authUser) {
+      if (parsed?.authUser && parsed?.authToken) {
         try {
-          const remoteBookings = await grillerzApi.getBookings(parsed.authUser.id);
+          const remoteBookings = await grillerzApi.getBookings();
 
           if (active) {
             setBookings(remoteBookings.length > 0 ? remoteBookings : parsed.bookings);
@@ -179,6 +185,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
 
     const payload: PersistedState = {
       authUser,
+      authToken,
       selectedChefId,
       bookingDraft,
       bookings,
@@ -186,7 +193,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     };
 
     void AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-  }, [authUser, bookingDraft, bookings, isHydrated, selectedBookingId, selectedChefId]);
+  }, [authToken, authUser, bookingDraft, bookings, isHydrated, selectedBookingId, selectedChefId]);
 
   const signIn = useCallback(async ({ email, password }: SignInPayload): Promise<ActionResult> => {
     if (!email.trim() || !password.trim()) {
@@ -198,11 +205,13 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     const normalizedEmail = sanitizeEmail(email);
 
     try {
-      const user = await grillerzApi.login({ email: normalizedEmail, password });
+      const { user, token } = await grillerzApi.login({ email: normalizedEmail, password });
+      setAuthTokenState(token);
+      setAuthToken(token);
       setAuthUser(user);
 
       try {
-        const remoteBookings = await grillerzApi.getBookings(user.id);
+        const remoteBookings = await grillerzApi.getBookings();
         setBookings(remoteBookings.length > 0 ? remoteBookings : seedBookings(user.id));
       } catch {
         setBookings(seedBookings(user.id));
@@ -210,6 +219,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
 
       return { ok: true };
     } catch (error) {
+      setAuthTokenState(null);
+      setAuthToken(null);
       return { ok: false, message: error instanceof Error ? error.message : 'No se pudo iniciar sesion.' };
     }
   }, []);
@@ -250,7 +261,9 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      const user = await grillerzApi.verify({ email: pendingRegistration.email, code });
+      const { user, token } = await grillerzApi.verify({ email: pendingRegistration.email, code });
+      setAuthTokenState(token);
+      setAuthToken(token);
       setAuthUser(user);
       setPendingRegistration(null);
       setBookings(seedBookings(user.id));
@@ -262,7 +275,17 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   }, [pendingRegistration]);
 
   const signOut = useCallback(async () => {
+    if (authToken) {
+      try {
+        await grillerzApi.logout();
+      } catch {
+        // ignore network/backend failures on local logout
+      }
+    }
+
     setAuthUser(null);
+    setAuthTokenState(null);
+    setAuthToken(null);
     setPendingRegistration(null);
     setSelectedChefId(DEFAULT_CHEF_ID);
     setBookingDraft(createInitialDraft(DEFAULT_CHEF_ID));
@@ -270,7 +293,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     setSelectedBookingId(null);
 
     await AsyncStorage.removeItem(STORAGE_KEY);
-  }, []);
+  }, [authToken]);
 
   const selectChef = useCallback((chefId: string) => {
     const chef = chefs.find((candidate) => candidate.id === chefId);
