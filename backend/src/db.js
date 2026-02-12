@@ -3,6 +3,7 @@ import Database from 'better-sqlite3';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { runMigrations } from './migrations/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -117,81 +118,6 @@ function nowIso() {
   return new Date().toISOString();
 }
 
-function createSchema() {
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS users (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      email TEXT NOT NULL UNIQUE,
-      password_hash TEXT NOT NULL,
-      phone TEXT NOT NULL,
-      city TEXT NOT NULL,
-      created_at TEXT NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS pending_signups (
-      email TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      password_hash TEXT NOT NULL,
-      code TEXT NOT NULL,
-      expires_at TEXT NOT NULL,
-      created_at TEXT NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS chefs (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      title TEXT NOT NULL,
-      city TEXT NOT NULL,
-      rating REAL NOT NULL,
-      reviews INTEGER NOT NULL,
-      base_price INTEGER NOT NULL,
-      specialties_json TEXT NOT NULL,
-      bio TEXT NOT NULL,
-      services INTEGER NOT NULL,
-      clients INTEGER NOT NULL,
-      years INTEGER NOT NULL,
-      created_at TEXT NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS bookings (
-      id TEXT PRIMARY KEY,
-      user_id TEXT NOT NULL,
-      chef_id TEXT NOT NULL,
-      chef_name TEXT NOT NULL,
-      status TEXT NOT NULL,
-      date_label TEXT NOT NULL,
-      time_label TEXT NOT NULL,
-      mode TEXT NOT NULL,
-      address TEXT NOT NULL,
-      package_name TEXT NOT NULL,
-      guests INTEGER NOT NULL,
-      duration_hours INTEGER NOT NULL,
-      service_fee INTEGER NOT NULL,
-      transfer_fee INTEGER NOT NULL,
-      total INTEGER NOT NULL,
-      payment_method TEXT NOT NULL,
-      created_at TEXT NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS sessions (
-      id TEXT PRIMARY KEY,
-      user_id TEXT NOT NULL,
-      token_id TEXT NOT NULL UNIQUE,
-      user_agent TEXT,
-      created_at TEXT NOT NULL,
-      expires_at TEXT NOT NULL,
-      revoked_at TEXT
-    );
-
-    CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-    CREATE INDEX IF NOT EXISTS idx_bookings_user_id ON bookings(user_id);
-    CREATE INDEX IF NOT EXISTS idx_bookings_chef_id ON bookings(chef_id);
-    CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
-    CREATE INDEX IF NOT EXISTS idx_sessions_token_id ON sessions(token_id);
-  `);
-}
-
 function seedChefsIfNeeded() {
   const count = db.prepare('SELECT COUNT(*) AS total FROM chefs').get().total;
   if (count > 0) {
@@ -287,8 +213,12 @@ function seedBookingsIfNeeded() {
   transaction(seedBookings);
 }
 
+export function runDatabaseMigrations() {
+  return runMigrations(db);
+}
+
 export function initializeDatabase() {
-  createSchema();
+  runDatabaseMigrations();
   db.prepare(`
     UPDATE sessions
     SET revoked_at = ?
@@ -379,4 +309,10 @@ export function nextBookingId() {
 
 export function getDatabasePath() {
   return resolvedDbPath;
+}
+
+export function closeDatabase() {
+  if (db.open) {
+    db.close();
+  }
 }

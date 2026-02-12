@@ -10,6 +10,7 @@ Ahora usa SQLite persistente (no memoria volatil).
 - `src/repositories`: acceso a SQLite
 - `src/middleware`: auth y middlewares
 - `src/lib`: utilidades compartidas
+- `src/migrations`: versionado de esquema SQLite
 
 ## Run
 
@@ -17,8 +18,18 @@ Ahora usa SQLite persistente (no memoria volatil).
 cd backend
 npm install
 cp .env.example .env
+npm run migrate
 npm run dev
 ```
+
+## Tests API
+
+```bash
+cd backend
+npm test
+```
+
+La suite valida auth JWT, proteccion de reservas y permisos por usuario sobre una DB temporal aislada.
 
 Server por defecto en `http://localhost:3000`.
 DB por defecto en `backend/data/grillerz.sqlite`.
@@ -52,6 +63,16 @@ DB por defecto en `backend/data/grillerz.sqlite`.
 - `JWT_EXPIRES_IN` expiracion JWT (ejemplo `7d`, `12h`)
 - `GOOGLE_AI_STUDIO_API_KEY` API key para generacion de imagenes
 - `GOOGLE_IMAGE_MODEL` modelo de imagen (`gemini-2.5-flash-image-preview` por defecto)
+
+## Migraciones
+
+Cada cambio de esquema debe agregarse como nueva migracion en `src/migrations/index.js`.
+Para ejecutar manualmente:
+
+```bash
+cd backend
+npm run migrate
+```
 
 ## Generar imagenes (Google AI Studio)
 
