@@ -5,10 +5,15 @@
   "type": "module",
   "scripts": {
     "dev": "node --watch src/server.js",
-    "start": "node src/server.js"
+    "start": "node src/server.js",
+    "generate:images:google": "node scripts/generate-images-google-ai-studio.mjs"
   },
   "dependencies": {
+    "@google/genai": "^1.41.0",
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^12.6.2",
     "cors": "^2.8.5",
+    "dotenv": "^17.2.4",
     "express": "^4.21.2"
   }
 }
