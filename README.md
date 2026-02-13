@@ -82,6 +82,29 @@ npm install
 npm run start
 ```
 
+## Release Android (EAS + GitHub Actions)
+
+Archivos:
+
+- `.github/workflows/eas-android-release.yml`
+- `eas.json`
+
+Prerequisitos (una sola vez):
+
+1. Inicia sesion y vincula el proyecto con EAS desde local:
+
+```bash
+npx eas login
+npx eas init
+```
+
+2. Crea el secret en GitHub:
+`EXPO_TOKEN` (token de tu cuenta Expo/EAS).
+
+3. En GitHub: `Actions` -> `EAS Android Release` -> `Run workflow`
+   - `preview` genera APK interno
+   - `production` genera AAB (Play Store)
+
 ## Credenciales seed (backend local)
 
 - email: `gabriel@email.com`

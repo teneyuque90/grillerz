@@ -12,6 +12,8 @@
     "ios": {
       "supportsTablet": false
     },
-    "android": {}
+    "android": {
+      "package": "com.teneyuque90.grillerz"
+    }
   }
 }
