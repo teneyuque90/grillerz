@@ -1,4 +1,4 @@
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, ImageBackground, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -27,14 +27,26 @@ export function Profile({ navigation }: Props) {
           />
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-            <LinearGradient colors={[colors.flameEnd, colors.flameStart]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
-              <View style={styles.avatar} />
+            <View style={styles.hero}>
+              {selectedChef.coverUrl ? (
+                <ImageBackground source={{ uri: selectedChef.coverUrl }} style={styles.heroMedia} imageStyle={styles.heroMediaImage}>
+                  <View style={styles.heroShade} />
+                </ImageBackground>
+              ) : (
+                <LinearGradient colors={[colors.flameEnd, colors.flameStart]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.heroMedia} />
+              )}
+
+              {selectedChef.avatarUrl ? (
+                <Image source={{ uri: selectedChef.avatarUrl }} style={styles.avatar} />
+              ) : (
+                <View style={styles.avatar} />
+              )}
               <View style={styles.heroCopy}>
                 <Text style={styles.heroName}>{selectedChef.name}</Text>
                 <Text style={styles.heroMeta}>{selectedChef.title}  -  {selectedChef.city}</Text>
                 <Text style={styles.heroRating}>Rating {selectedChef.rating}  ({selectedChef.reviews} resenas)</Text>
               </View>
-            </LinearGradient>
+            </View>
 
             <View style={styles.statsRow}>
               <View style={styles.statCard}>
@@ -103,7 +115,18 @@ const styles = StyleSheet.create({
     padding: 16,
     flexDirection: 'row',
     alignItems: 'flex-end',
-    gap: 12
+    gap: 12,
+    overflow: 'hidden'
+  },
+  heroMedia: {
+    ...StyleSheet.absoluteFillObject
+  },
+  heroMediaImage: {
+    borderRadius: 20
+  },
+  heroShade: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(15, 10, 8, 0.42)'
   },
   avatar: {
     width: 68,

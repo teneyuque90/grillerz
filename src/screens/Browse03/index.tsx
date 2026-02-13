@@ -1,4 +1,4 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ImageBackground, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -11,13 +11,13 @@ import { colors } from '../../theme/colors';
 type Props = NativeStackScreenProps<RootStackParamList, 'Browse03'>;
 
 const reels = [
-  { title: 'Martin Asador', chefId: 'martin-asador', city: 'Nuevo Laredo', rate: '4.9' },
-  { title: 'Erick Martinez', chefId: 'erick-martinez', city: 'Monterrey', rate: '4.8' },
-  { title: 'Carlos BBQ', chefId: 'carlos-bbq', city: 'Saltillo', rate: '4.7' }
+  { title: 'Tomahawk al Carbon', chefId: 'martin-asador' },
+  { title: 'Costillas Ahumadas', chefId: 'erick-martinez' },
+  { title: 'Parrilla Mixta', chefId: 'carlos-bbq' }
 ];
 
 export function Browse03({ navigation }: Props) {
-  const { selectChef } = useAppState();
+  const { chefs, selectChef } = useAppState();
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -31,36 +31,48 @@ export function Browse03({ navigation }: Props) {
           </View>
 
           <View style={styles.feed}>
-            {reels.map((reel, index) => (
-              <Pressable
-                key={reel.title}
-                style={styles.reelCard}
-                onPress={() => {
-                  selectChef(reel.chefId);
-                  navigation.navigate('Profile');
-                }}
-              >
-                <LinearGradient
-                  colors={index === 0 ? ['#1E120D', '#FF4D2D'] : ['#2A1B16', '#B93823']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={StyleSheet.absoluteFill}
-                />
-                <View style={styles.reelOverlay}>
-                  <Text style={styles.reelTitle}>{reel.title}</Text>
-                  <Text style={styles.reelMeta}>{reel.city}  -  Rating {reel.rate}</Text>
-                  <Pressable
-                    style={styles.reelButton}
-                    onPress={() => {
-                      selectChef(reel.chefId);
-                      navigation.navigate('Schedule');
-                    }}
-                  >
-                    <Text style={styles.reelButtonLabel}>Reservar</Text>
-                  </Pressable>
-                </View>
-              </Pressable>
-            ))}
+            {reels.map((reel, index) => {
+              const chef = chefs.find((item) => item.id === reel.chefId);
+
+              return (
+                <Pressable
+                  key={`${reel.chefId}-${reel.title}`}
+                  style={styles.reelCard}
+                  onPress={() => {
+                    selectChef(reel.chefId);
+                    navigation.navigate('Profile');
+                  }}
+                >
+                  {chef?.coverUrl ? (
+                    <ImageBackground source={{ uri: chef.coverUrl }} style={StyleSheet.absoluteFill}>
+                      <View style={styles.reelShade} />
+                    </ImageBackground>
+                  ) : (
+                    <LinearGradient
+                      colors={index === 0 ? ['#1E120D', '#FF4D2D'] : ['#2A1B16', '#B93823']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={StyleSheet.absoluteFill}
+                    />
+                  )}
+                  <View style={styles.reelOverlay}>
+                    <Text style={styles.reelTitle}>{reel.title}</Text>
+                    <Text style={styles.reelMeta}>
+                      {chef?.city ?? 'Nuevo Laredo'}  -  Rating {chef?.rating ?? 4.8}
+                    </Text>
+                    <Pressable
+                      style={styles.reelButton}
+                      onPress={() => {
+                        selectChef(reel.chefId);
+                        navigation.navigate('Schedule');
+                      }}
+                    >
+                      <Text style={styles.reelButtonLabel}>Reservar</Text>
+                    </Pressable>
+                  </View>
+                </Pressable>
+              );
+            })}
           </View>
         </ScrollView>
 
@@ -115,6 +127,10 @@ const styles = StyleSheet.create({
     padding: 16,
     backgroundColor: 'rgba(15, 10, 8, 0.22)',
     gap: 6
+  },
+  reelShade: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(15, 10, 8, 0.38)'
   },
   reelTitle: {
     color: '#FFFFFF',

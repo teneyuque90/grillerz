@@ -10,6 +10,13 @@ export const mockChefs: Chef[] = [
     reviews: 126,
     basePrice: 2800,
     specialties: ['Costillas a la Parrilla', 'Tomahawk al Carbon', 'Parrilla Mixta'],
+    avatarUrl: 'https://i.pravatar.cc/300?img=11',
+    coverUrl: 'https://loremflickr.com/1200/800/grill,steak?lock=201',
+    gallery: [
+      'https://loremflickr.com/1200/800/bbq,ribs?lock=202',
+      'https://loremflickr.com/1200/800/tomahawk,steak?lock=203',
+      'https://loremflickr.com/1200/800/meat,smoke?lock=204'
+    ],
     bio: 'Especialista en eventos familiares y corporativos. Manejo cortes premium y menu personalizado.',
     stats: { services: 85, clients: 240, years: 5 }
   },
@@ -22,6 +29,13 @@ export const mockChefs: Chef[] = [
     reviews: 102,
     basePrice: 3200,
     specialties: ['Parrilla Mixta', 'Costillas Ahumadas', 'Asado Norte'],
+    avatarUrl: 'https://i.pravatar.cc/300?img=12',
+    coverUrl: 'https://loremflickr.com/1200/800/bbq,brisket?lock=205',
+    gallery: [
+      'https://loremflickr.com/1200/800/grill,fire?lock=206',
+      'https://loremflickr.com/1200/800/costillas,bbq?lock=207',
+      'https://loremflickr.com/1200/800/barbecue,table?lock=208'
+    ],
     bio: 'Griller de parrilla para grupos grandes con enfoque en sabor ahumado y servicio premium.',
     stats: { services: 70, clients: 190, years: 6 }
   },
@@ -34,6 +48,13 @@ export const mockChefs: Chef[] = [
     reviews: 94,
     basePrice: 3600,
     specialties: ['Brisket', 'Costillas', 'Tomahawk'],
+    avatarUrl: 'https://i.pravatar.cc/300?img=15',
+    coverUrl: 'https://loremflickr.com/1200/800/smoked,meat?lock=209',
+    gallery: [
+      'https://loremflickr.com/1200/800/brisket,knife?lock=210',
+      'https://loremflickr.com/1200/800/parrilla,carbon?lock=211',
+      'https://loremflickr.com/1200/800/bbq,slowcook?lock=212'
+    ],
     bio: 'Especializado en cocciones lentas y parrilla de alto volumen para eventos sociales.',
     stats: { services: 65, clients: 168, years: 5 }
   },
@@ -46,6 +67,13 @@ export const mockChefs: Chef[] = [
     reviews: 80,
     basePrice: 3000,
     specialties: ['Asado Regio', 'Arrachera', 'Parrilla Mixta'],
+    avatarUrl: 'https://i.pravatar.cc/300?img=16',
+    coverUrl: 'https://loremflickr.com/1200/800/asado,regio?lock=213',
+    gallery: [
+      'https://loremflickr.com/1200/800/steak,grill?lock=214',
+      'https://loremflickr.com/1200/800/arrachera,bbq?lock=215',
+      'https://loremflickr.com/1200/800/grilling,party?lock=216'
+    ],
     bio: 'Servicio rapido y menu flexible para reuniones de tamano medio.',
     stats: { services: 52, clients: 140, years: 4 }
   },
@@ -58,6 +86,13 @@ export const mockChefs: Chef[] = [
     reviews: 112,
     basePrice: 2500,
     specialties: ['Ribeye', 'Costillas', 'Tomahawk'],
+    avatarUrl: 'https://i.pravatar.cc/300?img=17',
+    coverUrl: 'https://loremflickr.com/1200/800/ribeye,grill?lock=217',
+    gallery: [
+      'https://loremflickr.com/1200/800/ribeye,meat?lock=218',
+      'https://loremflickr.com/1200/800/carne,asada?lock=219',
+      'https://loremflickr.com/1200/800/flame,barbecue?lock=220'
+    ],
     bio: 'Enfoque en cortes jugosos y presentacion profesional para eventos en casa.',
     stats: { services: 76, clients: 210, years: 5 }
   }

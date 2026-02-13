@@ -1,3 +1,56 @@
+const chefMediaSeedById = {
+  'erick-martinez': {
+    avatarUrl: 'https://i.pravatar.cc/300?img=11',
+    coverUrl: 'https://loremflickr.com/1200/800/grill,steak?lock=201',
+    gallery: [
+      'https://loremflickr.com/1200/800/bbq,ribs?lock=202',
+      'https://loremflickr.com/1200/800/tomahawk,steak?lock=203',
+      'https://loremflickr.com/1200/800/meat,smoke?lock=204'
+    ]
+  },
+  'carlos-bbq': {
+    avatarUrl: 'https://i.pravatar.cc/300?img=12',
+    coverUrl: 'https://loremflickr.com/1200/800/bbq,brisket?lock=205',
+    gallery: [
+      'https://loremflickr.com/1200/800/grill,fire?lock=206',
+      'https://loremflickr.com/1200/800/costillas,bbq?lock=207',
+      'https://loremflickr.com/1200/800/barbecue,table?lock=208'
+    ]
+  },
+  'martin-asador': {
+    avatarUrl: 'https://i.pravatar.cc/300?img=15',
+    coverUrl: 'https://loremflickr.com/1200/800/smoked,meat?lock=209',
+    gallery: [
+      'https://loremflickr.com/1200/800/brisket,knife?lock=210',
+      'https://loremflickr.com/1200/800/parrilla,carbon?lock=211',
+      'https://loremflickr.com/1200/800/bbq,slowcook?lock=212'
+    ]
+  },
+  'luis-bbq': {
+    avatarUrl: 'https://i.pravatar.cc/300?img=16',
+    coverUrl: 'https://loremflickr.com/1200/800/asado,regio?lock=213',
+    gallery: [
+      'https://loremflickr.com/1200/800/steak,grill?lock=214',
+      'https://loremflickr.com/1200/800/arrachera,bbq?lock=215',
+      'https://loremflickr.com/1200/800/grilling,party?lock=216'
+    ]
+  },
+  'cories-bbq': {
+    avatarUrl: 'https://i.pravatar.cc/300?img=17',
+    coverUrl: 'https://loremflickr.com/1200/800/ribeye,grill?lock=217',
+    gallery: [
+      'https://loremflickr.com/1200/800/ribeye,meat?lock=218',
+      'https://loremflickr.com/1200/800/carne,asada?lock=219',
+      'https://loremflickr.com/1200/800/flame,barbecue?lock=220'
+    ]
+  }
+};
+
+function hasColumn(db, tableName, columnName) {
+  const rows = db.prepare(`PRAGMA table_info(${tableName})`).all();
+  return rows.some((row) => row.name === columnName);
+}
+
 const migrations = [
   {
     id: '001_create_users',
@@ -43,6 +96,9 @@ const migrations = [
           reviews INTEGER NOT NULL,
           base_price INTEGER NOT NULL,
           specialties_json TEXT NOT NULL,
+          avatar_url TEXT NOT NULL DEFAULT '',
+          cover_url TEXT NOT NULL DEFAULT '',
+          gallery_json TEXT NOT NULL DEFAULT '[]',
           bio TEXT NOT NULL,
           services INTEGER NOT NULL,
           clients INTEGER NOT NULL,
@@ -104,6 +160,39 @@ const migrations = [
         CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
         CREATE INDEX IF NOT EXISTS idx_sessions_token_id ON sessions(token_id);
       `);
+    }
+  },
+  {
+    id: '007_add_chefs_media_columns',
+    up(db) {
+      if (!hasColumn(db, 'chefs', 'avatar_url')) {
+        db.exec(`ALTER TABLE chefs ADD COLUMN avatar_url TEXT NOT NULL DEFAULT '';`);
+      }
+
+      if (!hasColumn(db, 'chefs', 'cover_url')) {
+        db.exec(`ALTER TABLE chefs ADD COLUMN cover_url TEXT NOT NULL DEFAULT '';`);
+      }
+
+      if (!hasColumn(db, 'chefs', 'gallery_json')) {
+        db.exec(`ALTER TABLE chefs ADD COLUMN gallery_json TEXT NOT NULL DEFAULT '[]';`);
+      }
+
+      const update = db.prepare(`
+        UPDATE chefs
+        SET avatar_url = @avatarUrl,
+            cover_url = @coverUrl,
+            gallery_json = @galleryJson
+        WHERE id = @id
+      `);
+
+      for (const [id, media] of Object.entries(chefMediaSeedById)) {
+        update.run({
+          id,
+          avatarUrl: media.avatarUrl,
+          coverUrl: media.coverUrl,
+          galleryJson: JSON.stringify(media.gallery)
+        });
+      }
     }
   }
 ];

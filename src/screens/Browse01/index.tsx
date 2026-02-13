@@ -1,4 +1,4 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, ImageBackground, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -10,14 +10,16 @@ import { colors } from '../../theme/colors';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Browse01'>;
 
-const chefs = [
-  { name: 'Ribeye Jugoso', chef: 'Cories BBQ', chefId: 'cories-bbq', price: '$2,800' },
-  { name: 'Asado Regio', chef: 'Luis BBQ', chefId: 'luis-bbq', price: '$3,200' },
-  { name: 'Costillas Ahumadas', chef: 'Martin Asador', chefId: 'martin-asador', price: '$3,600' }
+const featured = [
+  { dishName: 'Costillas a la Parrilla', chefId: 'cories-bbq', price: '$2,800' },
+  { dishName: 'Asado Regio', chefId: 'luis-bbq', price: '$3,200' },
+  { dishName: 'Costillas Ahumadas', chefId: 'martin-asador', price: '$3,600' }
 ];
 
 export function Browse01({ navigation }: Props) {
-  const { selectChef } = useAppState();
+  const { chefs, selectChef } = useAppState();
+  const heroItem = featured[0];
+  const heroChef = chefs.find((chef) => chef.id === heroItem.chefId);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -30,10 +32,20 @@ export function Browse01({ navigation }: Props) {
             </Pressable>
           </View>
 
-          <LinearGradient colors={[colors.flameEnd, colors.flameStart]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.heroCard}>
-            <Text style={styles.heroLabel}>Costillas a la Parrilla</Text>
-            <Text style={styles.heroSub}>Nuetina Baedo  -  Nuevo Laredo</Text>
-          </LinearGradient>
+          <View style={styles.heroCard}>
+            {heroChef?.coverUrl ? (
+              <ImageBackground source={{ uri: heroChef.coverUrl }} style={styles.heroMedia} imageStyle={styles.heroMediaImage}>
+                <View style={styles.heroShade} />
+              </ImageBackground>
+            ) : (
+              <LinearGradient colors={[colors.flameEnd, colors.flameStart]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.heroMedia} />
+            )}
+
+            <View style={styles.heroContent}>
+              <Text style={styles.heroLabel}>{heroItem.dishName}</Text>
+              <Text style={styles.heroSub}>{heroChef?.name ?? 'Griller'}  -  {heroChef?.city ?? 'Nuevo Laredo'}</Text>
+            </View>
+          </View>
 
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Recomendados</Text>
@@ -43,31 +55,39 @@ export function Browse01({ navigation }: Props) {
           </View>
 
           <View style={styles.list}>
-            {chefs.map((item) => (
-              <Pressable
-                key={item.name}
-                style={styles.item}
-                onPress={() => {
-                  selectChef(item.chefId);
-                  navigation.navigate('Profile');
-                }}
-              >
-                <View style={styles.itemThumb}>
-                  <LinearGradient colors={['#FFD8CF', '#FFF1EE']} style={StyleSheet.absoluteFill} />
-                </View>
-                <View style={styles.itemBody}>
-                  <Text style={styles.itemName}>{item.name}</Text>
-                  <Text style={styles.itemChef}>{item.chef}</Text>
-                </View>
-                <Text style={styles.itemPrice}>{item.price}</Text>
-              </Pressable>
-            ))}
+            {featured.map((item) => {
+              const chef = chefs.find((candidate) => candidate.id === item.chefId);
+
+              return (
+                <Pressable
+                  key={`${item.chefId}-${item.dishName}`}
+                  style={styles.item}
+                  onPress={() => {
+                    selectChef(item.chefId);
+                    navigation.navigate('Profile');
+                  }}
+                >
+                  <View style={styles.itemThumb}>
+                    {chef?.coverUrl ? (
+                      <Image source={{ uri: chef.coverUrl }} style={styles.itemThumbImage} />
+                    ) : (
+                      <LinearGradient colors={['#FFD8CF', '#FFF1EE']} style={StyleSheet.absoluteFill} />
+                    )}
+                  </View>
+                  <View style={styles.itemBody}>
+                    <Text style={styles.itemName}>{item.dishName}</Text>
+                    <Text style={styles.itemChef}>{chef?.name ?? 'Griller'}</Text>
+                  </View>
+                  <Text style={styles.itemPrice}>{item.price}</Text>
+                </Pressable>
+              );
+            })}
           </View>
 
           <Pressable
             style={styles.hireButton}
             onPress={() => {
-              selectChef(chefs[0].chefId);
+              selectChef(featured[0].chefId);
               navigation.navigate('Schedule');
             }}
           >
@@ -116,6 +136,20 @@ const styles = StyleSheet.create({
     marginTop: 18,
     minHeight: 196,
     borderRadius: 18,
+    overflow: 'hidden'
+  },
+  heroMedia: {
+    ...StyleSheet.absoluteFillObject
+  },
+  heroMediaImage: {
+    borderRadius: 18
+  },
+  heroShade: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(15, 10, 8, 0.38)'
+  },
+  heroContent: {
+    minHeight: 196,
     justifyContent: 'flex-end',
     padding: 16
   },
@@ -164,6 +198,10 @@ const styles = StyleSheet.create({
     height: 72,
     borderRadius: 12,
     overflow: 'hidden'
+  },
+  itemThumbImage: {
+    width: '100%',
+    height: '100%'
   },
   itemBody: {
     flex: 1,

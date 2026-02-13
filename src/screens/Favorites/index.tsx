@@ -1,4 +1,4 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
@@ -11,13 +11,13 @@ import { colors } from '../../theme/colors';
 type Props = NativeStackScreenProps<RootStackParamList, 'Favorites'>;
 
 const favorites = [
-  { name: 'Erick Martinez', chefId: 'erick-martinez', specialty: 'Costillas / Tomahawk', city: 'Nuevo Laredo', rate: '4.9', price: '$2,800' },
-  { name: 'Carlos BBQ', chefId: 'carlos-bbq', specialty: 'Parrilla Mixta', city: 'Monterrey', rate: '4.8', price: '$3,200' },
-  { name: 'Martin Asador', chefId: 'martin-asador', specialty: 'Brisket / Costillas', city: 'Saltillo', rate: '4.7', price: '$3,600' }
+  { chefId: 'erick-martinez', specialty: 'Costillas / Tomahawk', price: '$2,800' },
+  { chefId: 'carlos-bbq', specialty: 'Parrilla Mixta', price: '$3,200' },
+  { chefId: 'martin-asador', specialty: 'Brisket / Costillas', price: '$3,600' }
 ];
 
 export function Favorites({ navigation }: Props) {
-  const { selectChef } = useAppState();
+  const { chefs, selectChef } = useAppState();
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -43,43 +43,51 @@ export function Favorites({ navigation }: Props) {
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.list}>
-            {favorites.map((item) => (
-              <View key={item.name} style={styles.card}>
-                <View style={styles.topRow}>
-                  <View style={styles.avatar} />
-                  <View style={styles.headline}>
-                    <Text style={styles.name}>{item.name}</Text>
-                    <Text style={styles.subline}>{item.specialty}</Text>
-                    <Text style={styles.meta}>{item.city}  -  Rating {item.rate}</Text>
-                  </View>
-                  <Text style={styles.heart}>Fav</Text>
-                </View>
+            {favorites.map((item) => {
+              const chef = chefs.find((candidate) => candidate.id === item.chefId);
 
-                <View style={styles.bottomRow}>
-                  <Text style={styles.price}>{item.price} MXN</Text>
-                  <View style={styles.actionsRow}>
-                    <Pressable
-                      style={styles.secondaryBtn}
-                      onPress={() => {
-                        selectChef(item.chefId);
-                        navigation.navigate('Profile');
-                      }}
-                    >
-                      <Text style={styles.secondaryLabel}>Perfil</Text>
-                    </Pressable>
-                    <Pressable
-                      style={styles.primaryBtn}
-                      onPress={() => {
-                        selectChef(item.chefId);
-                        navigation.navigate('Schedule');
-                      }}
-                    >
-                      <Text style={styles.primaryLabel}>Reservar</Text>
-                    </Pressable>
+              return (
+                <View key={item.chefId} style={styles.card}>
+                  <View style={styles.topRow}>
+                    {chef?.avatarUrl ? (
+                      <Image source={{ uri: chef.avatarUrl }} style={styles.avatar} />
+                    ) : (
+                      <View style={styles.avatar} />
+                    )}
+                    <View style={styles.headline}>
+                      <Text style={styles.name}>{chef?.name ?? 'Griller'}</Text>
+                      <Text style={styles.subline}>{item.specialty}</Text>
+                      <Text style={styles.meta}>{chef?.city ?? 'Nuevo Laredo'}  -  Rating {chef?.rating ?? 4.8}</Text>
+                    </View>
+                    <Text style={styles.heart}>Fav</Text>
+                  </View>
+
+                  <View style={styles.bottomRow}>
+                    <Text style={styles.price}>{item.price} MXN</Text>
+                    <View style={styles.actionsRow}>
+                      <Pressable
+                        style={styles.secondaryBtn}
+                        onPress={() => {
+                          selectChef(item.chefId);
+                          navigation.navigate('Profile');
+                        }}
+                      >
+                        <Text style={styles.secondaryLabel}>Perfil</Text>
+                      </Pressable>
+                      <Pressable
+                        style={styles.primaryBtn}
+                        onPress={() => {
+                          selectChef(item.chefId);
+                          navigation.navigate('Schedule');
+                        }}
+                      >
+                        <Text style={styles.primaryLabel}>Reservar</Text>
+                      </Pressable>
+                    </View>
                   </View>
                 </View>
-              </View>
-            ))}
+              );
+            })}
           </ScrollView>
         </View>
 

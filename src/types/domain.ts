@@ -19,6 +19,9 @@ export type Chef = {
   reviews: number;
   basePrice: number;
   specialties: string[];
+  avatarUrl: string;
+  coverUrl: string;
+  gallery: string[];
   bio: string;
   stats: {
     services: number;
