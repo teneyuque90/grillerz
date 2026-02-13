@@ -15,13 +15,17 @@
       "supportsTablet": false
     },
     "android": {
-      "package": "com.teneyuque90.grillerz"
+      "package": "com.teneyuque90.grillerz",
+      "usesCleartextTraffic": true
     },
     "extra": {
       "eas": {
         "projectId": "634bab85-2409-496e-b56a-797568175673"
       }
     },
-    "owner": "teneyuque90"
+    "owner": "teneyuque90",
+    "plugins": [
+      "expo-font"
+    ]
   }
 }
