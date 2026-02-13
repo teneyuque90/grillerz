@@ -15,8 +15,7 @@
       "supportsTablet": false
     },
     "android": {
-      "package": "com.teneyuque90.grillerz",
-      "usesCleartextTraffic": true
+      "package": "com.teneyuque90.grillerz"
     },
     "extra": {
       "eas": {
