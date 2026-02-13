@@ -8,6 +8,7 @@
     "test": "node scripts/test-api.mjs",
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
+    "media:check": "node scripts/check-local-media.mjs",
     "generate:images:google": "node scripts/generate-images-google-ai-studio.mjs"
   },
   "dependencies": {

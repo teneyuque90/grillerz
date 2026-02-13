@@ -7,6 +7,7 @@ import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import { BottomNav } from '../../components/ui/BottomNav';
 import { useAppState } from '../../state/AppStateContext';
 import { colors } from '../../theme/colors';
+import { resolveMediaUrl } from '../../utils/media';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Favorites'>;
 
@@ -45,12 +46,13 @@ export function Favorites({ navigation }: Props) {
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.list}>
             {favorites.map((item) => {
               const chef = chefs.find((candidate) => candidate.id === item.chefId);
+              const avatarUrl = resolveMediaUrl(chef?.avatarUrl);
 
               return (
                 <View key={item.chefId} style={styles.card}>
                   <View style={styles.topRow}>
-                    {chef?.avatarUrl ? (
-                      <Image source={{ uri: chef.avatarUrl }} style={styles.avatar} />
+                    {avatarUrl ? (
+                      <Image source={{ uri: avatarUrl }} style={styles.avatar} />
                     ) : (
                       <View style={styles.avatar} />
                     )}

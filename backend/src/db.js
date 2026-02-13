@@ -12,6 +12,8 @@ const defaultDbPath = path.resolve(__dirname, '../data/grillerz.sqlite');
 const resolvedDbPath = process.env.DATABASE_PATH
   ? path.resolve(process.cwd(), process.env.DATABASE_PATH)
   : defaultDbPath;
+const localChefMediaDir = path.resolve(__dirname, '../public/media/chefs');
+const imageExtensions = ['jpg', 'jpeg', 'png', 'webp'];
 
 fs.mkdirSync(path.dirname(resolvedDbPath), { recursive: true });
 
@@ -275,6 +277,30 @@ function safeJsonParse(rawValue, fallbackValue) {
   }
 }
 
+function findChefImageRelativePath(chefId, baseFileName) {
+  for (const extension of imageExtensions) {
+    const absolutePath = path.join(localChefMediaDir, chefId, `${baseFileName}.${extension}`);
+    if (fs.existsSync(absolutePath)) {
+      return `/media/chefs/${chefId}/${baseFileName}.${extension}`;
+    }
+  }
+
+  return null;
+}
+
+function buildChefGalleryFromDisk(chefId) {
+  const gallery = [];
+
+  for (let index = 1; index <= 6; index += 1) {
+    const relativePath = findChefImageRelativePath(chefId, `gallery-${index}`);
+    if (relativePath) {
+      gallery.push(relativePath);
+    }
+  }
+
+  return gallery;
+}
+
 export function toPublicUser(userRow) {
   return {
     id: userRow.id,
@@ -286,6 +312,11 @@ export function toPublicUser(userRow) {
 }
 
 export function mapChefRow(row) {
+  const avatarFromDisk = findChefImageRelativePath(row.id, 'avatar');
+  const coverFromDisk = findChefImageRelativePath(row.id, 'cover');
+  const galleryFromDisk = buildChefGalleryFromDisk(row.id);
+  const galleryFromDb = safeJsonParse(row.gallery_json ?? '[]', []);
+
   return {
     id: row.id,
     name: row.name,
@@ -295,9 +326,9 @@ export function mapChefRow(row) {
     reviews: row.reviews,
     basePrice: row.base_price,
     specialties: safeJsonParse(row.specialties_json, []),
-    avatarUrl: row.avatar_url ?? '',
-    coverUrl: row.cover_url ?? '',
-    gallery: safeJsonParse(row.gallery_json ?? '[]', []),
+    avatarUrl: avatarFromDisk ?? row.avatar_url ?? '',
+    coverUrl: coverFromDisk ?? row.cover_url ?? '',
+    gallery: galleryFromDisk.length > 0 ? galleryFromDisk : galleryFromDb,
     bio: row.bio,
     stats: {
       services: row.services,

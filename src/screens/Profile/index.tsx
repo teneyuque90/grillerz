@@ -9,11 +9,14 @@ import { BottomNav } from '../../components/ui/BottomNav';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { useAppState } from '../../state/AppStateContext';
 import { colors } from '../../theme/colors';
+import { resolveMediaUrl } from '../../utils/media';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
 
 export function Profile({ navigation }: Props) {
   const { selectedChef } = useAppState();
+  const coverUrl = resolveMediaUrl(selectedChef.coverUrl);
+  const avatarUrl = resolveMediaUrl(selectedChef.avatarUrl);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -28,16 +31,16 @@ export function Profile({ navigation }: Props) {
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
             <View style={styles.hero}>
-              {selectedChef.coverUrl ? (
-                <ImageBackground source={{ uri: selectedChef.coverUrl }} style={styles.heroMedia} imageStyle={styles.heroMediaImage}>
+              {coverUrl ? (
+                <ImageBackground source={{ uri: coverUrl }} style={styles.heroMedia} imageStyle={styles.heroMediaImage}>
                   <View style={styles.heroShade} />
                 </ImageBackground>
               ) : (
                 <LinearGradient colors={[colors.flameEnd, colors.flameStart]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.heroMedia} />
               )}
 
-              {selectedChef.avatarUrl ? (
-                <Image source={{ uri: selectedChef.avatarUrl }} style={styles.avatar} />
+              {avatarUrl ? (
+                <Image source={{ uri: avatarUrl }} style={styles.avatar} />
               ) : (
                 <View style={styles.avatar} />
               )}

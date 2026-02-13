@@ -74,6 +74,26 @@ npm install
 npm run dev
 ```
 
+## Usar imagenes locales (sin dominio)
+
+No necesitas comprar dominio para pruebas. Puedes usar archivos locales desde tu backend:
+
+1. Coloca imagenes en:
+   - `backend/public/media/chefs/<chef-id>/avatar.jpg`
+   - `backend/public/media/chefs/<chef-id>/cover.jpg`
+   - `backend/public/media/chefs/<chef-id>/gallery-1.jpg` (opcional)
+2. Inicia backend con `npm run dev` en `backend/`.
+3. La API `/chefs` detecta esos archivos automaticamente y responde rutas `/media/...`.
+4. La app convierte esas rutas a URL completa usando tu `EXPO_PUBLIC_API_URL`.
+5. Validacion rapida (opcional):
+
+```bash
+cd backend
+npm run media:check
+```
+
+Guia detallada: `backend/public/media/README.md`
+
 ## Ejecutar app
 
 ```bash

@@ -8,12 +8,20 @@
     "splash": {
       "backgroundColor": "#FFFFFF"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": false
     },
     "android": {
       "package": "com.teneyuque90.grillerz"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "634bab85-2409-496e-b56a-797568175673"
+      }
+    },
+    "owner": "teneyuque90"
   }
 }

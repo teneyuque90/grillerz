@@ -7,6 +7,7 @@ import { RootStackParamList } from '../../navigation/screenConfig';
 import { BottomNav } from '../../components/ui/BottomNav';
 import { useAppState } from '../../state/AppStateContext';
 import { colors } from '../../theme/colors';
+import { resolveMediaUrl } from '../../utils/media';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Browse01'>;
 
@@ -20,6 +21,7 @@ export function Browse01({ navigation }: Props) {
   const { chefs, selectChef } = useAppState();
   const heroItem = featured[0];
   const heroChef = chefs.find((chef) => chef.id === heroItem.chefId);
+  const heroCoverUrl = resolveMediaUrl(heroChef?.coverUrl);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -33,8 +35,8 @@ export function Browse01({ navigation }: Props) {
           </View>
 
           <View style={styles.heroCard}>
-            {heroChef?.coverUrl ? (
-              <ImageBackground source={{ uri: heroChef.coverUrl }} style={styles.heroMedia} imageStyle={styles.heroMediaImage}>
+            {heroCoverUrl ? (
+              <ImageBackground source={{ uri: heroCoverUrl }} style={styles.heroMedia} imageStyle={styles.heroMediaImage}>
                 <View style={styles.heroShade} />
               </ImageBackground>
             ) : (
@@ -57,6 +59,7 @@ export function Browse01({ navigation }: Props) {
           <View style={styles.list}>
             {featured.map((item) => {
               const chef = chefs.find((candidate) => candidate.id === item.chefId);
+              const coverUrl = resolveMediaUrl(chef?.coverUrl);
 
               return (
                 <Pressable
@@ -68,8 +71,8 @@ export function Browse01({ navigation }: Props) {
                   }}
                 >
                   <View style={styles.itemThumb}>
-                    {chef?.coverUrl ? (
-                      <Image source={{ uri: chef.coverUrl }} style={styles.itemThumbImage} />
+                    {coverUrl ? (
+                      <Image source={{ uri: coverUrl }} style={styles.itemThumbImage} />
                     ) : (
                       <LinearGradient colors={['#FFD8CF', '#FFF1EE']} style={StyleSheet.absoluteFill} />
                     )}

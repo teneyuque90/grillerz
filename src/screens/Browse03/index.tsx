@@ -7,6 +7,7 @@ import { RootStackParamList } from '../../navigation/screenConfig';
 import { BottomNav } from '../../components/ui/BottomNav';
 import { useAppState } from '../../state/AppStateContext';
 import { colors } from '../../theme/colors';
+import { resolveMediaUrl } from '../../utils/media';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Browse03'>;
 
@@ -33,6 +34,7 @@ export function Browse03({ navigation }: Props) {
           <View style={styles.feed}>
             {reels.map((reel, index) => {
               const chef = chefs.find((item) => item.id === reel.chefId);
+              const coverUrl = resolveMediaUrl(chef?.coverUrl);
 
               return (
                 <Pressable
@@ -43,8 +45,8 @@ export function Browse03({ navigation }: Props) {
                     navigation.navigate('Profile');
                   }}
                 >
-                  {chef?.coverUrl ? (
-                    <ImageBackground source={{ uri: chef.coverUrl }} style={StyleSheet.absoluteFill}>
+                  {coverUrl ? (
+                    <ImageBackground source={{ uri: coverUrl }} style={StyleSheet.absoluteFill}>
                       <View style={styles.reelShade} />
                     </ImageBackground>
                   ) : (
