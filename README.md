@@ -74,6 +74,12 @@ npm install
 npm run dev
 ```
 
+## Backend 24/7 en VPS (sin laptop encendida)
+
+Guia completa en:
+
+- `backend/README.md` -> seccion `Deploy VPS (Docker, 24/7)`
+
 ## Usar imagenes locales (sin dominio)
 
 No necesitas comprar dominio para pruebas. Puedes usar archivos locales desde tu backend:

@@ -12,11 +12,39 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const publicMediaDir = path.resolve(__dirname, '../public/media');
 
+function buildCorsOptions() {
+  const rawOrigins = process.env.CORS_ORIGIN?.trim();
+
+  if (!rawOrigins || rawOrigins === '*') {
+    return {};
+  }
+
+  const allowedOrigins = rawOrigins
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  if (allowedOrigins.length === 0) {
+    return {};
+  }
+
+  return {
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error('CORS origin not allowed'));
+    }
+  };
+}
+
 export function createApp() {
   initializeDatabase();
 
   const app = express();
-  app.use(cors());
+  app.use(cors(buildCorsOptions()));
   app.use(express.json());
   app.use('/media', express.static(publicMediaDir));
 

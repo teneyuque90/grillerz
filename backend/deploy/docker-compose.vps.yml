@@ -1,0 +1,17 @@
+services:
+  grillerz-api:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: grillerz-api
+    restart: unless-stopped
+    env_file:
+      - ../.env.production
+    ports:
+      - '3000:3000'
+    volumes:
+      - grillerz_data:/data
+      - ../public/media:/app/public/media
+
+volumes:
+  grillerz_data:
