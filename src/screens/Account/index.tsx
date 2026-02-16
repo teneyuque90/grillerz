@@ -7,6 +7,7 @@ import { grillerzApi } from '../../api/grillerzApi';
 import { BottomNav } from '../../components/ui/BottomNav';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
+import { OFFLINE_DEMO_MODE } from '../../config/api';
 import { getGrillerVideos } from '../../data/mediaLibrary';
 import { RootStackParamList } from '../../navigation/screenConfig';
 import { useAppState } from '../../state/AppStateContext';
@@ -67,6 +68,15 @@ export function Account({ navigation }: Props) {
     let active = true;
     setIsLoadingVideos(true);
     setVideosNotice(null);
+
+    if (OFFLINE_DEMO_MODE) {
+      setVideoDraft(toVideoDraft(getGrillerVideos(managedChefId)));
+      setIsLoadingVideos(false);
+      setVideosNotice('Modo offline: edicion local para demo.');
+      return () => {
+        active = false;
+      };
+    }
 
     async function loadChefVideos() {
       try {
@@ -136,6 +146,11 @@ export function Account({ navigation }: Props) {
 
     if (!canManageVideos) {
       setVideosNotice('Esta cuenta no tiene permisos para administrar videos de grillers.');
+      return;
+    }
+
+    if (OFFLINE_DEMO_MODE) {
+      setVideosNotice('Modo offline: cambios guardados solo en esta sesion de demo.');
       return;
     }
 

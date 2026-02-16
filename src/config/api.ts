@@ -7,3 +7,4 @@ const LOCAL_DEFAULT = Platform.select({
 });
 
 export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? LOCAL_DEFAULT;
+export const OFFLINE_DEMO_MODE = process.env.EXPO_PUBLIC_OFFLINE_DEMO === 'true';

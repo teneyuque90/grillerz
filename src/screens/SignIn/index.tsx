@@ -5,6 +5,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { AuthInput } from '../../components/ui/AuthInput';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
+import { OFFLINE_DEMO_MODE } from '../../config/api';
 import { RootStackParamList } from '../../navigation/screenConfig';
 import { useAppState } from '../../state/AppStateContext';
 import { colors } from '../../theme/colors';
@@ -38,6 +39,31 @@ export function SignIn({ navigation }: Props) {
     navigation.navigate('Browse01');
   }
 
+  async function handleOfflineDemoSignIn() {
+    if (isSubmitting) {
+      return;
+    }
+
+    const demoEmail = 'gabriel@email.com';
+    const demoPassword = '123456';
+    setEmail(demoEmail);
+    setPassword(demoPassword);
+
+    setIsSubmitting(true);
+    setError(null);
+
+    const result = await signIn({ email: demoEmail, password: demoPassword });
+
+    if (!result.ok) {
+      setError(result.message ?? 'No se pudo iniciar sesion en modo demo.');
+      setIsSubmitting(false);
+      return;
+    }
+
+    setIsSubmitting(false);
+    navigation.navigate('Browse01');
+  }
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.screen}>
@@ -48,6 +74,13 @@ export function SignIn({ navigation }: Props) {
         </View>
 
         <View style={styles.form}>
+          {OFFLINE_DEMO_MODE ? (
+            <View style={styles.offlineNotice}>
+              <Text style={styles.offlineTitle}>Modo demo offline activado</Text>
+              <Text style={styles.offlineText}>Esta app funciona sin internet para presentaciones.</Text>
+            </View>
+          ) : null}
+
           <AuthInput
             label="Correo"
             placeholder="tu@email.com"
@@ -70,6 +103,8 @@ export function SignIn({ navigation }: Props) {
           </Pressable>
 
           <PrimaryButton label={isSubmitting ? 'Ingresando...' : 'Iniciar sesion'} onPress={handleSignIn} />
+
+          {OFFLINE_DEMO_MODE ? <PrimaryButton compact label="Entrar demo offline" onPress={handleOfflineDemoSignIn} /> : null}
         </View>
 
         <View style={styles.bottomRow}>
@@ -118,6 +153,25 @@ const styles = StyleSheet.create({
   form: {
     marginTop: 38,
     gap: 16
+  },
+  offlineNotice: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    backgroundColor: '#FFF1F0',
+    padding: 12,
+    gap: 4
+  },
+  offlineTitle: {
+    color: colors.primaryDark,
+    fontWeight: '900',
+    fontSize: 13
+  },
+  offlineText: {
+    color: colors.textMuted,
+    fontWeight: '600',
+    fontSize: 12,
+    lineHeight: 16
   },
   errorText: {
     color: colors.primaryDark,

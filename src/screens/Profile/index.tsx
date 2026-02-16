@@ -6,6 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { grillerzApi } from '../../api/grillerzApi';
+import { OFFLINE_DEMO_MODE } from '../../config/api';
 import { getGrillerVideos, getYouTubeThumbnail } from '../../data/mediaLibrary';
 import { RootStackParamList } from '../../navigation/screenConfig';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
@@ -97,6 +98,12 @@ export function Profile({ navigation }: Props) {
     let active = true;
     setReviews(fallbackReviewsByChefId[selectedChef.id] ?? []);
 
+    if (OFFLINE_DEMO_MODE) {
+      return () => {
+        active = false;
+      };
+    }
+
     async function loadReviews() {
       try {
         const remoteReviews = await grillerzApi.getChefReviews(selectedChef.id);
@@ -118,6 +125,12 @@ export function Profile({ navigation }: Props) {
   useEffect(() => {
     let active = true;
     setGrillerVideos(getGrillerVideos(selectedChef.id));
+
+    if (OFFLINE_DEMO_MODE) {
+      return () => {
+        active = false;
+      };
+    }
 
     async function loadVideos() {
       try {

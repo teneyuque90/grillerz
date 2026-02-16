@@ -3,6 +3,7 @@ import { ReactNode, createContext, useCallback, useContext, useEffect, useMemo, 
 
 import { grillerzApi } from '../api/grillerzApi';
 import { setAuthToken } from '../api/client';
+import { OFFLINE_DEMO_MODE } from '../config/api';
 import { createInitialDraft, defaultUser, mockChefs, seedBookings } from '../data/mockData';
 import { Booking, BookingDraft, BookingSummary, Chef, PaymentMethod, User } from '../types/domain';
 
@@ -111,6 +112,20 @@ function findDemoAccount(email: string, password: string) {
   return DEMO_ACCOUNTS.find((account) => account.email === email && account.password === password) ?? null;
 }
 
+function createOfflineUserFromEmail(email: string): User {
+  const base = email.split('@')[0]?.trim();
+  const normalizedBase = base && base.length > 1 ? base : 'Demo';
+  const name = normalizedBase.charAt(0).toUpperCase() + normalizedBase.slice(1);
+
+  return {
+    id: email,
+    name,
+    email,
+    phone: '+52 867 000 0000',
+    city: 'Nuevo Laredo'
+  };
+}
+
 function buildBookingId(currentBookings: Booking[]): string {
   const base = 4800 + currentBookings.length + 1;
 
@@ -162,17 +177,19 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         setSelectedBookingId(parsed.selectedBookingId);
       }
 
-      try {
-        const remoteChefs = await grillerzApi.getChefs();
+      if (!OFFLINE_DEMO_MODE) {
+        try {
+          const remoteChefs = await grillerzApi.getChefs();
 
-        if (active && remoteChefs.length > 0) {
-          setChefs(remoteChefs);
+          if (active && remoteChefs.length > 0) {
+            setChefs(remoteChefs);
+          }
+        } catch {
+          // keep local fallback
         }
-      } catch {
-        // keep local fallback
       }
 
-      if (parsed?.authUser && parsed?.authToken) {
+      if (!OFFLINE_DEMO_MODE && parsed?.authUser && parsed?.authToken) {
         try {
           const remoteBookings = await grillerzApi.getBookings();
 
@@ -242,6 +259,17 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     await wait(WAIT_MS);
 
     const normalizedEmail = sanitizeEmail(email);
+
+    if (OFFLINE_DEMO_MODE) {
+      const demoAccount = findDemoAccount(normalizedEmail, password);
+      const user = demoAccount?.user ?? createOfflineUserFromEmail(normalizedEmail);
+      const localToken = `local-offline-${user.id}`;
+      setAuthTokenState(localToken);
+      setAuthToken(localToken);
+      setAuthUser(user);
+      setBookings(seedBookings(user.id));
+      return { ok: true };
+    }
 
     try {
       const { user, token } = await grillerzApi.login({ email: normalizedEmail, password });
@@ -325,7 +353,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   }, [pendingRegistration]);
 
   const signOut = useCallback(async () => {
-    if (authToken) {
+    if (authToken && !OFFLINE_DEMO_MODE) {
       try {
         await grillerzApi.logout();
       } catch {
@@ -396,14 +424,22 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
 
       let createdBooking: Booking | null = null;
 
-      try {
-        createdBooking = await grillerzApi.createBooking(payload);
-      } catch {
+      if (OFFLINE_DEMO_MODE) {
         createdBooking = {
           id: buildBookingId(bookings),
           createdAt: new Date().toISOString(),
           ...payload
         };
+      } else {
+        try {
+          createdBooking = await grillerzApi.createBooking(payload);
+        } catch {
+          createdBooking = {
+            id: buildBookingId(bookings),
+            createdAt: new Date().toISOString(),
+            ...payload
+          };
+        }
       }
 
       setBookings((prev) => [createdBooking, ...prev]);
