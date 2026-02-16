@@ -88,6 +88,13 @@ async function run() {
     assert.equal(me.status, 200);
     assert.equal(me.body.user.email, SEED_EMAIL);
 
+    logStep('GET /chefs/:chefId/reviews');
+    const reviews = await request.get('/chefs/erick-martinez/reviews');
+    assert.equal(reviews.status, 200);
+    assert.ok(Array.isArray(reviews.body.reviews));
+    assert.ok(reviews.body.reviews.length > 0);
+    assert.equal(reviews.body.reviews[0].chefId, 'erick-martinez');
+
     logStep('GET /bookings sin token');
     const bookingsNoToken = await request.get('/bookings');
     assert.equal(bookingsNoToken.status, 401);

@@ -1,6 +1,7 @@
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { RootStackParamList } from '../../navigation/screenConfig';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
@@ -59,7 +60,13 @@ export function Favorites({ navigation }: Props) {
                     <View style={styles.headline}>
                       <Text style={styles.name}>{chef?.name ?? 'Griller'}</Text>
                       <Text style={styles.subline}>{item.specialty}</Text>
-                      <Text style={styles.meta}>{chef?.city ?? 'Nuevo Laredo'}  -  Rating {chef?.rating ?? 4.8}</Text>
+                      <View style={styles.metaRow}>
+                        <Text style={styles.meta}>{chef?.city ?? 'Nuevo Laredo'}</Text>
+                        <View style={styles.ratingChip}>
+                          <MaterialCommunityIcons name="fire" size={12} color={colors.primary} />
+                          <Text style={styles.ratingText}>{chef?.rating ?? 4.8}</Text>
+                        </View>
+                      </View>
                     </View>
                     <Text style={styles.heart}>Fav</Text>
                   </View>
@@ -180,6 +187,28 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 12,
     fontWeight: '700'
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8
+  },
+  ratingChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#FFD4CC',
+    backgroundColor: '#FFF1EE',
+    paddingHorizontal: 7,
+    paddingVertical: 2
+  },
+  ratingText: {
+    color: colors.primaryDark,
+    fontSize: 11,
+    fontWeight: '800'
   },
   heart: {
     color: colors.primary,

@@ -1,22 +1,116 @@
+import { useEffect, useState } from 'react';
 import { Image, ImageBackground, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
+import { grillerzApi } from '../../api/grillerzApi';
 import { RootStackParamList } from '../../navigation/screenConfig';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import { BottomNav } from '../../components/ui/BottomNav';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { useAppState } from '../../state/AppStateContext';
 import { colors } from '../../theme/colors';
+import { ChefReview } from '../../types/domain';
 import { resolveMediaUrl } from '../../utils/media';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
+
+const fallbackReviewsByChefId: Record<string, ChefReview[]> = {
+  'erick-martinez': [
+    {
+      id: 'fallback-r1',
+      chefId: 'erick-martinez',
+      authorName: 'Ana R.',
+      dateLabel: 'Hace 2 dias',
+      rating: 5,
+      comment: 'Excelente servicio y carne en su punto.',
+      createdAt: '2026-02-12T10:00:00.000Z'
+    },
+    {
+      id: 'fallback-r2',
+      chefId: 'erick-martinez',
+      authorName: 'Jorge M.',
+      dateLabel: 'Hace 1 semana',
+      rating: 5,
+      comment: 'Muy profesional, puntual y limpio.',
+      createdAt: '2026-02-07T13:00:00.000Z'
+    }
+  ],
+  'carlos-bbq': [
+    {
+      id: 'fallback-r1',
+      chefId: 'carlos-bbq',
+      authorName: 'Daniel T.',
+      dateLabel: 'Hace 3 dias',
+      rating: 5,
+      comment: 'Costillas y brisket de gran nivel.',
+      createdAt: '2026-02-11T11:00:00.000Z'
+    }
+  ],
+  'martin-asador': [
+    {
+      id: 'fallback-r1',
+      chefId: 'martin-asador',
+      authorName: 'Karla V.',
+      dateLabel: 'Hace 2 dias',
+      rating: 5,
+      comment: 'Ahumado espectacular, gran presentacion.',
+      createdAt: '2026-02-12T09:00:00.000Z'
+    }
+  ],
+  'luis-bbq': [
+    {
+      id: 'fallback-r1',
+      chefId: 'luis-bbq',
+      authorName: 'Jose P.',
+      dateLabel: 'Hace 4 dias',
+      rating: 4,
+      comment: 'Muy buen asado y buena actitud.',
+      createdAt: '2026-02-10T12:00:00.000Z'
+    }
+  ],
+  'cories-bbq': [
+    {
+      id: 'fallback-r1',
+      chefId: 'cories-bbq',
+      authorName: 'Majo F.',
+      dateLabel: 'Hace 3 dias',
+      rating: 5,
+      comment: 'Ribeye jugoso y atencion impecable.',
+      createdAt: '2026-02-11T08:40:00.000Z'
+    }
+  ]
+};
 
 export function Profile({ navigation }: Props) {
   const { selectedChef } = useAppState();
   const coverUrl = resolveMediaUrl(selectedChef.coverUrl);
   const avatarUrl = resolveMediaUrl(selectedChef.avatarUrl);
+  const [reviews, setReviews] = useState<ChefReview[]>(fallbackReviewsByChefId[selectedChef.id] ?? []);
+
+  useEffect(() => {
+    let active = true;
+    setReviews(fallbackReviewsByChefId[selectedChef.id] ?? []);
+
+    async function loadReviews() {
+      try {
+        const remoteReviews = await grillerzApi.getChefReviews(selectedChef.id);
+        if (active) {
+          setReviews(remoteReviews);
+        }
+      } catch {
+        // keep local fallback
+      }
+    }
+
+    void loadReviews();
+
+    return () => {
+      active = false;
+    };
+  }, [selectedChef.id]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -47,7 +141,11 @@ export function Profile({ navigation }: Props) {
               <View style={styles.heroCopy}>
                 <Text style={styles.heroName}>{selectedChef.name}</Text>
                 <Text style={styles.heroMeta}>{selectedChef.title}  -  {selectedChef.city}</Text>
-                <Text style={styles.heroRating}>Rating {selectedChef.rating}  ({selectedChef.reviews} resenas)</Text>
+                <View style={styles.heroRatingRow}>
+                  <MaterialCommunityIcons name="fire" size={16} color={colors.primary} />
+                  <Text style={styles.heroRating}>{selectedChef.rating}</Text>
+                  <Text style={styles.heroReviews}>({selectedChef.reviews} resenas)</Text>
+                </View>
               </View>
             </View>
 
@@ -80,6 +178,37 @@ export function Profile({ navigation }: Props) {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Sobre el griller</Text>
               <Text style={styles.bio}>{selectedChef.bio}</Text>
+            </View>
+
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Resenas ({selectedChef.reviews})</Text>
+              <View style={styles.reviewsList}>
+                {reviews.map((item) => (
+                  <View key={`${selectedChef.id}-${item.id}`} style={styles.reviewCard}>
+                    <View style={styles.reviewHeader}>
+                      <View style={styles.reviewAvatar}>
+                        <Text style={styles.reviewAvatarLabel}>{item.authorName.charAt(0)}</Text>
+                      </View>
+                      <View style={styles.reviewHeaderCopy}>
+                        <Text style={styles.reviewAuthor}>{item.authorName}</Text>
+                        <Text style={styles.reviewDate}>{item.dateLabel}</Text>
+                      </View>
+                      <View style={styles.reviewRatingRow}>
+                        {Array.from({ length: 5 }).map((_, index) => (
+                          <MaterialCommunityIcons
+                            key={`${item.id}-fire-${index}`}
+                            name="fire"
+                            size={14}
+                            color={index < item.rating ? colors.primary : '#F2CFC9'}
+                          />
+                        ))}
+                      </View>
+                    </View>
+                    <Text style={styles.reviewComment}>{item.comment}</Text>
+                  </View>
+                ))}
+                {reviews.length === 0 ? <Text style={styles.emptyReviews}>Aun no hay resenas publicadas.</Text> : null}
+              </View>
             </View>
 
             <PrimaryButton label="Reservar ahora" onPress={() => navigation.navigate('Schedule')} />
@@ -151,10 +280,19 @@ const styles = StyleSheet.create({
     color: '#FFE2DC',
     fontWeight: '700'
   },
-  heroRating: {
+  heroRatingRow: {
     marginTop: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4
+  },
+  heroRating: {
+    color: '#FFFFFF',
+    fontWeight: '800'
+  },
+  heroReviews: {
     color: '#FFD9D3',
-    fontWeight: '600'
+    fontWeight: '700'
   },
   statsRow: {
     flexDirection: 'row',
@@ -211,5 +349,64 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     lineHeight: 22,
     fontSize: 15
+  },
+  reviewsList: {
+    gap: 10
+  },
+  reviewCard: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.backgroundMuted,
+    padding: 10,
+    gap: 8
+  },
+  reviewHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8
+  },
+  reviewAvatar: {
+    width: 30,
+    height: 30,
+    borderRadius: 30,
+    backgroundColor: '#FFE5E2',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  reviewAvatarLabel: {
+    color: colors.primaryDark,
+    fontSize: 12,
+    fontWeight: '900'
+  },
+  reviewHeaderCopy: {
+    flex: 1,
+    gap: 1
+  },
+  reviewAuthor: {
+    color: colors.textStrong,
+    fontWeight: '800',
+    fontSize: 13
+  },
+  reviewDate: {
+    color: colors.textSoft,
+    fontWeight: '600',
+    fontSize: 11
+  },
+  reviewRatingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2
+  },
+  reviewComment: {
+    color: colors.textMuted,
+    lineHeight: 19,
+    fontSize: 13,
+    fontWeight: '600'
+  },
+  emptyReviews: {
+    color: colors.textSoft,
+    fontSize: 13,
+    fontWeight: '600'
   }
 });

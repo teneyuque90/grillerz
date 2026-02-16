@@ -91,6 +91,7 @@ npx eas-cli build -p android --profile preview --non-interactive
 - `POST /auth/logout` (requiere bearer token)
 - `GET /chefs`
 - `GET /chefs/:chefId`
+- `GET /chefs/:chefId/reviews`
 - `GET /bookings` (requiere bearer token)
 - `GET /bookings?userId=<id>` (solo tu propio userId)
 - `GET /bookings/:bookingId` (requiere bearer token)

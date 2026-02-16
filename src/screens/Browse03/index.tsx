@@ -2,6 +2,7 @@ import { ImageBackground, Pressable, ScrollView, StyleSheet, Text, View } from '
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { RootStackParamList } from '../../navigation/screenConfig';
 import { BottomNav } from '../../components/ui/BottomNav';
@@ -59,9 +60,13 @@ export function Browse03({ navigation }: Props) {
                   )}
                   <View style={styles.reelOverlay}>
                     <Text style={styles.reelTitle}>{reel.title}</Text>
-                    <Text style={styles.reelMeta}>
-                      {chef?.city ?? 'Nuevo Laredo'}  -  Rating {chef?.rating ?? 4.8}
-                    </Text>
+                    <View style={styles.reelMetaRow}>
+                      <Text style={styles.reelMeta}>{chef?.city ?? 'Nuevo Laredo'}</Text>
+                      <View style={styles.reelRatingChip}>
+                        <MaterialCommunityIcons name="fire" size={13} color={colors.primary} />
+                        <Text style={styles.reelRatingText}>{chef?.rating ?? 4.8}</Text>
+                      </View>
+                    </View>
                     <Pressable
                       style={styles.reelButton}
                       onPress={() => {
@@ -143,6 +148,28 @@ const styles = StyleSheet.create({
   reelMeta: {
     color: '#FFD9D3',
     fontWeight: '600'
+  },
+  reelMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8
+  },
+  reelRatingChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    minHeight: 24,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#FFB9AD',
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
+    paddingHorizontal: 8
+  },
+  reelRatingText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 12
   },
   reelButton: {
     marginTop: 8,

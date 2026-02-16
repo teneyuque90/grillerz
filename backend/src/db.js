@@ -360,6 +360,18 @@ export function mapBookingRow(row) {
   };
 }
 
+export function mapChefReviewRow(row) {
+  return {
+    id: row.id,
+    chefId: row.chef_id,
+    authorName: row.author_name,
+    rating: row.rating,
+    comment: row.comment,
+    dateLabel: row.date_label,
+    createdAt: row.created_at
+  };
+}
+
 export function nextBookingId() {
   const rows = db.prepare('SELECT id FROM bookings').all();
   let max = 4829;

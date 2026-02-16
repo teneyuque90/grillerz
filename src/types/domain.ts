@@ -30,6 +30,16 @@ export type Chef = {
   };
 };
 
+export type ChefReview = {
+  id: string;
+  chefId: string;
+  authorName: string;
+  rating: number;
+  comment: string;
+  dateLabel: string;
+  createdAt: string;
+};
+
 export type BookingDraft = {
   chefId: string;
   dateLabel: string;

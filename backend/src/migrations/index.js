@@ -46,6 +46,144 @@ const chefMediaSeedById = {
   }
 };
 
+const chefReviewsSeed = [
+  {
+    id: 'rv-erick-001',
+    chefId: 'erick-martinez',
+    authorName: 'Ana R.',
+    rating: 5,
+    comment: 'Excelente servicio y carne en su punto.',
+    dateLabel: 'Hace 2 dias',
+    createdAt: '2026-02-12T10:00:00.000Z'
+  },
+  {
+    id: 'rv-erick-002',
+    chefId: 'erick-martinez',
+    authorName: 'Jorge M.',
+    rating: 5,
+    comment: 'Muy profesional, puntual y limpio.',
+    dateLabel: 'Hace 1 semana',
+    createdAt: '2026-02-07T13:00:00.000Z'
+  },
+  {
+    id: 'rv-erick-003',
+    chefId: 'erick-martinez',
+    authorName: 'Paola G.',
+    rating: 4,
+    comment: 'Muy buen sabor, repetiremos.',
+    dateLabel: 'Hace 2 semanas',
+    createdAt: '2026-01-30T20:00:00.000Z'
+  },
+  {
+    id: 'rv-carlos-001',
+    chefId: 'carlos-bbq',
+    authorName: 'Daniel T.',
+    rating: 5,
+    comment: 'Costillas y brisket de gran nivel.',
+    dateLabel: 'Hace 3 dias',
+    createdAt: '2026-02-11T11:00:00.000Z'
+  },
+  {
+    id: 'rv-carlos-002',
+    chefId: 'carlos-bbq',
+    authorName: 'Monica L.',
+    rating: 4,
+    comment: 'Buena atencion y porciones generosas.',
+    dateLabel: 'Hace 1 semana',
+    createdAt: '2026-02-06T18:00:00.000Z'
+  },
+  {
+    id: 'rv-carlos-003',
+    chefId: 'carlos-bbq',
+    authorName: 'Luis A.',
+    rating: 5,
+    comment: 'Todo salio perfecto para el evento.',
+    dateLabel: 'Hace 2 semanas',
+    createdAt: '2026-01-29T15:00:00.000Z'
+  },
+  {
+    id: 'rv-martin-001',
+    chefId: 'martin-asador',
+    authorName: 'Karla V.',
+    rating: 5,
+    comment: 'Ahumado espectacular, gran presentacion.',
+    dateLabel: 'Hace 2 dias',
+    createdAt: '2026-02-12T09:00:00.000Z'
+  },
+  {
+    id: 'rv-martin-002',
+    chefId: 'martin-asador',
+    authorName: 'Brenda C.',
+    rating: 4,
+    comment: 'Muy buen sabor y tiempos correctos.',
+    dateLabel: 'Hace 9 dias',
+    createdAt: '2026-02-05T16:00:00.000Z'
+  },
+  {
+    id: 'rv-martin-003',
+    chefId: 'martin-asador',
+    authorName: 'Arturo N.',
+    rating: 5,
+    comment: 'Servicio premium en todo momento.',
+    dateLabel: 'Hace 3 semanas',
+    createdAt: '2026-01-26T21:00:00.000Z'
+  },
+  {
+    id: 'rv-luis-001',
+    chefId: 'luis-bbq',
+    authorName: 'Jose P.',
+    rating: 4,
+    comment: 'Muy buen asado y buena actitud.',
+    dateLabel: 'Hace 4 dias',
+    createdAt: '2026-02-10T12:00:00.000Z'
+  },
+  {
+    id: 'rv-luis-002',
+    chefId: 'luis-bbq',
+    authorName: 'Sofia I.',
+    rating: 5,
+    comment: 'Recomendado para reuniones familiares.',
+    dateLabel: 'Hace 1 semana',
+    createdAt: '2026-02-06T19:30:00.000Z'
+  },
+  {
+    id: 'rv-luis-003',
+    chefId: 'luis-bbq',
+    authorName: 'Pedro E.',
+    rating: 4,
+    comment: 'Buen servicio y menu variado.',
+    dateLabel: 'Hace 2 semanas',
+    createdAt: '2026-01-28T17:20:00.000Z'
+  },
+  {
+    id: 'rv-cories-001',
+    chefId: 'cories-bbq',
+    authorName: 'Majo F.',
+    rating: 5,
+    comment: 'Ribeye jugoso y atencion impecable.',
+    dateLabel: 'Hace 3 dias',
+    createdAt: '2026-02-11T08:40:00.000Z'
+  },
+  {
+    id: 'rv-cories-002',
+    chefId: 'cories-bbq',
+    authorName: 'Ricardo B.',
+    rating: 4,
+    comment: 'Muy buen sazón y buena organizacion.',
+    dateLabel: 'Hace 1 semana',
+    createdAt: '2026-02-07T14:45:00.000Z'
+  },
+  {
+    id: 'rv-cories-003',
+    chefId: 'cories-bbq',
+    authorName: 'Diana O.',
+    rating: 5,
+    comment: 'Experiencia completa, vale la pena.',
+    dateLabel: 'Hace 2 semanas',
+    createdAt: '2026-01-31T20:30:00.000Z'
+  }
+];
+
 function hasColumn(db, tableName, columnName) {
   const rows = db.prepare(`PRAGMA table_info(${tableName})`).all();
   return rows.some((row) => row.name === columnName);
@@ -192,6 +330,39 @@ const migrations = [
           coverUrl: media.coverUrl,
           galleryJson: JSON.stringify(media.gallery)
         });
+      }
+    }
+  },
+  {
+    id: '008_create_chef_reviews',
+    up(db) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS chef_reviews (
+          id TEXT PRIMARY KEY,
+          chef_id TEXT NOT NULL,
+          author_name TEXT NOT NULL,
+          rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+          comment TEXT NOT NULL,
+          date_label TEXT NOT NULL,
+          created_at TEXT NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_chef_reviews_chef_id ON chef_reviews(chef_id);
+        CREATE INDEX IF NOT EXISTS idx_chef_reviews_created_at ON chef_reviews(created_at);
+      `);
+
+      const count = db.prepare('SELECT COUNT(*) AS total FROM chef_reviews').get().total;
+      if (count > 0) {
+        return;
+      }
+
+      const insert = db.prepare(`
+        INSERT INTO chef_reviews (id, chef_id, author_name, rating, comment, date_label, created_at)
+        VALUES (@id, @chefId, @authorName, @rating, @comment, @dateLabel, @createdAt)
+      `);
+
+      for (const item of chefReviewsSeed) {
+        insert.run(item);
       }
     }
   }

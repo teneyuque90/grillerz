@@ -1,7 +1,7 @@
 import { Router } from 'express';
 
 import { handleHttpError } from '../lib/http.js';
-import { getChefById, getChefs } from '../services/chefsService.js';
+import { getChefById, getChefReviews, getChefs } from '../services/chefsService.js';
 
 export const chefsRoutes = Router();
 
@@ -18,6 +18,15 @@ chefsRoutes.get('/:chefId', (req, res) => {
   try {
     const chef = getChefById(req.params.chefId);
     res.json({ chef });
+  } catch (error) {
+    handleHttpError(res, error);
+  }
+});
+
+chefsRoutes.get('/:chefId/reviews', (req, res) => {
+  try {
+    const reviews = getChefReviews(req.params.chefId);
+    res.json({ reviews });
   } catch (error) {
     handleHttpError(res, error);
   }

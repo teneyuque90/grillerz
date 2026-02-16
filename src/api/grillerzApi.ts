@@ -1,5 +1,5 @@
 import { http } from './client';
-import { Booking, Chef, User } from '../types/domain';
+import { Booking, Chef, ChefReview, User } from '../types/domain';
 
 type LoginPayload = {
   email: string;
@@ -49,6 +49,11 @@ export const grillerzApi = {
   async getChefs(): Promise<Chef[]> {
     const response = await http.get<{ chefs: Chef[] }>('/chefs');
     return response.chefs;
+  },
+
+  async getChefReviews(chefId: string): Promise<ChefReview[]> {
+    const response = await http.get<{ reviews: ChefReview[] }>(`/chefs/${encodeURIComponent(chefId)}/reviews`);
+    return response.reviews;
   },
 
   async getBookings(userId?: string): Promise<Booking[]> {
