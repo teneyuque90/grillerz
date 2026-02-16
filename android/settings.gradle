@@ -23,8 +23,8 @@ pluginManagement {
   def nodeExecutable =
     resolveNode(providers.gradleProperty("nodeBinary").orNull) ?:
     resolveNode(System.getenv("NODE_BINARY")) ?:
-    resolveNode("/usr/local/bin/node") ?:
     resolveNode("/opt/homebrew/bin/node") ?:
+    resolveNode("/usr/local/bin/node") ?:
     "node"
 
   def reactNativeGradlePlugin = new File(

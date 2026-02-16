@@ -12,12 +12,12 @@ if (!nodeExecutable) {
     }
 }
 
-if (!nodeExecutable && file("/usr/local/bin/node").exists()) {
-    nodeExecutable = "/usr/local/bin/node"
-}
-
 if (!nodeExecutable && file("/opt/homebrew/bin/node").exists()) {
     nodeExecutable = "/opt/homebrew/bin/node"
+}
+
+if (!nodeExecutable && file("/usr/local/bin/node").exists()) {
+    nodeExecutable = "/usr/local/bin/node"
 }
 
 if (!nodeExecutable) {
