@@ -59,6 +59,41 @@ type PendingRegistration = {
 const STORAGE_KEY = 'grillerz.app.state.v1';
 const DEFAULT_CHEF_ID = mockChefs[0].id;
 const WAIT_MS = 260;
+const DEMO_ACCOUNTS = [
+  {
+    email: 'gabriel@email.com',
+    password: '123456',
+    user: {
+      id: 'gabriel@email.com',
+      name: 'Gabriel Teneyuque',
+      email: 'gabriel@email.com',
+      phone: '+52 867 000 0000',
+      city: 'Nuevo Laredo'
+    }
+  },
+  {
+    email: 'demo@grillerz.app',
+    password: 'Grillerz123!',
+    user: {
+      id: 'demo@grillerz.app',
+      name: 'Demo Grillerz',
+      email: 'demo@grillerz.app',
+      phone: '+52 867 111 1111',
+      city: 'Nuevo Laredo'
+    }
+  },
+  {
+    email: 'admin@grillerz.app',
+    password: 'Admin123!',
+    user: {
+      id: 'admin@grillerz.app',
+      name: 'Admin Grillerz',
+      email: 'admin@grillerz.app',
+      phone: '+52 867 222 2222',
+      city: 'Nuevo Laredo'
+    }
+  }
+] as const;
 
 const AppStateContext = createContext<AppStateContextValue | undefined>(undefined);
 
@@ -70,6 +105,10 @@ function wait(ms: number): Promise<void> {
 
 function sanitizeEmail(email: string): string {
   return email.trim().toLowerCase();
+}
+
+function findDemoAccount(email: string, password: string) {
+  return DEMO_ACCOUNTS.find((account) => account.email === email && account.password === password) ?? null;
 }
 
 function buildBookingId(currentBookings: Booking[]): string {
@@ -219,6 +258,17 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
 
       return { ok: true };
     } catch (error) {
+      const demoAccount = findDemoAccount(normalizedEmail, password);
+      if (demoAccount) {
+        const localToken = `local-demo-${demoAccount.user.id}`;
+        setAuthTokenState(localToken);
+        setAuthToken(localToken);
+        setAuthUser(demoAccount.user);
+        setBookings(seedBookings(demoAccount.user.id));
+
+        return { ok: true };
+      }
+
       setAuthTokenState(null);
       setAuthToken(null);
       return { ok: false, message: error instanceof Error ? error.message : 'No se pudo iniciar sesion.' };
