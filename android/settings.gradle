@@ -1,29 +1,32 @@
-def resolveNodeExecutable() {
-  def nodeFromGradle = providers.gradleProperty("nodeBinary").orNull
-  def candidates = [
-    nodeFromGradle,
-    System.getenv("NODE_BINARY"),
-    "/usr/local/bin/node",
-    "/opt/homebrew/bin/node",
-    "node"
-  ].findAll { it != null && it.toString().trim() }
+pluginManagement {
+  def resolveNode = { value ->
+    if (!value) {
+      return null
+    }
 
-  for (def candidate : candidates) {
+    def candidate = value.toString().trim()
+    if (!candidate) {
+      return null
+    }
+
     if (candidate == "node") {
       return candidate
     }
 
-    if (new File(candidate.toString()).exists()) {
-      return candidate.toString()
+    if (candidate.contains(File.separator)) {
+      return new File(candidate).exists() ? candidate : null
     }
+
+    return candidate
   }
 
-  return "node"
-}
+  def nodeExecutable =
+    resolveNode(providers.gradleProperty("nodeBinary").orNull) ?:
+    resolveNode(System.getenv("NODE_BINARY")) ?:
+    resolveNode("/usr/local/bin/node") ?:
+    resolveNode("/opt/homebrew/bin/node") ?:
+    "node"
 
-def nodeExecutable = resolveNodeExecutable()
-
-pluginManagement {
   def reactNativeGradlePlugin = new File(
     providers.exec {
       workingDir(rootDir)
