@@ -372,6 +372,20 @@ export function mapChefReviewRow(row) {
   };
 }
 
+export function mapChefVideoRow(row) {
+  return {
+    id: row.id,
+    chefId: row.chef_id,
+    title: row.title,
+    subtitle: row.subtitle,
+    youtubeUrl: row.youtube_url,
+    videoId: row.video_id,
+    displayOrder: row.display_order,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
+
 export function nextBookingId() {
   const rows = db.prepare('SELECT id FROM bookings').all();
   let max = 4829;

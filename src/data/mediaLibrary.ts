@@ -1,10 +1,12 @@
+import { ChefVideo } from '../types/domain';
+
 type MediaItem = {
   name: string;
   imageUrl: string;
 };
 
-type GrillerVideo = {
-  id: string;
+type GrillerVideoSeed = {
+  videoId: string;
   title: string;
   subtitle: string;
   youtubeUrl: string;
@@ -34,16 +36,16 @@ const categoryMedia: MediaItem[] = [
   { name: 'Evento Premium', imageUrl: 'https://loremflickr.com/1200/800/steak,premium?lock=328' }
 ];
 
-const grillerVideosByChefId: Record<string, GrillerVideo[]> = {
+const grillerVideosByChefId: Record<string, GrillerVideoSeed[]> = {
   'erick-martinez': [
     {
-      id: 'dQw4w9WgXcQ',
+      videoId: 'dQw4w9WgXcQ',
       title: 'Tomahawk al Carbon: punto perfecto',
       subtitle: 'Tecnica de sellado y reposo',
       youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
     },
     {
-      id: 'M7FIvfx5J10',
+      videoId: 'M7FIvfx5J10',
       title: 'Costillas ahumadas estilo norte',
       subtitle: 'Coccion lenta y glaseado',
       youtubeUrl: 'https://www.youtube.com/watch?v=M7FIvfx5J10'
@@ -51,13 +53,13 @@ const grillerVideosByChefId: Record<string, GrillerVideo[]> = {
   ],
   'carlos-bbq': [
     {
-      id: 'J---aiyznGQ',
+      videoId: 'J---aiyznGQ',
       title: 'Parrilla mixta para 20 personas',
       subtitle: 'Orden y tiempos de servicio',
       youtubeUrl: 'https://www.youtube.com/watch?v=J---aiyznGQ'
     },
     {
-      id: 'kXYiU_JCYtU',
+      videoId: 'kXYiU_JCYtU',
       title: 'Brisket jugoso: guia completa',
       subtitle: 'Temperatura y reposo',
       youtubeUrl: 'https://www.youtube.com/watch?v=kXYiU_JCYtU'
@@ -65,7 +67,7 @@ const grillerVideosByChefId: Record<string, GrillerVideo[]> = {
   ],
   'martin-asador': [
     {
-      id: 'fJ9rUzIMcZQ',
+      videoId: 'fJ9rUzIMcZQ',
       title: 'Cortes premium al fuego vivo',
       subtitle: 'Control de flama y sabor',
       youtubeUrl: 'https://www.youtube.com/watch?v=fJ9rUzIMcZQ'
@@ -73,7 +75,7 @@ const grillerVideosByChefId: Record<string, GrillerVideo[]> = {
   ],
   'luis-bbq': [
     {
-      id: 'hTWKbfoikeg',
+      videoId: 'hTWKbfoikeg',
       title: 'Asado regio para eventos',
       subtitle: 'Flujo para servicio rapido',
       youtubeUrl: 'https://www.youtube.com/watch?v=hTWKbfoikeg'
@@ -81,7 +83,7 @@ const grillerVideosByChefId: Record<string, GrillerVideo[]> = {
   ],
   'cories-bbq': [
     {
-      id: 'Zi_XLOBDo_Y',
+      videoId: 'Zi_XLOBDo_Y',
       title: 'Ribeye jugoso en parrilla',
       subtitle: 'Sellado, mantequilla y acabado',
       youtubeUrl: 'https://www.youtube.com/watch?v=Zi_XLOBDo_Y'
@@ -102,7 +104,20 @@ export function getCategoryImageByName(name: string) {
 }
 
 export function getGrillerVideos(chefId: string) {
-  return grillerVideosByChefId[chefId] ?? [];
+  const now = new Date().toISOString();
+  const items = grillerVideosByChefId[chefId] ?? [];
+
+  return items.map<ChefVideo>((item, index) => ({
+    id: `${chefId}-${item.videoId}-${index}`,
+    chefId,
+    title: item.title,
+    subtitle: item.subtitle,
+    youtubeUrl: item.youtubeUrl,
+    videoId: item.videoId,
+    displayOrder: index,
+    createdAt: now,
+    updatedAt: now
+  }));
 }
 
 export function getYouTubeThumbnail(videoId: string) {

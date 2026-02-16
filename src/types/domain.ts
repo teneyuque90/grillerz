@@ -40,6 +40,18 @@ export type ChefReview = {
   createdAt: string;
 };
 
+export type ChefVideo = {
+  id: string;
+  chefId: string;
+  title: string;
+  subtitle: string;
+  youtubeUrl: string;
+  videoId: string;
+  displayOrder: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type BookingDraft = {
   chefId: string;
   dateLabel: string;

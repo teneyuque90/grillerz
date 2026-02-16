@@ -95,6 +95,30 @@ async function run() {
     assert.ok(reviews.body.reviews.length > 0);
     assert.equal(reviews.body.reviews[0].chefId, 'erick-martinez');
 
+    logStep('GET /chefs/:chefId/videos');
+    const videos = await request.get('/chefs/erick-martinez/videos');
+    assert.equal(videos.status, 200);
+    assert.ok(Array.isArray(videos.body.videos));
+    assert.ok(videos.body.videos.length > 0);
+    assert.equal(videos.body.videos[0].chefId, 'erick-martinez');
+
+    logStep('PUT /chefs/:chefId/videos autenticado');
+    const updateVideos = await request
+      .put('/chefs/erick-martinez/videos')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        videos: [
+          {
+            title: 'Corte premium de prueba',
+            subtitle: 'Video demo',
+            youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
+          }
+        ]
+      });
+    assert.equal(updateVideos.status, 200);
+    assert.equal(updateVideos.body.videos.length, 1);
+    assert.equal(updateVideos.body.videos[0].title, 'Corte premium de prueba');
+
     logStep('GET /bookings sin token');
     const bookingsNoToken = await request.get('/bookings');
     assert.equal(bookingsNoToken.status, 401);

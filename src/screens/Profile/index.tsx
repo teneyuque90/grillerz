@@ -13,7 +13,7 @@ import { BottomNav } from '../../components/ui/BottomNav';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { useAppState } from '../../state/AppStateContext';
 import { colors } from '../../theme/colors';
-import { ChefReview } from '../../types/domain';
+import { ChefReview, ChefVideo } from '../../types/domain';
 import { resolveMediaUrl } from '../../utils/media';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
@@ -90,7 +90,7 @@ export function Profile({ navigation }: Props) {
   const coverUrl = resolveMediaUrl(selectedChef.coverUrl);
   const avatarUrl = resolveMediaUrl(selectedChef.avatarUrl);
   const galleryImages = selectedChef.gallery.map((item) => resolveMediaUrl(item)).filter(Boolean);
-  const grillerVideos = getGrillerVideos(selectedChef.id);
+  const [grillerVideos, setGrillerVideos] = useState<ChefVideo[]>(getGrillerVideos(selectedChef.id));
   const [reviews, setReviews] = useState<ChefReview[]>(fallbackReviewsByChefId[selectedChef.id] ?? []);
 
   useEffect(() => {
@@ -109,6 +109,28 @@ export function Profile({ navigation }: Props) {
     }
 
     void loadReviews();
+
+    return () => {
+      active = false;
+    };
+  }, [selectedChef.id]);
+
+  useEffect(() => {
+    let active = true;
+    setGrillerVideos(getGrillerVideos(selectedChef.id));
+
+    async function loadVideos() {
+      try {
+        const remoteVideos = await grillerzApi.getChefVideos(selectedChef.id);
+        if (active) {
+          setGrillerVideos(remoteVideos);
+        }
+      } catch {
+        // keep local fallback
+      }
+    }
+
+    void loadVideos();
 
     return () => {
       active = false;
@@ -202,7 +224,7 @@ export function Profile({ navigation }: Props) {
               <View style={styles.videosList}>
                 {grillerVideos.map((video) => (
                   <Pressable key={video.id} style={styles.videoCard} onPress={() => Linking.openURL(video.youtubeUrl)}>
-                    <ImageBackground source={{ uri: getYouTubeThumbnail(video.id) }} style={styles.videoThumb} imageStyle={styles.videoThumbImage}>
+                    <ImageBackground source={{ uri: getYouTubeThumbnail(video.videoId) }} style={styles.videoThumb} imageStyle={styles.videoThumbImage}>
                       <View style={styles.videoPlayBadge}>
                         <MaterialCommunityIcons name="play" size={16} color="#FFFFFF" />
                       </View>

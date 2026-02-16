@@ -1,5 +1,5 @@
 import { http } from './client';
-import { Booking, Chef, ChefReview, User } from '../types/domain';
+import { Booking, Chef, ChefReview, ChefVideo, User } from '../types/domain';
 
 type LoginPayload = {
   email: string;
@@ -23,6 +23,9 @@ type AuthResponse = {
 };
 
 type CreateBookingPayload = Omit<Booking, 'id' | 'createdAt'>;
+type SaveChefVideosPayload = {
+  videos: Array<Pick<ChefVideo, 'title' | 'subtitle' | 'youtubeUrl'>>;
+};
 
 export const grillerzApi = {
   async login(payload: LoginPayload): Promise<AuthResponse> {
@@ -54,6 +57,16 @@ export const grillerzApi = {
   async getChefReviews(chefId: string): Promise<ChefReview[]> {
     const response = await http.get<{ reviews: ChefReview[] }>(`/chefs/${encodeURIComponent(chefId)}/reviews`);
     return response.reviews;
+  },
+
+  async getChefVideos(chefId: string): Promise<ChefVideo[]> {
+    const response = await http.get<{ videos: ChefVideo[] }>(`/chefs/${encodeURIComponent(chefId)}/videos`);
+    return response.videos;
+  },
+
+  async updateChefVideos(chefId: string, payload: SaveChefVideosPayload): Promise<ChefVideo[]> {
+    const response = await http.put<{ videos: ChefVideo[] }>(`/chefs/${encodeURIComponent(chefId)}/videos`, payload);
+    return response.videos;
   },
 
   async getBookings(userId?: string): Promise<Booking[]> {

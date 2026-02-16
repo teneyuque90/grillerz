@@ -184,6 +184,86 @@ const chefReviewsSeed = [
   }
 ];
 
+const chefVideosSeed = [
+  {
+    id: 'vd-erick-001',
+    chefId: 'erick-martinez',
+    title: 'Tomahawk al Carbon: punto perfecto',
+    subtitle: 'Tecnica de sellado y reposo',
+    youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+    videoId: 'dQw4w9WgXcQ',
+    displayOrder: 0,
+    createdAt: '2026-02-12T10:00:00.000Z',
+    updatedAt: '2026-02-12T10:00:00.000Z'
+  },
+  {
+    id: 'vd-erick-002',
+    chefId: 'erick-martinez',
+    title: 'Costillas ahumadas estilo norte',
+    subtitle: 'Coccion lenta y glaseado',
+    youtubeUrl: 'https://www.youtube.com/watch?v=M7FIvfx5J10',
+    videoId: 'M7FIvfx5J10',
+    displayOrder: 1,
+    createdAt: '2026-02-12T11:00:00.000Z',
+    updatedAt: '2026-02-12T11:00:00.000Z'
+  },
+  {
+    id: 'vd-carlos-001',
+    chefId: 'carlos-bbq',
+    title: 'Parrilla mixta para 20 personas',
+    subtitle: 'Orden y tiempos de servicio',
+    youtubeUrl: 'https://www.youtube.com/watch?v=J---aiyznGQ',
+    videoId: 'J---aiyznGQ',
+    displayOrder: 0,
+    createdAt: '2026-02-11T09:00:00.000Z',
+    updatedAt: '2026-02-11T09:00:00.000Z'
+  },
+  {
+    id: 'vd-carlos-002',
+    chefId: 'carlos-bbq',
+    title: 'Brisket jugoso: guia completa',
+    subtitle: 'Temperatura y reposo',
+    youtubeUrl: 'https://www.youtube.com/watch?v=kXYiU_JCYtU',
+    videoId: 'kXYiU_JCYtU',
+    displayOrder: 1,
+    createdAt: '2026-02-11T10:30:00.000Z',
+    updatedAt: '2026-02-11T10:30:00.000Z'
+  },
+  {
+    id: 'vd-martin-001',
+    chefId: 'martin-asador',
+    title: 'Cortes premium al fuego vivo',
+    subtitle: 'Control de flama y sabor',
+    youtubeUrl: 'https://www.youtube.com/watch?v=fJ9rUzIMcZQ',
+    videoId: 'fJ9rUzIMcZQ',
+    displayOrder: 0,
+    createdAt: '2026-02-10T08:00:00.000Z',
+    updatedAt: '2026-02-10T08:00:00.000Z'
+  },
+  {
+    id: 'vd-luis-001',
+    chefId: 'luis-bbq',
+    title: 'Asado regio para eventos',
+    subtitle: 'Flujo para servicio rapido',
+    youtubeUrl: 'https://www.youtube.com/watch?v=hTWKbfoikeg',
+    videoId: 'hTWKbfoikeg',
+    displayOrder: 0,
+    createdAt: '2026-02-09T14:00:00.000Z',
+    updatedAt: '2026-02-09T14:00:00.000Z'
+  },
+  {
+    id: 'vd-cories-001',
+    chefId: 'cories-bbq',
+    title: 'Ribeye jugoso en parrilla',
+    subtitle: 'Sellado, mantequilla y acabado',
+    youtubeUrl: 'https://www.youtube.com/watch?v=Zi_XLOBDo_Y',
+    videoId: 'Zi_XLOBDo_Y',
+    displayOrder: 0,
+    createdAt: '2026-02-08T18:00:00.000Z',
+    updatedAt: '2026-02-08T18:00:00.000Z'
+  }
+];
+
 function hasColumn(db, tableName, columnName) {
   const rows = db.prepare(`PRAGMA table_info(${tableName})`).all();
   return rows.some((row) => row.name === columnName);
@@ -362,6 +442,41 @@ const migrations = [
       `);
 
       for (const item of chefReviewsSeed) {
+        insert.run(item);
+      }
+    }
+  },
+  {
+    id: '009_create_chef_videos',
+    up(db) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS chef_videos (
+          id TEXT PRIMARY KEY,
+          chef_id TEXT NOT NULL,
+          title TEXT NOT NULL,
+          subtitle TEXT NOT NULL,
+          youtube_url TEXT NOT NULL,
+          video_id TEXT NOT NULL,
+          display_order INTEGER NOT NULL,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_chef_videos_chef_id ON chef_videos(chef_id);
+        CREATE INDEX IF NOT EXISTS idx_chef_videos_display_order ON chef_videos(display_order);
+      `);
+
+      const count = db.prepare('SELECT COUNT(*) AS total FROM chef_videos').get().total;
+      if (count > 0) {
+        return;
+      }
+
+      const insert = db.prepare(`
+        INSERT INTO chef_videos (id, chef_id, title, subtitle, youtube_url, video_id, display_order, created_at, updated_at)
+        VALUES (@id, @chefId, @title, @subtitle, @youtubeUrl, @videoId, @displayOrder, @createdAt, @updatedAt)
+      `);
+
+      for (const item of chefVideosSeed) {
         insert.run(item);
       }
     }
