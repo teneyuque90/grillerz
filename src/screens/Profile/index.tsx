@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Image, ImageBackground, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, ImageBackground, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { grillerzApi } from '../../api/grillerzApi';
+import { getGrillerVideos, getYouTubeThumbnail } from '../../data/mediaLibrary';
 import { RootStackParamList } from '../../navigation/screenConfig';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import { BottomNav } from '../../components/ui/BottomNav';
@@ -88,6 +89,8 @@ export function Profile({ navigation }: Props) {
   const { selectedChef } = useAppState();
   const coverUrl = resolveMediaUrl(selectedChef.coverUrl);
   const avatarUrl = resolveMediaUrl(selectedChef.avatarUrl);
+  const galleryImages = selectedChef.gallery.map((item) => resolveMediaUrl(item)).filter(Boolean);
+  const grillerVideos = getGrillerVideos(selectedChef.id);
   const [reviews, setReviews] = useState<ChefReview[]>(fallbackReviewsByChefId[selectedChef.id] ?? []);
 
   useEffect(() => {
@@ -178,6 +181,41 @@ export function Profile({ navigation }: Props) {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Sobre el griller</Text>
               <Text style={styles.bio}>{selectedChef.bio}</Text>
+            </View>
+
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Menu visual</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.galleryRow}>
+                {galleryImages.map((imageUrl, index) => (
+                  <ImageBackground key={`${selectedChef.id}-gallery-${index}`} source={{ uri: imageUrl }} style={styles.galleryCard} imageStyle={styles.galleryCardImage}>
+                    <View style={styles.galleryShade}>
+                      <Text style={styles.galleryLabel}>Corte #{index + 1}</Text>
+                    </View>
+                  </ImageBackground>
+                ))}
+                {galleryImages.length === 0 ? <Text style={styles.emptyReviews}>No hay imagenes disponibles.</Text> : null}
+              </ScrollView>
+            </View>
+
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Videos del griller (YouTube)</Text>
+              <View style={styles.videosList}>
+                {grillerVideos.map((video) => (
+                  <Pressable key={video.id} style={styles.videoCard} onPress={() => Linking.openURL(video.youtubeUrl)}>
+                    <ImageBackground source={{ uri: getYouTubeThumbnail(video.id) }} style={styles.videoThumb} imageStyle={styles.videoThumbImage}>
+                      <View style={styles.videoPlayBadge}>
+                        <MaterialCommunityIcons name="play" size={16} color="#FFFFFF" />
+                      </View>
+                    </ImageBackground>
+                    <View style={styles.videoBody}>
+                      <Text style={styles.videoTitle}>{video.title}</Text>
+                      <Text style={styles.videoSubtitle}>{video.subtitle}</Text>
+                      <Text style={styles.videoAction}>Ver en YouTube</Text>
+                    </View>
+                  </Pressable>
+                ))}
+                {grillerVideos.length === 0 ? <Text style={styles.emptyReviews}>Este griller aun no sube videos.</Text> : null}
+              </View>
             </View>
 
             <View style={styles.section}>
@@ -349,6 +387,78 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     lineHeight: 22,
     fontSize: 15
+  },
+  galleryRow: {
+    gap: 10,
+    paddingRight: 10
+  },
+  galleryCard: {
+    width: 180,
+    height: 120,
+    borderRadius: 12,
+    overflow: 'hidden',
+    justifyContent: 'flex-end'
+  },
+  galleryCardImage: {
+    borderRadius: 12
+  },
+  galleryShade: {
+    minHeight: 36,
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+    backgroundColor: 'rgba(15, 10, 8, 0.45)'
+  },
+  galleryLabel: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 12
+  },
+  videosList: {
+    gap: 10
+  },
+  videoCard: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.backgroundMuted,
+    overflow: 'hidden'
+  },
+  videoThumb: {
+    height: 150,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  videoThumbImage: {
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12
+  },
+  videoPlayBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 36,
+    backgroundColor: 'rgba(222, 45, 37, 0.9)',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  videoBody: {
+    padding: 10,
+    gap: 3
+  },
+  videoTitle: {
+    color: colors.textStrong,
+    fontWeight: '800',
+    fontSize: 14
+  },
+  videoSubtitle: {
+    color: colors.textMuted,
+    fontSize: 12,
+    fontWeight: '600'
+  },
+  videoAction: {
+    marginTop: 4,
+    color: colors.primary,
+    fontSize: 12,
+    fontWeight: '800'
   },
   reviewsList: {
     gap: 10

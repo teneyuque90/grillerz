@@ -1,10 +1,11 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ImageBackground, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { RootStackParamList } from '../../navigation/screenConfig';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import { BottomNav } from '../../components/ui/BottomNav';
+import { getCategoryImageByName } from '../../data/mediaLibrary';
 import { colors } from '../../theme/colors';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Categories'>;
@@ -37,7 +38,9 @@ export function Categories({ navigation }: Props) {
                 style={[styles.card, index < 2 || index === 4 ? styles.cardActive : null]}
                 onPress={() => navigation.navigate('Browse02')}
               >
-                <View style={styles.thumb} />
+                <ImageBackground source={{ uri: getCategoryImageByName(category) }} style={styles.thumb} imageStyle={styles.thumbImage}>
+                  <View style={styles.thumbShade} />
+                </ImageBackground>
                 <Text style={[styles.cardLabel, index < 2 || index === 4 ? styles.cardLabelActive : null]}>{category}</Text>
               </Pressable>
             ))}
@@ -95,7 +98,14 @@ const styles = StyleSheet.create({
   thumb: {
     height: 74,
     borderRadius: 10,
-    backgroundColor: '#FFE5E2'
+    overflow: 'hidden'
+  },
+  thumbImage: {
+    borderRadius: 10
+  },
+  thumbShade: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(15, 10, 8, 0.22)'
   },
   cardLabel: {
     color: colors.textStrong,

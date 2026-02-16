@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { ImageBackground, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -20,12 +20,9 @@ export function SplashScreen({ navigation }: Props) {
         </View>
 
         <View style={styles.hero}>
-          <LinearGradient colors={[colors.flameEnd, colors.flameStart]} start={{ x: 0.5, y: 1 }} end={{ x: 0.5, y: 0 }} style={StyleSheet.absoluteFill} />
-          <View style={styles.smokeLayer}>
-            <View style={[styles.smokeCircle, styles.smokeLarge]} />
-            <View style={[styles.smokeCircle, styles.smokeMid]} />
-            <View style={[styles.smokeCircle, styles.smokeSmall]} />
-          </View>
+          <ImageBackground source={{ uri: 'https://loremflickr.com/1200/1800/fire,smoke?lock=340' }} style={StyleSheet.absoluteFill} imageStyle={styles.heroImage} />
+          <LinearGradient colors={['rgba(255,255,255,0.94)', 'rgba(255,255,255,0.82)', 'rgba(20, 10, 8, 0.42)']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }} style={StyleSheet.absoluteFill} />
+          <LinearGradient colors={['rgba(34, 16, 11, 0.1)', 'rgba(222, 45, 37, 0.55)']} start={{ x: 0.5, y: 0.4 }} end={{ x: 0.5, y: 1 }} style={StyleSheet.absoluteFill} />
           <View style={styles.ctaContainer}>
             <PrimaryButton label="Empezar" onPress={() => navigation.navigate('Onboarding01')} />
           </View>
@@ -76,35 +73,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.overlayDark,
     justifyContent: 'flex-end'
   },
-  smokeLayer: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  smokeCircle: {
-    borderRadius: 999,
-    position: 'absolute',
-    backgroundColor: '#FFFFFF'
-  },
-  smokeLarge: {
-    width: 290,
-    height: 290,
-    opacity: 0.42,
-    top: 70
-  },
-  smokeMid: {
-    width: 220,
-    height: 220,
-    opacity: 0.35,
-    top: 105,
-    left: 45
-  },
-  smokeSmall: {
-    width: 170,
-    height: 170,
-    opacity: 0.3,
-    top: 140,
-    right: 58
+  heroImage: {
+    borderTopLeftRadius: 34,
+    borderTopRightRadius: 34
   },
   ctaContainer: {
     paddingHorizontal: 22,

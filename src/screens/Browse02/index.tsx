@@ -1,10 +1,11 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ImageBackground, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { RootStackParamList } from '../../navigation/screenConfig';
 import { BottomNav } from '../../components/ui/BottomNav';
+import { getDishImageByName } from '../../data/mediaLibrary';
 import { useAppState } from '../../state/AppStateContext';
 import { colors } from '../../theme/colors';
 
@@ -12,8 +13,8 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Browse02'>;
 
 const categoryChips = ['Asado Regio', 'Tomahawk', 'Costillas', 'Parrilla Mixta', 'Veggie Grill'];
 const featured = [
-  { title: 'Plan Familiar', subtitle: 'Hasta 10 personas', price: '$5,500', chefId: 'carlos-bbq' },
-  { title: 'Plan Premium', subtitle: 'Evento completo', price: '$8,900', chefId: 'erick-martinez' }
+  { title: 'Paquete Familiar', subtitle: 'Hasta 10 personas', price: '$5,500', chefId: 'carlos-bbq' },
+  { title: 'Evento Premium', subtitle: 'Evento completo', price: '$8,900', chefId: 'erick-martinez' }
 ];
 
 export function Browse02({ navigation }: Props) {
@@ -45,13 +46,15 @@ export function Browse02({ navigation }: Props) {
             ))}
           </ScrollView>
 
-          <LinearGradient colors={['#1C0E0A', '#FF4D2D']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.heroCard}>
-            <Text style={styles.heroTitle}>Master Grill Week</Text>
-            <Text style={styles.heroSubtitle}>Reserva hoy y obten 15% en tu primer evento.</Text>
-            <Pressable style={styles.heroButton} onPress={() => navigation.navigate('Browse03')}>
-              <Text style={styles.heroButtonLabel}>Ver experiencias</Text>
-            </Pressable>
-          </LinearGradient>
+          <ImageBackground source={{ uri: getDishImageByName('Parrilla Mixta') }} style={styles.heroCard} imageStyle={styles.heroCardImage}>
+            <LinearGradient colors={['rgba(18, 10, 8, 0.18)', 'rgba(18, 10, 8, 0.7)']} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={styles.heroShade}>
+              <Text style={styles.heroTitle}>Master Grill Week</Text>
+              <Text style={styles.heroSubtitle}>Reserva hoy y obten 15% en tu primer evento.</Text>
+              <Pressable style={styles.heroButton} onPress={() => navigation.navigate('Browse03')}>
+                <Text style={styles.heroButtonLabel}>Ver experiencias</Text>
+              </Pressable>
+            </LinearGradient>
+          </ImageBackground>
 
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Paquetes destacados</Text>
@@ -70,7 +73,9 @@ export function Browse02({ navigation }: Props) {
                   navigation.navigate('Profile');
                 }}
               >
-                <View style={styles.packageThumb} />
+                <ImageBackground source={{ uri: getDishImageByName(item.title) }} style={styles.packageThumb} imageStyle={styles.packageThumbImage}>
+                  <View style={styles.packageThumbShade} />
+                </ImageBackground>
                 <Text style={styles.packageTitle}>{item.title}</Text>
                 <Text style={styles.packageSubtitle}>{item.subtitle}</Text>
                 <Text style={styles.packagePrice}>{item.price} MXN</Text>
@@ -158,9 +163,16 @@ const styles = StyleSheet.create({
   heroCard: {
     marginTop: 18,
     borderRadius: 20,
-    padding: 18,
     minHeight: 200,
-    justifyContent: 'flex-end'
+    overflow: 'hidden'
+  },
+  heroCardImage: {
+    borderRadius: 20
+  },
+  heroShade: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    padding: 18
   },
   heroTitle: {
     color: '#FFFFFF',
@@ -217,7 +229,14 @@ const styles = StyleSheet.create({
   packageThumb: {
     height: 86,
     borderRadius: 10,
-    backgroundColor: '#FFE5E2'
+    overflow: 'hidden'
+  },
+  packageThumbImage: {
+    borderRadius: 10
+  },
+  packageThumbShade: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(15, 10, 8, 0.2)'
   },
   packageTitle: {
     color: colors.textStrong,

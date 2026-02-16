@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { RootStackParamList } from '../../navigation/screenConfig';
 import { BottomNav } from '../../components/ui/BottomNav';
+import { getDishImageByName } from '../../data/mediaLibrary';
 import { useAppState } from '../../state/AppStateContext';
 import { colors } from '../../theme/colors';
 import { resolveMediaUrl } from '../../utils/media';
@@ -21,7 +22,7 @@ export function Browse01({ navigation }: Props) {
   const { chefs, selectChef } = useAppState();
   const heroItem = featured[0];
   const heroChef = chefs.find((chef) => chef.id === heroItem.chefId);
-  const heroCoverUrl = resolveMediaUrl(heroChef?.coverUrl);
+  const heroCoverUrl = resolveMediaUrl(heroChef?.coverUrl) || getDishImageByName(heroItem.dishName);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -59,7 +60,7 @@ export function Browse01({ navigation }: Props) {
           <View style={styles.list}>
             {featured.map((item) => {
               const chef = chefs.find((candidate) => candidate.id === item.chefId);
-              const coverUrl = resolveMediaUrl(chef?.coverUrl);
+              const coverUrl = resolveMediaUrl(chef?.coverUrl) || getDishImageByName(item.dishName);
 
               return (
                 <Pressable

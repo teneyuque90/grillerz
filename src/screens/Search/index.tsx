@@ -1,11 +1,13 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { RootStackParamList } from '../../navigation/screenConfig';
 import { BottomNav } from '../../components/ui/BottomNav';
+import { getDishImageByName } from '../../data/mediaLibrary';
 import { useAppState } from '../../state/AppStateContext';
 import { colors } from '../../theme/colors';
+import { resolveMediaUrl } from '../../utils/media';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Search'>;
 
@@ -17,7 +19,7 @@ const results = [
 ];
 
 export function Search({ navigation }: Props) {
-  const { selectChef } = useAppState();
+  const { chefs, selectChef } = useAppState();
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -57,24 +59,31 @@ export function Search({ navigation }: Props) {
           </View>
 
           <View style={styles.list}>
-            {results.map((item) => (
-              <Pressable
-                key={item.name}
-                style={styles.item}
-                onPress={() => {
-                  selectChef(item.chefId);
-                  navigation.navigate('Profile');
-                }}
-              >
-                <View style={styles.thumb} />
-                <View style={styles.itemBody}>
-                  <Text style={styles.itemName}>{item.name}</Text>
-                  <Text style={styles.itemSpec}>{item.speciality}</Text>
-                  <Text style={styles.itemCity}>{item.city}</Text>
-                </View>
-                <Text style={styles.itemCta}>Ver</Text>
-              </Pressable>
-            ))}
+            {results.map((item) => {
+              const chef = chefs.find((candidate) => candidate.id === item.chefId);
+              const imageUrl = resolveMediaUrl(chef?.coverUrl) || getDishImageByName(item.speciality);
+
+              return (
+                <Pressable
+                  key={item.name}
+                  style={styles.item}
+                  onPress={() => {
+                    selectChef(item.chefId);
+                    navigation.navigate('Profile');
+                  }}
+                >
+                  <View style={styles.thumb}>
+                    <Image source={{ uri: imageUrl }} style={styles.thumbImage} />
+                  </View>
+                  <View style={styles.itemBody}>
+                    <Text style={styles.itemName}>{item.name}</Text>
+                    <Text style={styles.itemSpec}>{item.speciality}</Text>
+                    <Text style={styles.itemCity}>{item.city}</Text>
+                  </View>
+                  <Text style={styles.itemCta}>Ver</Text>
+                </Pressable>
+              );
+            })}
           </View>
         </ScrollView>
 
@@ -180,7 +189,11 @@ const styles = StyleSheet.create({
     width: 62,
     height: 62,
     borderRadius: 10,
-    backgroundColor: '#FFE5E2'
+    overflow: 'hidden'
+  },
+  thumbImage: {
+    width: '100%',
+    height: '100%'
   },
   itemBody: {
     flex: 1,
