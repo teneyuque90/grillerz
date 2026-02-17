@@ -1,6 +1,6 @@
 import { Pressable, StyleProp, StyleSheet, ViewStyle } from 'react-native';
 
-import { colors } from '../../theme/colors';
+import { colors, radius, spacing } from '../theme';
 import { AppText } from './AppText';
 
 type AppChipProps = {
@@ -36,28 +36,28 @@ export function AppChip({ label, selected = false, onPress, style }: AppChipProp
 const styles = StyleSheet.create({
   chip: {
     minHeight: 36,
-    borderRadius: 16,
+    borderRadius: radius.r16,
     borderWidth: 1,
-    paddingHorizontal: 12,
+    paddingHorizontal: spacing.s12,
     alignItems: 'center',
     justifyContent: 'center'
   },
   selected: {
-    borderColor: '#F7C7C5',
-    backgroundColor: colors.primarySoft
+    borderColor: colors.primary,
+    backgroundColor: colors.chipBg
   },
   unselected: {
     borderColor: colors.border,
-    backgroundColor: '#FFFFFF'
+    backgroundColor: colors.surface
   },
   label: {
-    fontWeight: '700'
+    fontWeight: '600'
   },
   labelSelected: {
-    color: colors.primaryDark
+    color: colors.primary
   },
   labelUnselected: {
-    color: colors.textMuted
+    color: colors.muted
   },
   pressed: {
     opacity: 0.92

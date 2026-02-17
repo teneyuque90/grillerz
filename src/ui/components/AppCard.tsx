@@ -1,13 +1,14 @@
 import { ReactNode } from 'react';
 import { Pressable, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 
-import { componentTheme } from '../../theme/grillerzTheme';
+import { colors, radius, shadows, spacing } from '../theme';
 
 type AppCardProps = {
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
   contentStyle?: StyleProp<ViewStyle>;
   onPress?: () => void;
+  padded?: boolean;
 };
 
 /**
@@ -16,9 +17,9 @@ type AppCardProps = {
  *   <AppText variant="section">Paquete Familiar</AppText>
  * </AppCard>
  */
-export function AppCard({ children, style, contentStyle, onPress }: AppCardProps) {
+export function AppCard({ children, style, contentStyle, onPress, padded = true }: AppCardProps) {
   const cardStyle = [styles.card, style];
-  const body = <View style={[styles.content, contentStyle]}>{children}</View>;
+  const body = <View style={[styles.content, padded ? styles.padded : styles.unpadded, contentStyle]}>{children}</View>;
 
   if (onPress) {
     return (
@@ -33,11 +34,20 @@ export function AppCard({ children, style, contentStyle, onPress }: AppCardProps
 
 const styles = StyleSheet.create({
   card: {
-    ...componentTheme.appCard,
-    borderRadius: 16
+    borderRadius: radius.r16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    ...shadows.card
   },
   content: {
-    padding: 16
+    gap: spacing.s8
+  },
+  padded: {
+    padding: spacing.s16
+  },
+  unpadded: {
+    padding: 0
   },
   pressed: {
     opacity: 0.95

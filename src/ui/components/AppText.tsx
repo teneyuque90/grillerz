@@ -1,8 +1,7 @@
 import { ReactNode } from 'react';
 import { StyleProp, StyleSheet, Text, TextProps, TextStyle } from 'react-native';
 
-import { colors } from '../../theme/colors';
-import { textTheme } from '../../theme/grillerzTheme';
+import { colors, typography } from '../theme';
 
 type AppTextVariant = 'title' | 'h2' | 'section' | 'body' | 'caption';
 
@@ -27,21 +26,23 @@ export function AppText({ children, variant = 'body', style, ...rest }: AppTextP
 
 const variantStyles = StyleSheet.create({
   title: {
-    ...textTheme.titleLarge
+    ...typography.title,
+    color: colors.text
   },
   h2: {
-    ...textTheme.titleMedium
+    ...typography.h2,
+    color: colors.text
   },
   section: {
-    ...textTheme.titleSmall
+    ...typography.section,
+    color: colors.text
   },
   body: {
-    ...textTheme.bodyLarge
+    ...typography.body,
+    color: colors.text
   },
   caption: {
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: '600',
-    color: colors.textMuted
+    ...typography.caption,
+    color: colors.muted
   }
 }) as Record<AppTextVariant, TextStyle>;

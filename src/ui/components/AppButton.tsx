@@ -1,6 +1,6 @@
 import { ActivityIndicator, Pressable, StyleProp, StyleSheet, TextStyle, ViewStyle } from 'react-native';
 
-import { colors } from '../../theme/colors';
+import { colors, radius, shadows, spacing, typography } from '../theme';
 import { AppText } from './AppText';
 
 type AppButtonVariant = 'primary' | 'secondary' | 'ghost';
@@ -66,23 +66,19 @@ export function AppButton({
 const styles = StyleSheet.create({
   base: {
     minHeight: 52,
-    borderRadius: 16,
+    borderRadius: radius.r16,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 16
+    paddingHorizontal: spacing.s16
   },
   primary: {
     backgroundColor: colors.primary,
     borderWidth: 1,
     borderColor: colors.primary,
-    shadowColor: '#B21E14',
-    shadowOpacity: 0.2,
-    shadowOffset: { width: 0, height: 8 },
-    shadowRadius: 16,
-    elevation: 2
+    ...shadows.card
   },
   secondary: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderWidth: 1.5,
     borderColor: colors.primary
   },
@@ -92,13 +88,16 @@ const styles = StyleSheet.create({
     borderColor: 'transparent'
   },
   label: {
-    fontWeight: '800'
+    ...typography.body,
+    fontWeight: '600'
   },
   labelPrimary: {
-    color: '#FFFFFF'
+    color: '#FFFFFF',
+    fontWeight: '600'
   },
   labelSecondary: {
-    color: colors.primary
+    color: colors.primary,
+    fontWeight: '600'
   },
   pressed: {
     opacity: 0.9

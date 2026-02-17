@@ -1,7 +1,6 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { colors } from '../../theme/colors';
-import { AppSpacing } from '../../theme/grillerzTheme';
+import { colors, spacing, typography } from '../theme';
 import { AppText } from './AppText';
 
 type SectionHeaderProps = {
@@ -35,10 +34,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: AppSpacing.s16
+    gap: spacing.s16
   },
   action: {
     color: colors.primary,
-    fontWeight: '700'
+    ...typography.body,
+    fontWeight: '600'
   }
 });
