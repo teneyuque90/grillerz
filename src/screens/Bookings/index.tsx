@@ -1,7 +1,10 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
+import { AppCard } from '../../components/ui/AppCard';
+import { AppChip } from '../../components/ui/AppChip';
 import { RootStackParamList } from '../../navigation/screenConfig';
 import { BottomNav } from '../../components/ui/BottomNav';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
@@ -9,9 +12,19 @@ import { useAppState } from '../../state/AppStateContext';
 import { colors } from '../../theme/colors';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Bookings'>;
+type BookingTab = 'Proximas' | 'Pasadas';
 
 export function Bookings({ navigation }: Props) {
   const { bookings, selectBooking, selectChef } = useAppState();
+  const [activeTab, setActiveTab] = useState<BookingTab>('Proximas');
+
+  const visibleBookings = useMemo(() => {
+    if (activeTab === 'Pasadas') {
+      return bookings.filter((item) => item.status === 'Cancelada');
+    }
+
+    return bookings.filter((item) => item.status !== 'Cancelada');
+  }, [activeTab, bookings]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -20,17 +33,13 @@ export function Bookings({ navigation }: Props) {
           <ScreenHeader title="Reservas" rightAction="Historial" onRightAction={() => {}} />
 
           <View style={styles.tabsRow}>
-            <View style={[styles.tab, styles.tabActive]}>
-              <Text style={[styles.tabLabel, styles.tabLabelActive]}>Proximas</Text>
-            </View>
-            <View style={styles.tab}>
-              <Text style={styles.tabLabel}>Pasadas</Text>
-            </View>
+            <AppChip label="Proximas" selected={activeTab === 'Proximas'} onPress={() => setActiveTab('Proximas')} />
+            <AppChip label="Pasadas" selected={activeTab === 'Pasadas'} onPress={() => setActiveTab('Pasadas')} />
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.list}>
-            {bookings.map((item) => (
-              <Pressable
+            {visibleBookings.map((item) => (
+              <AppCard
                 key={item.id}
                 style={styles.card}
                 onPress={() => {
@@ -45,9 +54,13 @@ export function Bookings({ navigation }: Props) {
                 </View>
                 <Text style={styles.cardChef}>{item.chefName}</Text>
                 <Text style={styles.cardDate}>{item.dateLabel}  -  {item.timeLabel}</Text>
-                <Text style={styles.cardAction}>Ver detalle</Text>
-              </Pressable>
+                <View style={styles.cardBottom}>
+                  <Text style={styles.cardPrice}>${item.total} MXN</Text>
+                  <Text style={styles.cardAction}>Ver detalle</Text>
+                </View>
+              </AppCard>
             ))}
+            {visibleBookings.length === 0 ? <Text style={styles.emptyState}>No hay reservas en esta pestaña.</Text> : null}
           </ScrollView>
         </View>
 
@@ -77,36 +90,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8
   },
-  tab: {
-    flex: 1,
-    minHeight: 40,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  tabActive: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primarySoft
-  },
-  tabLabel: {
-    color: colors.textMuted,
-    fontWeight: '700'
-  },
-  tabLabelActive: {
-    color: colors.primaryDark
-  },
   list: {
     marginTop: 14,
     gap: 10,
     paddingBottom: 12
   },
   card: {
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 12,
+    padding: 14,
     gap: 8
   },
   cardTop: {
@@ -147,9 +137,26 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontWeight: '600'
   },
-  cardAction: {
+  cardBottom: {
     marginTop: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between'
+  },
+  cardPrice: {
+    color: colors.primaryDark,
+    fontWeight: '900',
+    fontSize: 16
+  },
+  cardAction: {
     color: colors.primary,
     fontWeight: '800'
+  },
+  emptyState: {
+    color: colors.textMuted,
+    fontSize: 14,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginTop: 16
   }
 });

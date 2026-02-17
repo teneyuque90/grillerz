@@ -1,10 +1,13 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
+import { AppCard } from '../../components/ui/AppCard';
+import { AppChip } from '../../components/ui/AppChip';
 import { RootStackParamList } from '../../navigation/screenConfig';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
+import { SecondaryButton } from '../../components/ui/SecondaryButton';
 import { useAppState } from '../../state/AppStateContext';
 import { colors } from '../../theme/colors';
 
@@ -45,40 +48,41 @@ export function BookingDetails({ navigation }: Props) {
           />
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-            <View style={styles.statusCard}>
+            <AppCard style={styles.statusCard}>
               <Text style={styles.statusLabel}>Estado</Text>
               <Text style={styles.statusValue}>{selectedBooking.status}</Text>
+              <View style={styles.statusBadgeRow}>
+                <AppChip label={selectedBooking.status} selected />
+              </View>
               <Text style={styles.statusCode}>Codigo #{selectedBooking.id}</Text>
-            </View>
+            </AppCard>
 
-            <View style={styles.card}>
+            <AppCard style={styles.card}>
               <Text style={styles.cardTitle}>Evento</Text>
               <DetailRow label="Griller" value={selectedBooking.chefName} />
               <DetailRow label="Fecha" value={selectedBooking.dateLabel} />
               <DetailRow label="Hora" value={selectedBooking.timeLabel} />
               <DetailRow label="Duracion" value={`${selectedBooking.durationHours} horas`} />
-            </View>
+            </AppCard>
 
-            <View style={styles.card}>
+            <AppCard style={styles.card}>
               <Text style={styles.cardTitle}>Ubicacion y paquete</Text>
               <DetailRow label="Direccion" value={selectedBooking.address} />
               <DetailRow label="Plan" value={selectedBooking.packageName} />
               <DetailRow label="Personas" value={`Hasta ${selectedBooking.guests}`} />
-            </View>
+            </AppCard>
 
-            <View style={styles.card}>
+            <AppCard style={styles.card}>
               <Text style={styles.cardTitle}>Pago</Text>
               <DetailRow label="Metodo" value={selectedBooking.paymentMethod} />
               <DetailRow label="Monto" value={`$${selectedBooking.total} MXN`} />
-            </View>
+            </AppCard>
           </ScrollView>
         </View>
 
         <View style={styles.footer}>
           <PrimaryButton label="Contactar griller" onPress={() => navigation.navigate('Chat')} />
-          <Pressable style={styles.secondary} onPress={() => navigation.navigate('Schedule')}>
-            <Text style={styles.secondaryLabel}>Reagendar</Text>
-          </Pressable>
+          <SecondaryButton label="Reagendar" onPress={() => navigation.navigate('Schedule')} />
         </View>
       </View>
     </SafeAreaView>
@@ -105,11 +109,8 @@ const styles = StyleSheet.create({
     gap: 12
   },
   statusCard: {
-    borderRadius: 14,
-    borderWidth: 1,
     borderColor: '#ABEFC6',
     backgroundColor: '#ECFDF3',
-    padding: 12,
     gap: 3
   },
   statusLabel: {
@@ -126,11 +127,11 @@ const styles = StyleSheet.create({
     color: '#067647',
     fontWeight: '700'
   },
+  statusBadgeRow: {
+    marginTop: 2,
+    alignSelf: 'flex-start'
+  },
   card: {
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 12,
     gap: 8
   },
   cardTitle: {
@@ -156,18 +157,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 22,
     gap: 10
-  },
-  secondary: {
-    minHeight: 52,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  secondaryLabel: {
-    color: colors.textStrong,
-    fontWeight: '800'
   },
   emptyState: {
     alignItems: 'center',

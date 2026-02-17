@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
-import { Image, ImageBackground, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, ImageBackground, Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { grillerzApi } from '../../api/grillerzApi';
+import { AppCard } from '../../components/ui/AppCard';
+import { AppChip } from '../../components/ui/AppChip';
 import { OFFLINE_DEMO_MODE } from '../../config/api';
 import { getGrillerVideos, getYouTubeThumbnail } from '../../data/mediaLibrary';
 import { RootStackParamList } from '../../navigation/screenConfig';
@@ -188,27 +190,25 @@ export function Profile({ navigation }: Props) {
             </View>
 
             <View style={styles.statsRow}>
-              <View style={styles.statCard}>
+              <AppCard style={styles.statCard}>
                 <Text style={styles.statValue}>{selectedChef.stats.services}</Text>
                 <Text style={styles.statLabel}>Servicios</Text>
-              </View>
-              <View style={styles.statCard}>
+              </AppCard>
+              <AppCard style={styles.statCard}>
                 <Text style={styles.statValue}>{selectedChef.stats.clients}</Text>
                 <Text style={styles.statLabel}>Clientes</Text>
-              </View>
-              <View style={styles.statCard}>
+              </AppCard>
+              <AppCard style={styles.statCard}>
                 <Text style={styles.statValue}>{selectedChef.stats.years}</Text>
                 <Text style={styles.statLabel}>Anos</Text>
-              </View>
+              </AppCard>
             </View>
 
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Especializaciones</Text>
               <View style={styles.tagsWrap}>
                 {selectedChef.specialties.map((item) => (
-                  <View key={item} style={styles.tag}>
-                    <Text style={styles.tagText}>{item}</Text>
-                  </View>
+                  <AppChip key={item} label={item} selected />
                 ))}
               </View>
             </View>
@@ -236,7 +236,7 @@ export function Profile({ navigation }: Props) {
               <Text style={styles.sectionTitle}>Videos del griller (YouTube)</Text>
               <View style={styles.videosList}>
                 {grillerVideos.map((video) => (
-                  <Pressable key={video.id} style={styles.videoCard} onPress={() => Linking.openURL(video.youtubeUrl)}>
+                  <AppCard key={video.id} padded={false} style={styles.videoCard} onPress={() => Linking.openURL(video.youtubeUrl)}>
                     <ImageBackground source={{ uri: getYouTubeThumbnail(video.videoId) }} style={styles.videoThumb} imageStyle={styles.videoThumbImage}>
                       <View style={styles.videoPlayBadge}>
                         <MaterialCommunityIcons name="play" size={16} color="#FFFFFF" />
@@ -247,7 +247,7 @@ export function Profile({ navigation }: Props) {
                       <Text style={styles.videoSubtitle}>{video.subtitle}</Text>
                       <Text style={styles.videoAction}>Ver en YouTube</Text>
                     </View>
-                  </Pressable>
+                  </AppCard>
                 ))}
                 {grillerVideos.length === 0 ? <Text style={styles.emptyReviews}>Este griller aun no sube videos.</Text> : null}
               </View>
@@ -257,7 +257,7 @@ export function Profile({ navigation }: Props) {
               <Text style={styles.sectionTitle}>Resenas ({selectedChef.reviews})</Text>
               <View style={styles.reviewsList}>
                 {reviews.map((item) => (
-                  <View key={`${selectedChef.id}-${item.id}`} style={styles.reviewCard}>
+                  <AppCard key={`${selectedChef.id}-${item.id}`} style={styles.reviewCard}>
                     <View style={styles.reviewHeader}>
                       <View style={styles.reviewAvatar}>
                         <Text style={styles.reviewAvatarLabel}>{item.authorName.charAt(0)}</Text>
@@ -278,7 +278,7 @@ export function Profile({ navigation }: Props) {
                       </View>
                     </View>
                     <Text style={styles.reviewComment}>{item.comment}</Text>
-                  </View>
+                  </AppCard>
                 ))}
                 {reviews.length === 0 ? <Text style={styles.emptyReviews}>Aun no hay resenas publicadas.</Text> : null}
               </View>
@@ -374,9 +374,6 @@ const styles = StyleSheet.create({
   statCard: {
     flex: 1,
     minHeight: 74,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.backgroundMuted
@@ -403,20 +400,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8
-  },
-  tag: {
-    minHeight: 36,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: 12,
-    justifyContent: 'center',
-    backgroundColor: colors.backgroundMuted
-  },
-  tagText: {
-    color: colors.primaryDark,
-    fontWeight: '700',
-    fontSize: 13
   },
   bio: {
     color: colors.textMuted,
@@ -452,11 +435,8 @@ const styles = StyleSheet.create({
     gap: 10
   },
   videoCard: {
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.backgroundMuted,
-    overflow: 'hidden'
+    overflow: 'hidden',
+    backgroundColor: colors.backgroundMuted
   },
   videoThumb: {
     height: 150,
@@ -499,11 +479,7 @@ const styles = StyleSheet.create({
     gap: 10
   },
   reviewCard: {
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
     backgroundColor: colors.backgroundMuted,
-    padding: 10,
     gap: 8
   },
   reviewHeader: {

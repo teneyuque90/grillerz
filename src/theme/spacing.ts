@@ -1,8 +1,10 @@
+import { AppSpacing } from './grillerzTheme';
+
 export const spacing = {
   xxs: 4,
-  xs: 8,
+  xs: AppSpacing.s8,
   sm: 12,
-  md: 16,
-  lg: 24,
-  xl: 32
+  md: AppSpacing.s16,
+  lg: AppSpacing.s24,
+  xl: AppSpacing.s32
 } as const;

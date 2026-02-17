@@ -1,7 +1,10 @@
+import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
+import { AppCard } from '../../components/ui/AppCard';
+import { AppChip } from '../../components/ui/AppChip';
 import { RootStackParamList } from '../../navigation/screenConfig';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
@@ -11,8 +14,23 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Filter'>;
 
 const sortOptions = ['Popularidad', 'Precio bajo', 'Precio alto', 'Mayor rating'];
 const tags = ['Disponible hoy', 'Top rated', 'Eventos grandes', 'Griller verificado'];
+const ratingOptions = [5, 4, 3];
 
 export function Filter({ navigation }: Props) {
+  const [selectedRating, setSelectedRating] = useState(4);
+  const [selectedSort, setSelectedSort] = useState(sortOptions[0]);
+  const [activeTags, setActiveTags] = useState<string[]>(tags.slice(0, 2));
+
+  function toggleTag(tag: string) {
+    setActiveTags((prev) => {
+      if (prev.includes(tag)) {
+        return prev.filter((item) => item !== tag);
+      }
+
+      return [...prev, tag];
+    });
+  }
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.screen}>
@@ -20,7 +38,7 @@ export function Filter({ navigation }: Props) {
           <ScreenHeader title="Filtros" onBack={() => navigation.goBack()} rightAction="Limpiar" onRightAction={() => {}} />
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-            <View style={styles.block}>
+            <AppCard style={styles.sectionCard}>
               <Text style={styles.blockTitle}>Rango de precio</Text>
               <View style={styles.sliderMock}>
                 <View style={styles.sliderFill} />
@@ -31,41 +49,42 @@ export function Filter({ navigation }: Props) {
                 <Text style={styles.rangeValue}>$1,500</Text>
                 <Text style={styles.rangeValue}>$8,000</Text>
               </View>
-            </View>
+            </AppCard>
 
-            <View style={styles.block}>
+            <AppCard style={styles.sectionCard}>
               <Text style={styles.blockTitle}>Rating minimo</Text>
               <View style={styles.ratingRow}>
-                {[5, 4, 3].map((value, index) => (
-                  <Pressable key={value} style={[styles.ratingChip, index === 1 ? styles.ratingChipActive : null]}>
-                    <Text style={[styles.ratingText, index === 1 ? styles.ratingTextActive : null]}>{value}.0+</Text>
-                  </Pressable>
+                {ratingOptions.map((value) => (
+                  <AppChip
+                    key={value}
+                    label={`${value}.0+`}
+                    selected={value === selectedRating}
+                    onPress={() => setSelectedRating(value)}
+                  />
                 ))}
               </View>
-            </View>
+            </AppCard>
 
-            <View style={styles.block}>
+            <AppCard style={styles.sectionCard}>
               <Text style={styles.blockTitle}>Ordenar por</Text>
               <View style={styles.optionList}>
-                {sortOptions.map((option, index) => (
-                  <Pressable key={option} style={[styles.option, index === 0 ? styles.optionActive : null]}>
-                    <Text style={[styles.optionLabel, index === 0 ? styles.optionLabelActive : null]}>{option}</Text>
-                    <View style={[styles.radio, index === 0 ? styles.radioActive : null]} />
-                  </Pressable>
+                {sortOptions.map((option) => (
+                  <AppCard key={option} padded={false} onPress={() => setSelectedSort(option)} style={[styles.option, selectedSort === option ? styles.optionActive : null]}>
+                    <Text style={[styles.optionLabel, selectedSort === option ? styles.optionLabelActive : null]}>{option}</Text>
+                    <View style={[styles.radio, selectedSort === option ? styles.radioActive : null]} />
+                  </AppCard>
                 ))}
               </View>
-            </View>
+            </AppCard>
 
-            <View style={styles.block}>
+            <AppCard style={styles.sectionCard}>
               <Text style={styles.blockTitle}>Preferencias</Text>
               <View style={styles.tagsWrap}>
-                {tags.map((tag, index) => (
-                  <Pressable key={tag} style={[styles.tag, index < 2 ? styles.tagActive : null]}>
-                    <Text style={[styles.tagText, index < 2 ? styles.tagTextActive : null]}>{tag}</Text>
-                  </Pressable>
+                {tags.map((tag) => (
+                  <AppChip key={tag} label={tag} selected={activeTags.includes(tag)} onPress={() => toggleTag(tag)} />
                 ))}
               </View>
-            </View>
+            </AppCard>
           </ScrollView>
         </View>
 
@@ -97,6 +116,9 @@ const styles = StyleSheet.create({
     gap: 20
   },
   block: {
+    gap: 10
+  },
+  sectionCard: {
     gap: 10
   },
   blockTitle: {
@@ -141,34 +163,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8
   },
-  ratingChip: {
-    minHeight: 36,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: 14,
-    justifyContent: 'center'
-  },
-  ratingChipActive: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primarySoft
-  },
-  ratingText: {
-    color: colors.text,
-    fontWeight: '700',
-    fontSize: 13
-  },
-  ratingTextActive: {
-    color: colors.primaryDark
-  },
   optionList: {
     gap: 10
   },
   option: {
     minHeight: 50,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
     paddingHorizontal: 14,
     flexDirection: 'row',
     alignItems: 'center',
@@ -200,26 +199,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8
-  },
-  tag: {
-    minHeight: 34,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: 12,
-    justifyContent: 'center'
-  },
-  tagActive: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primarySoft
-  },
-  tagText: {
-    color: colors.text,
-    fontWeight: '700',
-    fontSize: 12
-  },
-  tagTextActive: {
-    color: colors.primaryDark
   },
   footer: {
     paddingHorizontal: 20,

@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text } from 'react-native';
 
 import { colors } from '../../theme/colors';
+import { componentTheme, textTheme } from '../../theme/grillerzTheme';
 
 type PrimaryButtonProps = {
   label: string;
@@ -18,28 +19,19 @@ export function PrimaryButton({ label, onPress, compact = false }: PrimaryButton
 
 const styles = StyleSheet.create({
   button: {
-    minHeight: 56,
-    borderRadius: 14,
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#B21E14',
-    shadowOpacity: 0.25,
-    shadowOffset: { width: 0, height: 10 },
-    shadowRadius: 18,
-    elevation: 2
+    ...componentTheme.primaryButton
   },
   compact: {
     minHeight: 48,
-    borderRadius: 12
+    borderRadius: 16
   },
   pressed: {
     opacity: 0.92,
     transform: [{ scale: 0.995 }]
   },
   label: {
-    color: '#FFFFFF',
-    fontSize: 17,
+    ...textTheme.bodyLarge,
+    color: colors.background,
     fontWeight: '800'
   }
 });
