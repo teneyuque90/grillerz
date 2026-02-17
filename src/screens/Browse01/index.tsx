@@ -1,5 +1,5 @@
-import { Image, ImageBackground, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useMemo, useState } from 'react';
+import { Image, ImageBackground, Pressable, StyleSheet, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -8,6 +8,13 @@ import { BottomNav } from '../../components/ui/BottomNav';
 import { getDishImageByName } from '../../data/mediaLibrary';
 import { useAppState } from '../../state/AppStateContext';
 import { colors } from '../../theme/colors';
+import { AppSpacing } from '../../theme/grillerzTheme';
+import { AppButton } from '../../ui/components/AppButton';
+import { AppCard } from '../../ui/components/AppCard';
+import { AppChip } from '../../ui/components/AppChip';
+import { AppScreen } from '../../ui/components/AppScreen';
+import { AppText } from '../../ui/components/AppText';
+import { SectionHeader } from '../../ui/components/SectionHeader';
 import { resolveMediaUrl } from '../../utils/media';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Browse01'>;
@@ -17,181 +24,193 @@ const featured = [
   { dishName: 'Asado Regio', chefId: 'luis-bbq', price: '$3,200' },
   { dishName: 'Costillas Ahumadas', chefId: 'martin-asador', price: '$3,600' }
 ];
+const categories = ['Top', 'Costillas', 'Tomahawk', 'Parrilla', 'Ahumados'];
 
 export function Browse01({ navigation }: Props) {
   const { chefs, selectChef } = useAppState();
+  const [activeCategory, setActiveCategory] = useState(categories[0]);
   const heroItem = featured[0];
   const heroChef = chefs.find((chef) => chef.id === heroItem.chefId);
   const heroCoverUrl = resolveMediaUrl(heroChef?.coverUrl) || getDishImageByName(heroItem.dishName);
+  const visibleFeatured = useMemo(() => {
+    if (activeCategory === 'Top') {
+      return featured;
+    }
+
+    const normalizedCategory = activeCategory.toLowerCase();
+    const filtered = featured.filter((item) => item.dishName.toLowerCase().includes(normalizedCategory));
+    return filtered.length > 0 ? filtered : featured;
+  }, [activeCategory]);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.screen}>
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-          <View style={styles.headerRow}>
-            <Text style={styles.title}>populares en tu zona</Text>
-            <Pressable onPress={() => navigation.navigate('Search')}>
-              <Text style={styles.search}>Buscar</Text>
-            </Pressable>
-          </View>
-
-          <View style={styles.heroCard}>
-            {heroCoverUrl ? (
-              <ImageBackground source={{ uri: heroCoverUrl }} style={styles.heroMedia} imageStyle={styles.heroMediaImage}>
-                <View style={styles.heroShade} />
-              </ImageBackground>
-            ) : (
-              <LinearGradient colors={[colors.flameEnd, colors.flameStart]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.heroMedia} />
-            )}
-
-            <View style={styles.heroContent}>
-              <Text style={styles.heroLabel}>{heroItem.dishName}</Text>
-              <Text style={styles.heroSub}>{heroChef?.name ?? 'Griller'}  -  {heroChef?.city ?? 'Nuevo Laredo'}</Text>
-            </View>
-          </View>
-
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recomendados</Text>
-            <Pressable onPress={() => navigation.navigate('Categories')}>
-              <Text style={styles.link}>Ver todo</Text>
-            </Pressable>
-          </View>
-
-          <View style={styles.list}>
-            {featured.map((item) => {
-              const chef = chefs.find((candidate) => candidate.id === item.chefId);
-              const coverUrl = resolveMediaUrl(chef?.coverUrl) || getDishImageByName(item.dishName);
-
-              return (
-                <Pressable
-                  key={`${item.chefId}-${item.dishName}`}
-                  style={styles.item}
-                  onPress={() => {
-                    selectChef(item.chefId);
-                    navigation.navigate('Profile');
-                  }}
-                >
-                  <View style={styles.itemThumb}>
-                    {coverUrl ? (
-                      <Image source={{ uri: coverUrl }} style={styles.itemThumbImage} />
-                    ) : (
-                      <LinearGradient colors={['#FFD8CF', '#FFF1EE']} style={StyleSheet.absoluteFill} />
-                    )}
-                  </View>
-                  <View style={styles.itemBody}>
-                    <Text style={styles.itemName}>{item.dishName}</Text>
-                    <Text style={styles.itemChef}>{chef?.name ?? 'Griller'}</Text>
-                  </View>
-                  <Text style={styles.itemPrice}>{item.price}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
-
-          <Pressable
-            style={styles.hireButton}
-            onPress={() => {
-              selectChef(featured[0].chefId);
-              navigation.navigate('Schedule');
-            }}
-          >
-            <Text style={styles.hireLabel}>Contratar al Griller</Text>
+    <View style={styles.screen}>
+      <AppScreen scroll contentStyle={styles.scrollContent}>
+        <View style={styles.headerRow}>
+          <AppText variant="title" style={styles.title}>populares en tu zona</AppText>
+          <Pressable onPress={() => navigation.navigate('Search')}>
+            <AppText variant="body" style={styles.search}>Buscar</AppText>
           </Pressable>
-        </ScrollView>
+        </View>
 
-        <BottomNav activeTab="Browse01" onNavigate={(route) => navigation.navigate(route)} />
-      </View>
-    </SafeAreaView>
+        <View style={styles.categoriesRow}>
+          {categories.map((item) => (
+            <AppChip
+              key={item}
+              label={item}
+              selected={item === activeCategory}
+              onPress={() => setActiveCategory(item)}
+            />
+          ))}
+        </View>
+
+        <AppCard
+          style={styles.heroCard}
+          contentStyle={styles.heroContent}
+          onPress={() => {
+            selectChef(heroItem.chefId);
+            navigation.navigate('Profile');
+          }}
+        >
+          {heroCoverUrl ? (
+            <ImageBackground source={{ uri: heroCoverUrl }} style={styles.heroMedia} imageStyle={styles.heroMediaImage}>
+              <View style={styles.heroShade} />
+            </ImageBackground>
+          ) : (
+            <LinearGradient colors={[colors.flameEnd, colors.flameStart]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.heroMedia} />
+          )}
+
+          <View style={styles.heroBadgeRow}>
+            <AppChip label={heroChef?.city ?? 'Nuevo Laredo'} selected />
+          </View>
+          <View>
+            <AppText variant="title" style={styles.heroLabel}>{heroItem.dishName}</AppText>
+            <AppText variant="caption" style={styles.heroSub}>{heroChef?.name ?? 'Griller'}  -  {heroChef?.city ?? 'Nuevo Laredo'}</AppText>
+          </View>
+        </AppCard>
+
+        <SectionHeader
+          title="Recomendados"
+          actionText="Ver todo"
+          onActionPress={() => navigation.navigate('Categories')}
+        />
+
+        <View style={styles.list}>
+          {visibleFeatured.map((item) => {
+            const chef = chefs.find((candidate) => candidate.id === item.chefId);
+            const coverUrl = resolveMediaUrl(chef?.coverUrl) || getDishImageByName(item.dishName);
+
+            return (
+              <AppCard
+                key={`${item.chefId}-${item.dishName}`}
+                style={styles.item}
+                contentStyle={styles.itemContent}
+                onPress={() => {
+                  selectChef(item.chefId);
+                  navigation.navigate('Profile');
+                }}
+              >
+                <View style={styles.itemThumb}>
+                  {coverUrl ? (
+                    <Image source={{ uri: coverUrl }} style={styles.itemThumbImage} />
+                  ) : (
+                    <LinearGradient colors={['#FFD8CF', '#FFF1EE']} style={StyleSheet.absoluteFill} />
+                  )}
+                </View>
+                <View style={styles.itemBody}>
+                  <AppText variant="section" style={styles.itemName}>{item.dishName}</AppText>
+                  <AppText variant="caption" style={styles.itemChef}>{chef?.name ?? 'Griller'}</AppText>
+                </View>
+                <AppText variant="body" style={styles.itemPrice}>{item.price}</AppText>
+              </AppCard>
+            );
+          })}
+        </View>
+
+        <AppButton
+          label="Contratar al Griller"
+          variant="primary"
+          onPress={() => {
+            selectChef(featured[0].chefId);
+            navigation.navigate('Schedule');
+          }}
+        />
+      </AppScreen>
+
+      <BottomNav activeTab="Browse01" onNavigate={(route) => navigation.navigate(route)} />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: colors.background
-  },
   screen: {
     flex: 1,
     backgroundColor: colors.background
   },
   scrollContent: {
     paddingTop: 10,
-    paddingHorizontal: 20,
     paddingBottom: 120
   },
   headerRow: {
     minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between'
+    justifyContent: 'space-between',
+    gap: AppSpacing.s16
   },
   title: {
+    maxWidth: 250,
     fontSize: 34,
-    lineHeight: 38,
-    fontWeight: '900',
-    color: colors.textStrong,
-    maxWidth: 250
+    lineHeight: 38
   },
   search: {
     color: colors.primary,
     fontWeight: '800'
   },
+  categoriesRow: {
+    marginTop: 8,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: AppSpacing.s8
+  },
   heroCard: {
-    marginTop: 18,
-    minHeight: 196,
-    borderRadius: 18,
+    marginTop: 4,
+    minHeight: 206,
     overflow: 'hidden'
+  },
+  heroContent: {
+    minHeight: 206,
+    justifyContent: 'space-between'
   },
   heroMedia: {
     ...StyleSheet.absoluteFillObject
   },
   heroMediaImage: {
-    borderRadius: 18
+    borderRadius: 16
   },
   heroShade: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(15, 10, 8, 0.38)'
+    backgroundColor: 'rgba(15, 10, 8, 0.4)'
   },
-  heroContent: {
-    minHeight: 196,
-    justifyContent: 'flex-end',
-    padding: 16
+  heroBadgeRow: {
+    flexDirection: 'row'
   },
   heroLabel: {
     color: '#FFFFFF',
-    fontSize: 31,
-    lineHeight: 34,
-    fontWeight: '900'
+    fontSize: 30,
+    lineHeight: 34
   },
   heroSub: {
     marginTop: 6,
     color: '#FFD9D3',
-    fontWeight: '600'
-  },
-  sectionHeader: {
-    marginTop: 22,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between'
-  },
-  sectionTitle: {
-    fontSize: 22,
-    fontWeight: '900',
-    color: colors.textStrong
-  },
-  link: {
-    color: colors.primary,
     fontWeight: '700'
   },
   list: {
-    marginTop: 12,
     gap: 12
   },
   item: {
-    minHeight: 94,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
+    minHeight: 96
+  },
+  itemContent: {
     padding: 10,
     flexDirection: 'row',
     alignItems: 'center',
@@ -209,33 +228,16 @@ const styles = StyleSheet.create({
   },
   itemBody: {
     flex: 1,
-    gap: 4
+    gap: 2
   },
   itemName: {
-    color: colors.textStrong,
-    fontSize: 17,
-    fontWeight: '800'
+    fontSize: 17
   },
   itemChef: {
-    color: colors.textMuted,
-    fontWeight: '600'
+    color: colors.textMuted
   },
   itemPrice: {
     color: colors.primaryDark,
-    fontWeight: '900',
-    fontSize: 16
-  },
-  hireButton: {
-    marginTop: 16,
-    minHeight: 54,
-    borderRadius: 14,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  hireLabel: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '800'
+    fontWeight: '900'
   }
 });
