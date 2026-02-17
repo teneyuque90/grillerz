@@ -1,23 +1,14 @@
 import { useState } from 'react';
-import {
-  Image,
-  ImageBackground,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  View
-} from 'react-native';
+import { Image, ImageBackground, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 
-import { colors } from '../theme/colors';
-import { AppSpacing } from '../theme/grillerzTheme';
 import { AppButton } from '../ui/components/AppButton';
 import { AppCard } from '../ui/components/AppCard';
 import { AppChip } from '../ui/components/AppChip';
 import { AppScreen } from '../ui/components/AppScreen';
 import { AppText } from '../ui/components/AppText';
+import { SectionHeader } from '../ui/components/SectionHeader';
+import { colors, radius, shadows, spacing } from '../ui/theme';
 
 const hero = {
   name: 'Erick Martinez',
@@ -25,7 +16,7 @@ const hero = {
   city: 'Nuevo Laredo',
   rating: 4.9,
   reviews: 126,
-  bannerUrl: 'https://picsum.photos/1280/720?random=421',
+  bannerUrl: 'https://picsum.photos/1280/720?grillerz=hero-erick',
   avatarUrl: 'https://i.pravatar.cc/300?img=11'
 };
 
@@ -35,69 +26,93 @@ const stats = [
   { label: 'Años', value: '5' }
 ];
 
-const specialties = ['Costillas', 'Tomahawk', 'Parrilla Mixta'];
+const specialties = ['Costillas a la Parrilla', 'Tomahawk al Carbón', 'Parrilla Mixta'];
 
-const visualMenu = [
-  { id: '1', label: 'Corte #1', imageUrl: 'https://picsum.photos/500/360?random=31' },
-  { id: '2', label: 'Corte #2', imageUrl: 'https://picsum.photos/500/360?random=32' },
-  { id: '3', label: 'Corte #3', imageUrl: 'https://picsum.photos/500/360?random=33' },
-  { id: '4', label: 'Corte #4', imageUrl: 'https://picsum.photos/500/360?random=34' }
+const menuItems = [
+  { id: 'm1', label: 'Corte #1', imageUrl: 'https://picsum.photos/640/480?grillerz=menu-1' },
+  { id: 'm2', label: 'Corte #2', imageUrl: 'https://picsum.photos/640/480?grillerz=menu-2' },
+  { id: 'm3', label: 'Corte #3', imageUrl: 'https://picsum.photos/640/480?grillerz=menu-3' },
+  { id: 'm4', label: 'Corte #4', imageUrl: 'https://picsum.photos/640/480?grillerz=menu-4' }
 ];
 
-const youtubeVideos = [
-  { id: 'v1', title: 'Sellado perfecto en ribeye', thumbUrl: 'https://picsum.photos/640/360?random=81' },
-  { id: 'v2', title: 'Tomahawk a fuego vivo', thumbUrl: 'https://picsum.photos/640/360?random=82' },
-  { id: 'v3', title: 'Parrilla mixta para evento', thumbUrl: 'https://picsum.photos/640/360?random=83' }
+const videos = [
+  { id: 'v1', title: 'Ribeye jugoso al punto', thumbUrl: 'https://picsum.photos/640/360?grillerz=video-1' },
+  { id: 'v2', title: 'Tomahawk al carbón', thumbUrl: 'https://picsum.photos/640/360?grillerz=video-2' },
+  { id: 'v3', title: 'Parrilla mixta para evento', thumbUrl: 'https://picsum.photos/640/360?grillerz=video-3' }
 ];
 
 const reviews = [
-  { id: 'r1', author: 'Carlos M.', date: 'Hace 2 días', rating: 5, comment: 'Gran servicio, puntual y excelente sabor en los cortes.' },
-  { id: 'r2', author: 'Paola R.', date: 'Hace 1 semana', rating: 4, comment: 'Muy buena experiencia, presentación impecable.' },
-  { id: 'r3', author: 'Juan T.', date: 'Hace 3 semanas', rating: 5, comment: 'Nos encantó. Definitivamente lo volveremos a contratar.' }
+  {
+    id: 'r1',
+    author: 'Carlos M.',
+    date: '12 Abr 2026',
+    rating: 5,
+    comment: 'Excelente servicio, puntual y todo el menú quedó espectacular.'
+  },
+  {
+    id: 'r2',
+    author: 'Paola R.',
+    date: '08 Abr 2026',
+    rating: 4,
+    comment: 'Muy buen sabor y presentación. Repetiríamos sin duda.'
+  },
+  {
+    id: 'r3',
+    author: 'Jorge T.',
+    date: '30 Mar 2026',
+    rating: 5,
+    comment: 'Gran experiencia para la familia. Profesional y muy limpio.'
+  }
 ];
+
+function FireRating({ value }: { value: number }) {
+  return (
+    <View style={styles.fireRow}>
+      {Array.from({ length: 5 }).map((_, index) => (
+        <AppText key={`fire-${value}-${index}`} variant="caption" style={index < value ? styles.fireOn : styles.fireOff}>
+          🔥
+        </AppText>
+      ))}
+    </View>
+  );
+}
 
 export function ProfileGrillerScreen() {
   const insets = useSafeAreaInsets();
-  const [selectedSpecialties, setSelectedSpecialties] = useState<string[]>(['Costillas', 'Parrilla Mixta']);
+  const [selectedSpecialties, setSelectedSpecialties] = useState<string[]>(specialties);
 
-  function toggleSpecialty(name: string) {
+  function toggleSpecialty(item: string) {
     setSelectedSpecialties((prev) => {
-      if (prev.includes(name)) {
-        return prev.filter((item) => item !== name);
+      if (prev.includes(item)) {
+        return prev.filter((entry) => entry !== item);
       }
-
-      return [...prev, name];
+      return [...prev, item];
     });
   }
 
   return (
     <View style={styles.root}>
       <AppScreen scroll contentStyle={styles.content}>
-        <AppCard style={styles.heroCard} contentStyle={styles.heroCardContent}>
+        <View style={styles.heroWrap}>
           <ImageBackground source={{ uri: hero.bannerUrl }} style={styles.heroBanner} imageStyle={styles.heroBannerImage}>
-            <LinearGradient
-              colors={['rgba(9, 9, 11, 0.05)', 'rgba(9, 9, 11, 0.75)']}
-              start={{ x: 0.5, y: 0.2 }}
-              end={{ x: 0.5, y: 1 }}
-              style={styles.heroOverlay}
-            />
-            <View style={styles.heroInfo}>
+            <View style={styles.heroOverlay} />
+            <View style={styles.heroDetails}>
               <Image source={{ uri: hero.avatarUrl }} style={styles.avatar} />
               <View style={styles.heroMeta}>
                 <AppText variant="h2" style={styles.heroName}>{hero.name}</AppText>
-                <View style={styles.badgesRow}>
+                <View style={styles.heroBadgeRow}>
                   <AppChip label={hero.badge} selected />
-                  <AppText variant="caption" style={styles.cityText}>{hero.city}</AppText>
+                  <AppText variant="caption" style={styles.heroCity}>{hero.city}</AppText>
                 </View>
-                <View style={styles.ratingRow}>
-                  <MaterialCommunityIcons name="fire" size={16} color={colors.primary} />
-                  <AppText variant="body" style={styles.heroRating}>{hero.rating.toFixed(1)}</AppText>
+                <View style={styles.heroRatingRow}>
+                  <AppText variant="body" style={styles.fireIcon}>🔥</AppText>
+                  <AppText variant="body" style={styles.heroRatingValue}>{hero.rating.toFixed(1)}</AppText>
                   <AppText variant="caption" style={styles.heroReviews}>({hero.reviews} reseñas)</AppText>
                 </View>
               </View>
             </View>
           </ImageBackground>
-        </AppCard>
+        </View>
 
         <View style={styles.statsRow}>
           {stats.map((item) => (
@@ -109,7 +124,7 @@ export function ProfileGrillerScreen() {
         </View>
 
         <View style={styles.section}>
-          <AppText variant="section">Especializaciones</AppText>
+          <SectionHeader title="Especializaciones" />
           <View style={styles.chipsWrap}>
             {specialties.map((item) => (
               <AppChip
@@ -123,35 +138,35 @@ export function ProfileGrillerScreen() {
         </View>
 
         <View style={styles.section}>
-          <AppText variant="section">Sobre el griller</AppText>
+          <SectionHeader title="Sobre el griller" />
           <AppCard>
-            <AppText variant="body" style={styles.bodyText}>
-              Especialista en eventos sociales y corporativos, enfocado en cortes premium, puntualidad
-              y presentación profesional con parrilla en vivo.
+            <AppText variant="body" style={styles.bioText}>
+              Especialista en eventos familiares y corporativos. Maneja cortes premium, servicio puntual y
+              cocina en vivo con presentación profesional para experiencias memorables.
             </AppText>
           </AppCard>
         </View>
 
         <View style={styles.section}>
-          <AppText variant="section">Menú visual</AppText>
-          <View style={styles.grid}>
-            {visualMenu.map((item) => (
-              <AppCard key={item.id} style={styles.gridCard} contentStyle={styles.gridCardContent}>
-                <Image source={{ uri: item.imageUrl }} style={styles.gridImage} />
-                <AppText variant="caption" style={styles.gridLabel}>{item.label}</AppText>
+          <SectionHeader title="Menú visual" />
+          <View style={styles.menuGrid}>
+            {menuItems.map((item) => (
+              <AppCard key={item.id} style={styles.menuCard} contentStyle={styles.menuCardContent}>
+                <Image source={{ uri: item.imageUrl }} style={styles.menuImage} />
+                <AppText variant="caption" style={styles.menuLabel}>{item.label}</AppText>
               </AppCard>
             ))}
           </View>
         </View>
 
         <View style={styles.section}>
-          <AppText variant="section">Videos YouTube</AppText>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.videoRow}>
-            {youtubeVideos.map((video) => (
-              <AppCard key={video.id} style={styles.videoCard} contentStyle={styles.videoContent}>
+          <SectionHeader title="Videos YouTube" actionText="Ver todos" />
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.videosRow}>
+            {videos.map((video) => (
+              <AppCard key={video.id} style={styles.videoCard} contentStyle={styles.videoCardContent}>
                 <ImageBackground source={{ uri: video.thumbUrl }} style={styles.videoThumb} imageStyle={styles.videoThumbImage}>
                   <Pressable style={styles.playButton}>
-                    <MaterialCommunityIcons name="play" size={18} color="#FFFFFF" />
+                    <AppText variant="body" style={styles.playIcon}>▶</AppText>
                   </Pressable>
                 </ImageBackground>
                 <AppText variant="body" style={styles.videoTitle}>{video.title}</AppText>
@@ -161,30 +176,23 @@ export function ProfileGrillerScreen() {
         </View>
 
         <View style={styles.section}>
-          <AppText variant="section">Reseñas</AppText>
+          <SectionHeader title="Reseñas" actionText="Ver más" />
           <View style={styles.reviewList}>
             {reviews.map((item) => (
               <AppCard key={item.id}>
                 <View style={styles.reviewHeader}>
                   <View style={styles.reviewIdentity}>
                     <View style={styles.reviewAvatar}>
-                      <AppText variant="caption" style={styles.reviewInitial}>{item.author.charAt(0)}</AppText>
+                      <AppText variant="caption" style={styles.reviewInitial}>
+                        {item.author.charAt(0)}
+                      </AppText>
                     </View>
-                    <View>
+                    <View style={styles.reviewMeta}>
                       <AppText variant="body" style={styles.reviewAuthor}>{item.author}</AppText>
                       <AppText variant="caption">{item.date}</AppText>
                     </View>
                   </View>
-                  <View style={styles.reviewRating}>
-                    {Array.from({ length: 5 }).map((_, index) => (
-                      <MaterialCommunityIcons
-                        key={`${item.id}-fire-${index}`}
-                        name="fire"
-                        size={14}
-                        color={index < item.rating ? colors.primary : '#FBD5CF'}
-                      />
-                    ))}
-                  </View>
+                  <FireRating value={item.rating} />
                 </View>
                 <AppText variant="body" style={styles.reviewComment}>{item.comment}</AppText>
               </AppCard>
@@ -193,7 +201,7 @@ export function ProfileGrillerScreen() {
         </View>
       </AppScreen>
 
-      <View style={[styles.stickyCta, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+      <View style={[styles.stickyCta, { paddingBottom: Math.max(insets.bottom, spacing.s12) }]}>
         <AppButton label="Reservar ahora" variant="primary" onPress={() => {}} />
       </View>
     </View>
@@ -206,175 +214,205 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background
   },
   content: {
-    paddingTop: AppSpacing.s16,
     paddingBottom: 120,
-    gap: AppSpacing.s24
+    gap: spacing.s24
   },
-  heroCard: {
-    overflow: 'hidden'
-  },
-  heroCardContent: {
-    padding: 0
+  heroWrap: {
+    borderRadius: radius.r16,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    ...shadows.card
   },
   heroBanner: {
-    minHeight: 280,
+    height: 250,
     justifyContent: 'flex-end'
   },
   heroBannerImage: {
-    borderRadius: 16
+    borderRadius: radius.r16
   },
   heroOverlay: {
-    ...StyleSheet.absoluteFillObject
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 140,
+    backgroundColor: 'rgba(17, 24, 39, 0.58)'
   },
-  heroInfo: {
-    padding: AppSpacing.s16,
+  heroDetails: {
+    padding: spacing.s16,
     flexDirection: 'row',
     alignItems: 'flex-end',
-    gap: AppSpacing.s16
+    gap: spacing.s12
   },
   avatar: {
-    width: 84,
-    height: 84,
-    borderRadius: 84,
+    width: 86,
+    height: 86,
+    borderRadius: 86,
     borderWidth: 3,
-    borderColor: '#FFFFFF'
+    borderColor: '#FFFFFF',
+    backgroundColor: '#F5F5F5',
+    marginBottom: -18
   },
   heroMeta: {
     flex: 1,
-    gap: 6
+    gap: spacing.s8
   },
   heroName: {
     color: '#FFFFFF'
   },
-  badgesRow: {
+  heroBadgeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10
+    gap: spacing.s8
   },
-  cityText: {
-    color: '#FEE4E2'
+  heroCity: {
+    color: '#F3F4F6'
   },
-  ratingRow: {
+  heroRatingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4
+    gap: spacing.s4
   },
-  heroRating: {
+  fireIcon: {
+    color: colors.primary
+  },
+  heroRatingValue: {
     color: '#FFFFFF',
-    fontWeight: '800'
+    fontWeight: '600'
   },
   heroReviews: {
-    color: '#FECACA'
+    color: '#E5E7EB'
   },
   statsRow: {
     flexDirection: 'row',
-    gap: AppSpacing.s16
+    gap: spacing.s12
   },
   statCard: {
     flex: 1
   },
   statValue: {
-    color: colors.textStrong
+    color: colors.text
   },
   section: {
-    gap: AppSpacing.s16
+    gap: spacing.s16
   },
   chipsWrap: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: AppSpacing.s8
+    gap: spacing.s8
   },
-  bodyText: {
-    color: colors.textMuted
+  bioText: {
+    color: colors.muted
   },
-  grid: {
+  menuGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: AppSpacing.s16
+    justifyContent: 'space-between',
+    rowGap: spacing.s12
   },
-  gridCard: {
-    width: '47%'
+  menuCard: {
+    width: '48.5%'
   },
-  gridCardContent: {
-    padding: 8,
-    gap: 8
+  menuCardContent: {
+    padding: spacing.s8,
+    gap: spacing.s8
   },
-  gridImage: {
+  menuImage: {
     width: '100%',
-    height: 100,
-    borderRadius: 12,
-    backgroundColor: colors.backgroundMuted
+    height: 110,
+    borderRadius: radius.r12,
+    backgroundColor: '#F4F4F5'
   },
-  gridLabel: {
-    color: colors.textStrong
+  menuLabel: {
+    color: colors.text
   },
-  videoRow: {
-    gap: AppSpacing.s16,
-    paddingRight: AppSpacing.s16
+  videosRow: {
+    gap: spacing.s12,
+    paddingRight: spacing.s16
   },
   videoCard: {
-    width: 230
+    width: 240
   },
-  videoContent: {
-    gap: 10
+  videoCardContent: {
+    gap: spacing.s8
   },
   videoThumb: {
-    height: 128,
+    height: 130,
     justifyContent: 'center',
-    alignItems: 'center'
+    alignItems: 'center',
+    borderRadius: radius.r12,
+    overflow: 'hidden'
   },
   videoThumbImage: {
-    borderRadius: 12
+    borderRadius: radius.r12
   },
   playButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 38,
-    backgroundColor: '#E53935',
+    width: 42,
+    height: 42,
+    borderRadius: 42,
     alignItems: 'center',
-    justifyContent: 'center'
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+    ...shadows.card
+  },
+  playIcon: {
+    color: '#FFFFFF',
+    marginLeft: 1
   },
   videoTitle: {
-    color: colors.textStrong,
-    fontWeight: '700'
+    color: colors.text,
+    fontWeight: '600'
   },
   reviewList: {
-    gap: AppSpacing.s16
+    gap: spacing.s12
   },
   reviewHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 10
+    marginBottom: spacing.s8,
+    gap: spacing.s12
   },
   reviewIdentity: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10
+    gap: spacing.s8,
+    flex: 1
   },
   reviewAvatar: {
     width: 34,
     height: 34,
     borderRadius: 34,
-    backgroundColor: colors.primarySoft,
     alignItems: 'center',
-    justifyContent: 'center'
+    justifyContent: 'center',
+    backgroundColor: colors.chipBg
   },
   reviewInitial: {
-    color: colors.primaryDark,
-    fontWeight: '800'
+    color: colors.primary,
+    fontWeight: '600'
+  },
+  reviewMeta: {
+    flex: 1
   },
   reviewAuthor: {
-    color: colors.textStrong,
-    fontWeight: '800'
+    color: colors.text,
+    fontWeight: '600'
   },
-  reviewRating: {
+  fireRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2
+    gap: 1
+  },
+  fireOn: {
+    color: colors.primary
+  },
+  fireOff: {
+    color: '#FECACA'
   },
   reviewComment: {
-    color: colors.textMuted
+    color: colors.muted
   },
   stickyCta: {
     position: 'absolute',
@@ -382,10 +420,11 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     borderTopWidth: 1,
-    borderColor: '#F2F4F7',
-    backgroundColor: 'rgba(255, 255, 255, 0.98)',
-    paddingTop: 12,
-    paddingHorizontal: AppSpacing.s16
+    borderTopColor: colors.border,
+    backgroundColor: '#FFFFFF',
+    paddingTop: spacing.s12,
+    paddingHorizontal: spacing.s16,
+    ...shadows.sticky
   }
 });
 
