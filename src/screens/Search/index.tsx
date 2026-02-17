@@ -4,10 +4,9 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { RootStackParamList } from '../../navigation/screenConfig';
 import { BottomNav } from '../../components/ui/BottomNav';
-import { getDishImageByName } from '../../data/mediaLibrary';
 import { useAppState } from '../../state/AppStateContext';
 import { colors } from '../../theme/colors';
-import { resolveMediaUrl } from '../../utils/media';
+import { getChefCoverUrl } from '../../utils/chefMedia';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Search'>;
 
@@ -61,7 +60,7 @@ export function Search({ navigation }: Props) {
           <View style={styles.list}>
             {results.map((item) => {
               const chef = chefs.find((candidate) => candidate.id === item.chefId);
-              const imageUrl = resolveMediaUrl(chef?.coverUrl) || getDishImageByName(item.speciality);
+              const imageUrl = getChefCoverUrl(chef);
 
               return (
                 <Pressable

@@ -17,6 +17,7 @@ import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { useAppState } from '../../state/AppStateContext';
 import { colors } from '../../theme/colors';
 import { ChefReview, ChefVideo } from '../../types/domain';
+import { getChefAvatarUrl, getChefCoverUrl } from '../../utils/chefMedia';
 import { resolveMediaUrl } from '../../utils/media';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
@@ -90,8 +91,8 @@ const fallbackReviewsByChefId: Record<string, ChefReview[]> = {
 
 export function Profile({ navigation }: Props) {
   const { selectedChef } = useAppState();
-  const coverUrl = resolveMediaUrl(selectedChef.coverUrl);
-  const avatarUrl = resolveMediaUrl(selectedChef.avatarUrl);
+  const coverUrl = getChefCoverUrl(selectedChef);
+  const avatarUrl = getChefAvatarUrl(selectedChef);
   const galleryImages = selectedChef.gallery.map((item) => resolveMediaUrl(item)).filter(Boolean);
   const [grillerVideos, setGrillerVideos] = useState<ChefVideo[]>(getGrillerVideos(selectedChef.id));
   const [reviews, setReviews] = useState<ChefReview[]>(fallbackReviewsByChefId[selectedChef.id] ?? []);
@@ -165,19 +166,11 @@ export function Profile({ navigation }: Props) {
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
             <View style={styles.hero}>
-              {coverUrl ? (
-                <ImageBackground source={{ uri: coverUrl }} style={styles.heroMedia} imageStyle={styles.heroMediaImage}>
-                  <View style={styles.heroShade} />
-                </ImageBackground>
-              ) : (
-                <LinearGradient colors={[colors.flameEnd, colors.flameStart]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.heroMedia} />
-              )}
+              <ImageBackground source={{ uri: coverUrl }} style={styles.heroMedia} imageStyle={styles.heroMediaImage}>
+                <View style={styles.heroShade} />
+              </ImageBackground>
 
-              {avatarUrl ? (
-                <Image source={{ uri: avatarUrl }} style={styles.avatar} />
-              ) : (
-                <View style={styles.avatar} />
-              )}
+              <Image source={{ uri: avatarUrl }} style={styles.avatar} />
               <View style={styles.heroCopy}>
                 <Text style={styles.heroName}>{selectedChef.name}</Text>
                 <Text style={styles.heroMeta}>{selectedChef.title}  -  {selectedChef.city}</Text>

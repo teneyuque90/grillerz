@@ -8,7 +8,7 @@ import { RootStackParamList } from '../../navigation/screenConfig';
 import { BottomNav } from '../../components/ui/BottomNav';
 import { useAppState } from '../../state/AppStateContext';
 import { colors } from '../../theme/colors';
-import { resolveMediaUrl } from '../../utils/media';
+import { getChefCoverUrl } from '../../utils/chefMedia';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Browse03'>;
 
@@ -35,7 +35,7 @@ export function Browse03({ navigation }: Props) {
           <View style={styles.feed}>
             {reels.map((reel, index) => {
               const chef = chefs.find((item) => item.id === reel.chefId);
-              const coverUrl = resolveMediaUrl(chef?.coverUrl);
+              const coverUrl = getChefCoverUrl(chef);
 
               return (
                 <Pressable

@@ -15,7 +15,7 @@ import { AppChip } from '../../ui/components/AppChip';
 import { AppScreen } from '../../ui/components/AppScreen';
 import { AppText } from '../../ui/components/AppText';
 import { SectionHeader } from '../../ui/components/SectionHeader';
-import { resolveMediaUrl } from '../../utils/media';
+import { getChefCoverUrl } from '../../utils/chefMedia';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Browse01'>;
 
@@ -31,7 +31,7 @@ export function Browse01({ navigation }: Props) {
   const [activeCategory, setActiveCategory] = useState(categories[0]);
   const heroItem = featured[0];
   const heroChef = chefs.find((chef) => chef.id === heroItem.chefId);
-  const heroCoverUrl = resolveMediaUrl(heroChef?.coverUrl) || getDishImageByName(heroItem.dishName);
+  const heroCoverUrl = getChefCoverUrl(heroChef);
   const visibleFeatured = useMemo(() => {
     if (activeCategory === 'Top') {
       return featured;
@@ -97,7 +97,7 @@ export function Browse01({ navigation }: Props) {
         <View style={styles.list}>
           {visibleFeatured.map((item) => {
             const chef = chefs.find((candidate) => candidate.id === item.chefId);
-            const coverUrl = resolveMediaUrl(chef?.coverUrl) || getDishImageByName(item.dishName);
+            const coverUrl = chef ? getChefCoverUrl(chef) : getDishImageByName(item.dishName);
 
             return (
               <AppCard

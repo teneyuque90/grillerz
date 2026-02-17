@@ -1,4 +1,4 @@
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, ImageBackground, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -8,7 +8,7 @@ import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import { BottomNav } from '../../components/ui/BottomNav';
 import { useAppState } from '../../state/AppStateContext';
 import { colors } from '../../theme/colors';
-import { resolveMediaUrl } from '../../utils/media';
+import { getChefAvatarUrl, getChefCoverUrl } from '../../utils/chefMedia';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Favorites'>;
 
@@ -47,16 +47,16 @@ export function Favorites({ navigation }: Props) {
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.list}>
             {favorites.map((item) => {
               const chef = chefs.find((candidate) => candidate.id === item.chefId);
-              const avatarUrl = resolveMediaUrl(chef?.avatarUrl);
+              const avatarUrl = getChefAvatarUrl(chef);
+              const coverUrl = getChefCoverUrl(chef);
 
               return (
                 <View key={item.chefId} style={styles.card}>
+                  <ImageBackground source={{ uri: coverUrl }} style={styles.cover} imageStyle={styles.coverImage}>
+                    <View style={styles.coverShade} />
+                  </ImageBackground>
                   <View style={styles.topRow}>
-                    {avatarUrl ? (
-                      <Image source={{ uri: avatarUrl }} style={styles.avatar} />
-                    ) : (
-                      <View style={styles.avatar} />
-                    )}
+                    <Image source={{ uri: avatarUrl }} style={styles.avatar} />
                     <View style={styles.headline}>
                       <Text style={styles.name}>{chef?.name ?? 'Griller'}</Text>
                       <Text style={styles.subline}>{item.specialty}</Text>
@@ -155,19 +155,34 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: 12,
+    padding: 10,
     gap: 10
   },
+  cover: {
+    height: 74,
+    borderRadius: 12,
+    overflow: 'hidden'
+  },
+  coverImage: {
+    borderRadius: 12
+  },
+  coverShade: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(15, 10, 8, 0.22)'
+  },
   topRow: {
+    marginTop: -16,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-end',
     gap: 10
   },
   avatar: {
     width: 56,
     height: 56,
     borderRadius: 56,
-    backgroundColor: '#FFE5E2'
+    backgroundColor: '#FFE5E2',
+    borderWidth: 2,
+    borderColor: '#FFFFFF'
   },
   headline: {
     flex: 1,
