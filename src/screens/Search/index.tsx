@@ -1,4 +1,5 @@
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
@@ -19,6 +20,22 @@ const results = [
 
 export function Search({ navigation }: Props) {
   const { chefs, selectChef } = useAppState();
+  const [query, setQuery] = useState('');
+
+  const visibleResults = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    if (!normalized) {
+      return results;
+    }
+
+    return results.filter((item) => {
+      return (
+        item.name.toLowerCase().includes(normalized) ||
+        item.speciality.toLowerCase().includes(normalized) ||
+        item.city.toLowerCase().includes(normalized)
+      );
+    });
+  }, [query]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -32,7 +49,14 @@ export function Search({ navigation }: Props) {
           </View>
 
           <View style={styles.searchBar}>
-            <Text style={styles.searchPlaceholder}>Griller, platillo, ciudad...</Text>
+            <TextInput
+              value={query}
+              onChangeText={setQuery}
+              placeholder="Griller, platillo, ciudad..."
+              placeholderTextColor={colors.textSoft}
+              style={styles.searchInput}
+              returnKeyType="search"
+            />
           </View>
 
           <View style={styles.sectionHeader}>
@@ -44,7 +68,7 @@ export function Search({ navigation }: Props) {
 
           <View style={styles.chipsRow}>
             {recent.map((item) => (
-              <Pressable key={item} style={styles.chip}>
+              <Pressable key={item} style={styles.chip} onPress={() => setQuery(item)}>
                 <Text style={styles.chipText}>{item}</Text>
               </Pressable>
             ))}
@@ -58,7 +82,7 @@ export function Search({ navigation }: Props) {
           </View>
 
           <View style={styles.list}>
-            {results.map((item) => {
+            {visibleResults.map((item) => {
               const chef = chefs.find((candidate) => candidate.id === item.chefId);
               const imageUrl = getChefCoverUrl(chef);
 
@@ -83,6 +107,7 @@ export function Search({ navigation }: Props) {
                 </Pressable>
               );
             })}
+            {visibleResults.length === 0 ? <Text style={styles.emptyText}>No hay resultados para esa busqueda.</Text> : null}
           </View>
         </ScrollView>
 
@@ -131,9 +156,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     justifyContent: 'center'
   },
-  searchPlaceholder: {
-    color: colors.textSoft,
-    fontSize: 15
+  searchInput: {
+    color: colors.textStrong,
+    fontSize: 15,
+    fontWeight: '600',
+    paddingVertical: 0
   },
   sectionHeader: {
     marginTop: 20,
@@ -216,5 +243,12 @@ const styles = StyleSheet.create({
   itemCta: {
     color: colors.primary,
     fontWeight: '800'
+  },
+  emptyText: {
+    color: colors.textSoft,
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginTop: 10
   }
 });

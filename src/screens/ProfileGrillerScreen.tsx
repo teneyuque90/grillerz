@@ -9,6 +9,7 @@ import { AppScreen } from '../ui/components/AppScreen';
 import { AppText } from '../ui/components/AppText';
 import { SectionHeader } from '../ui/components/SectionHeader';
 import { colors, radius, shadows, spacing } from '../ui/theme';
+import { getLocalAvatarUriByChef, getLocalCoverUriByChef, getLocalDishUriByName, getLocalVideoThumbUri } from '../data/localMedia';
 
 const hero = {
   name: 'Erick Martinez',
@@ -16,8 +17,8 @@ const hero = {
   city: 'Nuevo Laredo',
   rating: 4.9,
   reviews: 126,
-  bannerUrl: 'https://picsum.photos/1280/720?grillerz=hero-erick',
-  avatarUrl: 'https://i.pravatar.cc/300?img=11'
+  bannerUrl: getLocalCoverUriByChef('erick-martinez'),
+  avatarUrl: getLocalAvatarUriByChef('erick-martinez')
 };
 
 const stats = [
@@ -29,16 +30,16 @@ const stats = [
 const specialties = ['Costillas a la Parrilla', 'Tomahawk al Carbón', 'Parrilla Mixta'];
 
 const menuItems = [
-  { id: 'm1', label: 'Corte #1', imageUrl: 'https://picsum.photos/640/480?grillerz=menu-1' },
-  { id: 'm2', label: 'Corte #2', imageUrl: 'https://picsum.photos/640/480?grillerz=menu-2' },
-  { id: 'm3', label: 'Corte #3', imageUrl: 'https://picsum.photos/640/480?grillerz=menu-3' },
-  { id: 'm4', label: 'Corte #4', imageUrl: 'https://picsum.photos/640/480?grillerz=menu-4' }
+  { id: 'm1', label: 'Corte #1', imageUrl: getLocalDishUriByName('corte-1') },
+  { id: 'm2', label: 'Corte #2', imageUrl: getLocalDishUriByName('corte-2') },
+  { id: 'm3', label: 'Corte #3', imageUrl: getLocalDishUriByName('corte-3') },
+  { id: 'm4', label: 'Corte #4', imageUrl: getLocalDishUriByName('corte-4') }
 ];
 
 const videos = [
-  { id: 'v1', title: 'Ribeye jugoso al punto', thumbUrl: 'https://picsum.photos/640/360?grillerz=video-1' },
-  { id: 'v2', title: 'Tomahawk al carbón', thumbUrl: 'https://picsum.photos/640/360?grillerz=video-2' },
-  { id: 'v3', title: 'Parrilla mixta para evento', thumbUrl: 'https://picsum.photos/640/360?grillerz=video-3' }
+  { id: 'v1', title: 'Ribeye jugoso al punto', thumbUrl: getLocalVideoThumbUri('v1') },
+  { id: 'v2', title: 'Tomahawk al carbón', thumbUrl: getLocalVideoThumbUri('v2') },
+  { id: 'v3', title: 'Parrilla mixta para evento', thumbUrl: getLocalVideoThumbUri('v3') }
 ];
 
 const reviews = [

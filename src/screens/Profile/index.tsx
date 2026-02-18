@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Image, ImageBackground, Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, ImageBackground, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { grillerzApi } from '../../api/grillerzApi';
@@ -10,6 +9,7 @@ import { AppCard } from '../../components/ui/AppCard';
 import { AppChip } from '../../components/ui/AppChip';
 import { OFFLINE_DEMO_MODE } from '../../config/api';
 import { getGrillerVideos, getYouTubeThumbnail } from '../../data/mediaLibrary';
+import { getLocalGalleryUriByChef } from '../../data/localMedia';
 import { RootStackParamList } from '../../navigation/screenConfig';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import { BottomNav } from '../../components/ui/BottomNav';
@@ -18,9 +18,15 @@ import { useAppState } from '../../state/AppStateContext';
 import { colors } from '../../theme/colors';
 import { ChefReview, ChefVideo } from '../../types/domain';
 import { getChefAvatarUrl, getChefCoverUrl } from '../../utils/chefMedia';
-import { resolveMediaUrl } from '../../utils/media';
+import { getReliableMediaUrl } from '../../utils/reliableMedia';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
+type ChefPackage = {
+  id: string;
+  name: string;
+  details: string;
+  price: number;
+};
 
 const fallbackReviewsByChefId: Record<string, ChefReview[]> = {
   'erick-martinez': [
@@ -89,13 +95,48 @@ const fallbackReviewsByChefId: Record<string, ChefReview[]> = {
   ]
 };
 
+const packagesByChefId: Record<string, ChefPackage[]> = {
+  'erick-martinez': [
+    { id: 'basic', name: 'Paquete Basico', details: 'Hasta 5 personas', price: 2200 },
+    { id: 'family', name: 'Paquete Familiar', details: 'Hasta 10 personas', price: 4200 },
+    { id: 'event', name: 'Evento Privado', details: 'Hasta 20 personas', price: 7600 }
+  ],
+  'carlos-bbq': [
+    { id: 'basic', name: 'Parrilla Express', details: 'Hasta 6 personas', price: 2500 },
+    { id: 'family', name: 'Parrilla Familiar', details: 'Hasta 12 personas', price: 4800 }
+  ],
+  'martin-asador': [
+    { id: 'basic', name: 'Smoke Basico', details: 'Hasta 6 personas', price: 2800 },
+    { id: 'premium', name: 'Smoke Premium', details: 'Hasta 15 personas', price: 6200 }
+  ],
+  'luis-bbq': [
+    { id: 'basic', name: 'Asado Regio', details: 'Hasta 8 personas', price: 3000 },
+    { id: 'event', name: 'Asado para Evento', details: 'Hasta 18 personas', price: 6500 }
+  ],
+  'cories-bbq': [
+    { id: 'basic', name: 'Ribeye Basico', details: 'Hasta 5 personas', price: 2600 },
+    { id: 'family', name: 'Ribeye Familiar', details: 'Hasta 10 personas', price: 5000 }
+  ]
+};
+
 export function Profile({ navigation }: Props) {
   const { selectedChef } = useAppState();
   const coverUrl = getChefCoverUrl(selectedChef);
   const avatarUrl = getChefAvatarUrl(selectedChef);
-  const galleryImages = selectedChef.gallery.map((item) => resolveMediaUrl(item)).filter(Boolean);
+  const galleryImages = (selectedChef.gallery.length > 0
+    ? selectedChef.gallery.map((item, index) =>
+        getReliableMediaUrl(item, getLocalGalleryUriByChef(selectedChef.id, index))
+      )
+    : [0, 1, 2].map((index) => getLocalGalleryUriByChef(selectedChef.id, index)));
+  const chefPackages = packagesByChefId[selectedChef.id] ?? packagesByChefId['erick-martinez'];
   const [grillerVideos, setGrillerVideos] = useState<ChefVideo[]>(getGrillerVideos(selectedChef.id));
   const [reviews, setReviews] = useState<ChefReview[]>(fallbackReviewsByChefId[selectedChef.id] ?? []);
+  const [selectedPackageId, setSelectedPackageId] = useState(chefPackages[0].id);
+
+  useEffect(() => {
+    const fallbackPackage = (packagesByChefId[selectedChef.id] ?? packagesByChefId['erick-martinez'])[0];
+    setSelectedPackageId(fallbackPackage.id);
+  }, [selectedChef.id]);
 
   useEffect(() => {
     let active = true;
@@ -223,6 +264,27 @@ export function Profile({ navigation }: Props) {
                 ))}
                 {galleryImages.length === 0 ? <Text style={styles.emptyReviews}>No hay imagenes disponibles.</Text> : null}
               </ScrollView>
+            </View>
+
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Paquetes y precios</Text>
+              <View style={styles.packagesList}>
+                {chefPackages.map((item) => {
+                  const selected = item.id === selectedPackageId;
+                  return (
+                    <Pressable key={`${selectedChef.id}-${item.id}`} onPress={() => setSelectedPackageId(item.id)}>
+                      <AppCard style={[styles.packageCard, selected ? styles.packageCardSelected : null]}>
+                        <View style={styles.packageTopRow}>
+                          <Text style={styles.packageName}>{item.name}</Text>
+                          {selected ? <AppChip label="Seleccionado" selected /> : null}
+                        </View>
+                        <Text style={styles.packageDetails}>{item.details}</Text>
+                        <Text style={styles.packagePrice}>${item.price.toLocaleString('es-MX')} MXN</Text>
+                      </AppCard>
+                    </Pressable>
+                  );
+                })}
+              </View>
             </View>
 
             <View style={styles.section}>
@@ -426,6 +488,38 @@ const styles = StyleSheet.create({
   },
   videosList: {
     gap: 10
+  },
+  packagesList: {
+    gap: 10
+  },
+  packageCard: {
+    gap: 6,
+    backgroundColor: colors.backgroundMuted
+  },
+  packageCardSelected: {
+    borderColor: colors.primary,
+    backgroundColor: '#FFF5F4'
+  },
+  packageTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8
+  },
+  packageName: {
+    color: colors.textStrong,
+    fontWeight: '800',
+    fontSize: 16
+  },
+  packageDetails: {
+    color: colors.textMuted,
+    fontSize: 13,
+    fontWeight: '600'
+  },
+  packagePrice: {
+    color: colors.primaryDark,
+    fontWeight: '900',
+    fontSize: 18
   },
   videoCard: {
     overflow: 'hidden',

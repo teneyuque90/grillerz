@@ -10,7 +10,7 @@ type BottomNavProps = {
 };
 
 const tabs: Array<{ route: AppTab; icon: React.ComponentProps<typeof Ionicons>['name']; iconActive: React.ComponentProps<typeof Ionicons>['name']; label: string }> = [
-  { route: 'Browse01', icon: 'home-outline', iconActive: 'home', label: 'Inicio' },
+  { route: 'Browse01', icon: 'flame-outline', iconActive: 'flame', label: 'Inicio' },
   { route: 'Search', icon: 'search-outline', iconActive: 'search', label: 'Buscar' },
   { route: 'Bookings', icon: 'calendar-outline', iconActive: 'calendar', label: 'Reservas' },
   { route: 'Profile', icon: 'person-outline', iconActive: 'person', label: 'Perfil' },

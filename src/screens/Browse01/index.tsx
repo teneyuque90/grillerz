@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background
   },
   scrollContent: {
-    paddingTop: 10,
+    paddingTop: 24,
     paddingBottom: 120
   },
   headerRow: {
@@ -159,8 +159,8 @@ const styles = StyleSheet.create({
   },
   title: {
     maxWidth: 250,
-    fontSize: 34,
-    lineHeight: 38
+    fontSize: 30,
+    lineHeight: 34
   },
   search: {
     color: colors.primary,
