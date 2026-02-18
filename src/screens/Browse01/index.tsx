@@ -1,11 +1,14 @@
 import { useMemo, useState } from 'react';
-import { Image, ImageBackground, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { RootStackParamList } from '../../navigation/screenConfig';
 import { BottomNav } from '../../components/ui/BottomNav';
+import { ReliableImage } from '../../components/ui/ReliableImage';
+import { ReliableImageBackground } from '../../components/ui/ReliableImageBackground';
 import { getDishImageByName } from '../../data/mediaLibrary';
+import { getLocalCoverUriByChef, getLocalDishUriByName } from '../../data/localMedia';
 import { useAppState } from '../../state/AppStateContext';
 import { colors } from '../../theme/colors';
 import { AppSpacing } from '../../theme/grillerzTheme';
@@ -32,6 +35,7 @@ export function Browse01({ navigation }: Props) {
   const heroItem = featured[0];
   const heroChef = chefs.find((chef) => chef.id === heroItem.chefId);
   const heroCoverUrl = getChefCoverUrl(heroChef);
+  const heroFallbackUrl = getLocalCoverUriByChef(heroChef?.id ?? heroItem.chefId);
   const visibleFeatured = useMemo(() => {
     if (activeCategory === 'Top') {
       return featured;
@@ -72,9 +76,14 @@ export function Browse01({ navigation }: Props) {
           }}
         >
           {heroCoverUrl ? (
-            <ImageBackground source={{ uri: heroCoverUrl }} style={styles.heroMedia} imageStyle={styles.heroMediaImage}>
+            <ReliableImageBackground
+              uri={heroCoverUrl}
+              fallbackUri={heroFallbackUrl}
+              style={styles.heroMedia}
+              imageStyle={styles.heroMediaImage}
+            >
               <View style={styles.heroShade} />
-            </ImageBackground>
+            </ReliableImageBackground>
           ) : (
             <LinearGradient colors={[colors.flameEnd, colors.flameStart]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.heroMedia} />
           )}
@@ -98,6 +107,7 @@ export function Browse01({ navigation }: Props) {
           {visibleFeatured.map((item) => {
             const chef = chefs.find((candidate) => candidate.id === item.chefId);
             const coverUrl = chef ? getChefCoverUrl(chef) : getDishImageByName(item.dishName);
+            const coverFallbackUrl = chef ? getLocalCoverUriByChef(chef.id) : getLocalDishUriByName(item.dishName);
 
             return (
               <AppCard
@@ -111,7 +121,7 @@ export function Browse01({ navigation }: Props) {
               >
                 <View style={styles.itemThumb}>
                   {coverUrl ? (
-                    <Image source={{ uri: coverUrl }} style={styles.itemThumbImage} />
+                    <ReliableImage uri={coverUrl} fallbackUri={coverFallbackUrl} style={styles.itemThumbImage} />
                   ) : (
                     <LinearGradient colors={['#FFD8CF', '#FFF1EE']} style={StyleSheet.absoluteFill} />
                   )}

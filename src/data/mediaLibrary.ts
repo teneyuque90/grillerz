@@ -1,5 +1,4 @@
 import { ChefVideo } from '../types/domain';
-import { getLocalCategoryUriByName, getLocalDishUriByName, getLocalVideoThumbUri } from './localMedia';
 
 type MediaItem = {
   name: string;
@@ -14,27 +13,27 @@ type GrillerVideoSeed = {
 };
 
 const dishMedia: MediaItem[] = [
-  { name: 'Costillas a la Parrilla', imageUrl: getLocalDishUriByName('Costillas a la Parrilla') },
-  { name: 'Asado Regio', imageUrl: getLocalDishUriByName('Asado Regio') },
-  { name: 'Costillas Ahumadas', imageUrl: getLocalDishUriByName('Costillas Ahumadas') },
-  { name: 'Ribeye Jugoso', imageUrl: getLocalDishUriByName('Ribeye Jugoso') },
-  { name: 'Tomahawk al Carbon', imageUrl: getLocalDishUriByName('Tomahawk al Carbon') },
-  { name: 'Parrilla Mixta', imageUrl: getLocalDishUriByName('Parrilla Mixta') },
-  { name: 'Brisket', imageUrl: getLocalDishUriByName('Brisket') },
-  { name: 'Paquete Familiar', imageUrl: getLocalDishUriByName('Paquete Familiar') },
-  { name: 'Evento Premium', imageUrl: getLocalDishUriByName('Evento Premium') }
+  { name: 'Costillas a la Parrilla', imageUrl: 'https://loremflickr.com/1200/800/ribs,bbq?lock=301' },
+  { name: 'Asado Regio', imageUrl: 'https://loremflickr.com/1200/800/asado,carne?lock=302' },
+  { name: 'Costillas Ahumadas', imageUrl: 'https://loremflickr.com/1200/800/smoked,ribs?lock=303' },
+  { name: 'Ribeye Jugoso', imageUrl: 'https://loremflickr.com/1200/800/ribeye,steak?lock=304' },
+  { name: 'Tomahawk al Carbon', imageUrl: 'https://loremflickr.com/1200/800/tomahawk,grill?lock=305' },
+  { name: 'Parrilla Mixta', imageUrl: 'https://loremflickr.com/1200/800/parrilla,mixta?lock=306' },
+  { name: 'Brisket', imageUrl: 'https://loremflickr.com/1200/800/brisket,bbq?lock=307' },
+  { name: 'Paquete Familiar', imageUrl: 'https://loremflickr.com/1200/800/family,bbq?lock=308' },
+  { name: 'Evento Premium', imageUrl: 'https://loremflickr.com/1200/800/premium,steak?lock=309' }
 ];
 
 const categoryMedia: MediaItem[] = [
-  { name: 'Asado Regio', imageUrl: getLocalCategoryUriByName('Asado Regio') },
-  { name: 'Costillas', imageUrl: getLocalCategoryUriByName('Costillas') },
-  { name: 'Tomahawk', imageUrl: getLocalCategoryUriByName('Tomahawk') },
-  { name: 'Brisket', imageUrl: getLocalCategoryUriByName('Brisket') },
-  { name: 'Parrilla Mixta', imageUrl: getLocalCategoryUriByName('Parrilla Mixta') },
-  { name: 'Mariscos', imageUrl: getLocalCategoryUriByName('Mariscos') },
-  { name: 'Veggie Grill', imageUrl: getLocalCategoryUriByName('Veggie Grill') },
-  { name: 'Paquete Familiar', imageUrl: getLocalCategoryUriByName('Paquete Familiar') },
-  { name: 'Evento Premium', imageUrl: getLocalCategoryUriByName('Evento Premium') }
+  { name: 'Asado Regio', imageUrl: 'https://loremflickr.com/1200/800/asado,norte?lock=320' },
+  { name: 'Costillas', imageUrl: 'https://loremflickr.com/1200/800/costillas,bbq?lock=321' },
+  { name: 'Tomahawk', imageUrl: 'https://loremflickr.com/1200/800/tomahawk,fire?lock=322' },
+  { name: 'Brisket', imageUrl: 'https://loremflickr.com/1200/800/brisket,smoke?lock=323' },
+  { name: 'Parrilla Mixta', imageUrl: 'https://loremflickr.com/1200/800/grill,party?lock=324' },
+  { name: 'Mariscos', imageUrl: 'https://loremflickr.com/1200/800/shrimp,grill?lock=325' },
+  { name: 'Veggie Grill', imageUrl: 'https://loremflickr.com/1200/800/vegetables,grill?lock=326' },
+  { name: 'Paquete Familiar', imageUrl: 'https://loremflickr.com/1200/800/family,barbecue?lock=327' },
+  { name: 'Evento Premium', imageUrl: 'https://loremflickr.com/1200/800/steak,premium?lock=328' }
 ];
 
 const grillerVideosByChefId: Record<string, GrillerVideoSeed[]> = {
@@ -92,7 +91,7 @@ const grillerVideosByChefId: Record<string, GrillerVideoSeed[]> = {
   ]
 };
 
-const defaultDishImage = getLocalDishUriByName('default');
+const defaultDishImage = 'https://loremflickr.com/1200/800/grill,steak?lock=399';
 
 export function getDishImageByName(name: string) {
   const item = dishMedia.find((entry) => entry.name === name);
@@ -122,5 +121,5 @@ export function getGrillerVideos(chefId: string) {
 }
 
 export function getYouTubeThumbnail(videoId: string) {
-  return getLocalVideoThumbUri(videoId);
+  return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
 }

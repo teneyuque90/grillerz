@@ -1,4 +1,4 @@
-import { ImageBackground, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -6,6 +6,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { RootStackParamList } from '../../navigation/screenConfig';
 import { BottomNav } from '../../components/ui/BottomNav';
+import { ReliableImageBackground } from '../../components/ui/ReliableImageBackground';
+import { getLocalCoverUriByChef } from '../../data/localMedia';
 import { useAppState } from '../../state/AppStateContext';
 import { colors } from '../../theme/colors';
 import { getChefCoverUrl } from '../../utils/chefMedia';
@@ -36,6 +38,7 @@ export function Browse03({ navigation }: Props) {
             {reels.map((reel, index) => {
               const chef = chefs.find((item) => item.id === reel.chefId);
               const coverUrl = getChefCoverUrl(chef);
+              const coverFallbackUrl = getLocalCoverUriByChef(chef?.id ?? reel.chefId);
 
               return (
                 <Pressable
@@ -47,9 +50,13 @@ export function Browse03({ navigation }: Props) {
                   }}
                 >
                   {coverUrl ? (
-                    <ImageBackground source={{ uri: coverUrl }} style={StyleSheet.absoluteFill}>
+                    <ReliableImageBackground
+                      uri={coverUrl}
+                      fallbackUri={coverFallbackUrl}
+                      style={StyleSheet.absoluteFill}
+                    >
                       <View style={styles.reelShade} />
-                    </ImageBackground>
+                    </ReliableImageBackground>
                   ) : (
                     <LinearGradient
                       colors={index === 0 ? ['#1E120D', '#FF4D2D'] : ['#2A1B16', '#B93823']}

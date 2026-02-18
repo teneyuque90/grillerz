@@ -1,4 +1,4 @@
-import { Image, ImageBackground, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -6,8 +6,11 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { RootStackParamList } from '../../navigation/screenConfig';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import { BottomNav } from '../../components/ui/BottomNav';
+import { ReliableImage } from '../../components/ui/ReliableImage';
+import { ReliableImageBackground } from '../../components/ui/ReliableImageBackground';
 import { useAppState } from '../../state/AppStateContext';
 import { colors } from '../../theme/colors';
+import { getLocalAvatarUriByChef, getLocalCoverUriByChef } from '../../data/localMedia';
 import { getChefAvatarUrl, getChefCoverUrl } from '../../utils/chefMedia';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Favorites'>;
@@ -49,14 +52,16 @@ export function Favorites({ navigation }: Props) {
               const chef = chefs.find((candidate) => candidate.id === item.chefId);
               const avatarUrl = getChefAvatarUrl(chef);
               const coverUrl = getChefCoverUrl(chef);
+              const avatarFallbackUrl = getLocalAvatarUriByChef(chef?.id ?? item.chefId);
+              const coverFallbackUrl = getLocalCoverUriByChef(chef?.id ?? item.chefId);
 
               return (
                 <View key={item.chefId} style={styles.card}>
-                  <ImageBackground source={{ uri: coverUrl }} style={styles.cover} imageStyle={styles.coverImage}>
+                  <ReliableImageBackground uri={coverUrl} fallbackUri={coverFallbackUrl} style={styles.cover} imageStyle={styles.coverImage}>
                     <View style={styles.coverShade} />
-                  </ImageBackground>
+                  </ReliableImageBackground>
                   <View style={styles.topRow}>
-                    <Image source={{ uri: avatarUrl }} style={styles.avatar} />
+                    <ReliableImage uri={avatarUrl} fallbackUri={avatarFallbackUrl} style={styles.avatar} />
                     <View style={styles.headline}>
                       <Text style={styles.name}>{chef?.name ?? 'Griller'}</Text>
                       <Text style={styles.subline}>{item.specialty}</Text>

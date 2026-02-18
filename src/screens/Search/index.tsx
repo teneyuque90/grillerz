@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { RootStackParamList } from '../../navigation/screenConfig';
 import { BottomNav } from '../../components/ui/BottomNav';
+import { ReliableImage } from '../../components/ui/ReliableImage';
+import { getLocalCoverUriByChef } from '../../data/localMedia';
 import { useAppState } from '../../state/AppStateContext';
 import { colors } from '../../theme/colors';
 import { getChefCoverUrl } from '../../utils/chefMedia';
@@ -85,6 +87,7 @@ export function Search({ navigation }: Props) {
             {visibleResults.map((item) => {
               const chef = chefs.find((candidate) => candidate.id === item.chefId);
               const imageUrl = getChefCoverUrl(chef);
+              const imageFallbackUrl = getLocalCoverUriByChef(chef?.id ?? item.chefId);
 
               return (
                 <Pressable
@@ -96,7 +99,7 @@ export function Search({ navigation }: Props) {
                   }}
                 >
                   <View style={styles.thumb}>
-                    <Image source={{ uri: imageUrl }} style={styles.thumbImage} />
+                    <ReliableImage uri={imageUrl} fallbackUri={imageFallbackUrl} style={styles.thumbImage} />
                   </View>
                   <View style={styles.itemBody}>
                     <Text style={styles.itemName}>{item.name}</Text>

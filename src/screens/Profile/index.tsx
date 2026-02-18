@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Image, ImageBackground, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -7,9 +7,11 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { grillerzApi } from '../../api/grillerzApi';
 import { AppCard } from '../../components/ui/AppCard';
 import { AppChip } from '../../components/ui/AppChip';
+import { ReliableImage } from '../../components/ui/ReliableImage';
+import { ReliableImageBackground } from '../../components/ui/ReliableImageBackground';
 import { OFFLINE_DEMO_MODE } from '../../config/api';
 import { getGrillerVideos, getYouTubeThumbnail } from '../../data/mediaLibrary';
-import { getLocalGalleryUriByChef } from '../../data/localMedia';
+import { getLocalAvatarUriByChef, getLocalCoverUriByChef, getLocalGalleryUriByChef, getLocalVideoThumbUri } from '../../data/localMedia';
 import { RootStackParamList } from '../../navigation/screenConfig';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import { BottomNav } from '../../components/ui/BottomNav';
@@ -123,6 +125,8 @@ export function Profile({ navigation }: Props) {
   const { selectedChef } = useAppState();
   const coverUrl = getChefCoverUrl(selectedChef);
   const avatarUrl = getChefAvatarUrl(selectedChef);
+  const coverFallbackUrl = getLocalCoverUriByChef(selectedChef.id);
+  const avatarFallbackUrl = getLocalAvatarUriByChef(selectedChef.id);
   const galleryImages = (selectedChef.gallery.length > 0
     ? selectedChef.gallery.map((item, index) =>
         getReliableMediaUrl(item, getLocalGalleryUriByChef(selectedChef.id, index))
@@ -207,11 +211,11 @@ export function Profile({ navigation }: Props) {
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
             <View style={styles.hero}>
-              <ImageBackground source={{ uri: coverUrl }} style={styles.heroMedia} imageStyle={styles.heroMediaImage}>
+              <ReliableImageBackground uri={coverUrl} fallbackUri={coverFallbackUrl} style={styles.heroMedia} imageStyle={styles.heroMediaImage}>
                 <View style={styles.heroShade} />
-              </ImageBackground>
+              </ReliableImageBackground>
 
-              <Image source={{ uri: avatarUrl }} style={styles.avatar} />
+              <ReliableImage uri={avatarUrl} fallbackUri={avatarFallbackUrl} style={styles.avatar} />
               <View style={styles.heroCopy}>
                 <Text style={styles.heroName}>{selectedChef.name}</Text>
                 <Text style={styles.heroMeta}>{selectedChef.title}  -  {selectedChef.city}</Text>
@@ -256,11 +260,17 @@ export function Profile({ navigation }: Props) {
               <Text style={styles.sectionTitle}>Menu visual</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.galleryRow}>
                 {galleryImages.map((imageUrl, index) => (
-                  <ImageBackground key={`${selectedChef.id}-gallery-${index}`} source={{ uri: imageUrl }} style={styles.galleryCard} imageStyle={styles.galleryCardImage}>
+                  <ReliableImageBackground
+                    key={`${selectedChef.id}-gallery-${index}`}
+                    uri={imageUrl}
+                    fallbackUri={getLocalGalleryUriByChef(selectedChef.id, index)}
+                    style={styles.galleryCard}
+                    imageStyle={styles.galleryCardImage}
+                  >
                     <View style={styles.galleryShade}>
                       <Text style={styles.galleryLabel}>Corte #{index + 1}</Text>
                     </View>
-                  </ImageBackground>
+                  </ReliableImageBackground>
                 ))}
                 {galleryImages.length === 0 ? <Text style={styles.emptyReviews}>No hay imagenes disponibles.</Text> : null}
               </ScrollView>
@@ -292,11 +302,16 @@ export function Profile({ navigation }: Props) {
               <View style={styles.videosList}>
                 {grillerVideos.map((video) => (
                   <AppCard key={video.id} padded={false} style={styles.videoCard} onPress={() => Linking.openURL(video.youtubeUrl)}>
-                    <ImageBackground source={{ uri: getYouTubeThumbnail(video.videoId) }} style={styles.videoThumb} imageStyle={styles.videoThumbImage}>
+                    <ReliableImageBackground
+                      uri={getYouTubeThumbnail(video.videoId)}
+                      fallbackUri={getLocalVideoThumbUri(video.videoId)}
+                      style={styles.videoThumb}
+                      imageStyle={styles.videoThumbImage}
+                    >
                       <View style={styles.videoPlayBadge}>
                         <MaterialCommunityIcons name="play" size={16} color="#FFFFFF" />
                       </View>
-                    </ImageBackground>
+                    </ReliableImageBackground>
                     <View style={styles.videoBody}>
                       <Text style={styles.videoTitle}>{video.title}</Text>
                       <Text style={styles.videoSubtitle}>{video.subtitle}</Text>

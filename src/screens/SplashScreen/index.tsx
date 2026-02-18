@@ -1,10 +1,11 @@
-import { ImageBackground, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { RootStackParamList } from '../../navigation/screenConfig';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
+import { ReliableImageBackground } from '../../components/ui/ReliableImageBackground';
 import { colors } from '../../theme/colors';
 import { getLocalCoverUriByChef } from '../../data/localMedia';
 
@@ -21,7 +22,12 @@ export function SplashScreen({ navigation }: Props) {
         </View>
 
         <View style={styles.hero}>
-          <ImageBackground source={{ uri: getLocalCoverUriByChef('splash') }} style={StyleSheet.absoluteFill} imageStyle={styles.heroImage} />
+          <ReliableImageBackground
+            uri="https://loremflickr.com/1200/1800/fire,smoke?lock=340"
+            fallbackUri={getLocalCoverUriByChef('splash')}
+            style={StyleSheet.absoluteFill}
+            imageStyle={styles.heroImage}
+          />
           <LinearGradient colors={['rgba(255,255,255,0.94)', 'rgba(255,255,255,0.82)', 'rgba(20, 10, 8, 0.42)']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }} style={StyleSheet.absoluteFill} />
           <LinearGradient colors={['rgba(34, 16, 11, 0.1)', 'rgba(222, 45, 37, 0.55)']} start={{ x: 0.5, y: 0.4 }} end={{ x: 0.5, y: 1 }} style={StyleSheet.absoluteFill} />
           <View style={styles.ctaContainer}>

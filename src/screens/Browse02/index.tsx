@@ -1,11 +1,13 @@
-import { ImageBackground, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { RootStackParamList } from '../../navigation/screenConfig';
 import { BottomNav } from '../../components/ui/BottomNav';
+import { ReliableImageBackground } from '../../components/ui/ReliableImageBackground';
 import { getDishImageByName } from '../../data/mediaLibrary';
+import { getLocalDishUriByName } from '../../data/localMedia';
 import { useAppState } from '../../state/AppStateContext';
 import { colors } from '../../theme/colors';
 
@@ -46,7 +48,12 @@ export function Browse02({ navigation }: Props) {
             ))}
           </ScrollView>
 
-          <ImageBackground source={{ uri: getDishImageByName('Parrilla Mixta') }} style={styles.heroCard} imageStyle={styles.heroCardImage}>
+          <ReliableImageBackground
+            uri={getDishImageByName('Parrilla Mixta')}
+            fallbackUri={getLocalDishUriByName('Parrilla Mixta')}
+            style={styles.heroCard}
+            imageStyle={styles.heroCardImage}
+          >
             <LinearGradient colors={['rgba(18, 10, 8, 0.18)', 'rgba(18, 10, 8, 0.7)']} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={styles.heroShade}>
               <Text style={styles.heroTitle}>Master Grill Week</Text>
               <Text style={styles.heroSubtitle}>Reserva hoy y obten 15% en tu primer evento.</Text>
@@ -54,7 +61,7 @@ export function Browse02({ navigation }: Props) {
                 <Text style={styles.heroButtonLabel}>Ver experiencias</Text>
               </Pressable>
             </LinearGradient>
-          </ImageBackground>
+          </ReliableImageBackground>
 
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Paquetes destacados</Text>
@@ -73,9 +80,14 @@ export function Browse02({ navigation }: Props) {
                   navigation.navigate('Profile');
                 }}
               >
-                <ImageBackground source={{ uri: getDishImageByName(item.title) }} style={styles.packageThumb} imageStyle={styles.packageThumbImage}>
+                <ReliableImageBackground
+                  uri={getDishImageByName(item.title)}
+                  fallbackUri={getLocalDishUriByName(item.title)}
+                  style={styles.packageThumb}
+                  imageStyle={styles.packageThumbImage}
+                >
                   <View style={styles.packageThumbShade} />
-                </ImageBackground>
+                </ReliableImageBackground>
                 <Text style={styles.packageTitle}>{item.title}</Text>
                 <Text style={styles.packageSubtitle}>{item.subtitle}</Text>
                 <Text style={styles.packagePrice}>{item.price} MXN</Text>

@@ -1,11 +1,13 @@
-import { ImageBackground, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { RootStackParamList } from '../../navigation/screenConfig';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import { BottomNav } from '../../components/ui/BottomNav';
+import { ReliableImageBackground } from '../../components/ui/ReliableImageBackground';
 import { getCategoryImageByName } from '../../data/mediaLibrary';
+import { getLocalCategoryUriByName } from '../../data/localMedia';
 import { colors } from '../../theme/colors';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Categories'>;
@@ -38,9 +40,14 @@ export function Categories({ navigation }: Props) {
                 style={[styles.card, index < 2 || index === 4 ? styles.cardActive : null]}
                 onPress={() => navigation.navigate('Browse02')}
               >
-                <ImageBackground source={{ uri: getCategoryImageByName(category) }} style={styles.thumb} imageStyle={styles.thumbImage}>
+                <ReliableImageBackground
+                  uri={getCategoryImageByName(category)}
+                  fallbackUri={getLocalCategoryUriByName(category)}
+                  style={styles.thumb}
+                  imageStyle={styles.thumbImage}
+                >
                   <View style={styles.thumbShade} />
-                </ImageBackground>
+                </ReliableImageBackground>
                 <Text style={[styles.cardLabel, index < 2 || index === 4 ? styles.cardLabelActive : null]}>{category}</Text>
               </Pressable>
             ))}
