@@ -5,6 +5,7 @@
     "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
+    "icon": "./assets/icon.png",
     "splash": {
       "backgroundColor": "#FFFFFF"
     },
@@ -15,7 +16,11 @@
       "supportsTablet": false
     },
     "android": {
-      "package": "com.teneyuque90.grillerz"
+      "package": "com.teneyuque90.grillerz",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#000000"
+      }
     },
     "extra": {
       "eas": {
