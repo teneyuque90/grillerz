@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -8,7 +8,7 @@ import { BottomNav } from '../../components/ui/BottomNav';
 import { ReliableImage } from '../../components/ui/ReliableImage';
 import { ReliableImageBackground } from '../../components/ui/ReliableImageBackground';
 import { getDishImageByName } from '../../data/mediaLibrary';
-import { getLocalCoverUriByChef, getLocalDishUriByName } from '../../data/localMedia';
+import { getLocalAvatarUriByChef, getLocalCoverUriByChef, getLocalDishUriByName } from '../../data/localMedia';
 import { useAppState } from '../../state/AppStateContext';
 import { colors } from '../../theme/colors';
 import { AppSpacing } from '../../theme/grillerzTheme';
@@ -18,7 +18,7 @@ import { AppChip } from '../../ui/components/AppChip';
 import { AppScreen } from '../../ui/components/AppScreen';
 import { AppText } from '../../ui/components/AppText';
 import { SectionHeader } from '../../ui/components/SectionHeader';
-import { getChefCoverUrl } from '../../utils/chefMedia';
+import { getChefAvatarUrl, getChefCoverUrl } from '../../utils/chefMedia';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Browse01'>;
 
@@ -27,15 +27,34 @@ const featured = [
   { dishName: 'Asado Regio', chefId: 'luis-bbq', price: '$3,200' },
   { dishName: 'Costillas Ahumadas', chefId: 'martin-asador', price: '$3,600' }
 ];
-const categories = ['Top', 'Costillas', 'Tomahawk', 'Parrilla', 'Ahumados'];
+const categories = ['Top', 'Costillas', 'Tomahawk', 'Parrilla', 'Ahumados', 'Brisket', 'Cabrito', 'Mariscos', 'Rib Eyes', 'Arrachera', 'Picana', 'T-Bone'];
 
 export function Browse01({ navigation }: Props) {
-  const { chefs, selectChef } = useAppState();
+  const { chefs, selectChef, authUser } = useAppState();
   const [activeCategory, setActiveCategory] = useState(categories[0]);
+  const [showGrillersModal, setShowGrillersModal] = useState(false);
   const heroItem = featured[0];
   const heroChef = chefs.find((chef) => chef.id === heroItem.chefId);
   const heroCoverUrl = getChefCoverUrl(heroChef);
   const heroFallbackUrl = getLocalCoverUriByChef(heroChef?.id ?? heroItem.chefId);
+  const nearestCity = authUser?.city ?? 'Nuevo Laredo';
+
+  const availableGrillers = useMemo(() => {
+    return [...chefs].sort((a, b) => {
+      const cityScoreA = a.city.toLowerCase() === nearestCity.toLowerCase() ? 1 : 0;
+      const cityScoreB = b.city.toLowerCase() === nearestCity.toLowerCase() ? 1 : 0;
+
+      if (cityScoreA !== cityScoreB) {
+        return cityScoreB - cityScoreA;
+      }
+
+      if (a.rating !== b.rating) {
+        return b.rating - a.rating;
+      }
+
+      return a.basePrice - b.basePrice;
+    });
+  }, [chefs, nearestCity]);
   const visibleFeatured = useMemo(() => {
     if (activeCategory === 'Top') {
       return featured;
@@ -50,13 +69,13 @@ export function Browse01({ navigation }: Props) {
     <View style={styles.screen}>
       <AppScreen scroll contentStyle={styles.scrollContent}>
         <View style={styles.headerRow}>
-          <AppText variant="title" style={styles.title}>populares en tu zona</AppText>
+          <AppText variant="title" style={styles.title}>Populares en tu zona</AppText>
           <Pressable onPress={() => navigation.navigate('Search')}>
             <AppText variant="body" style={styles.search}>Buscar</AppText>
           </Pressable>
         </View>
 
-        <View style={styles.categoriesRow}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoriesRow}>
           {categories.map((item) => (
             <AppChip
               key={item}
@@ -65,7 +84,7 @@ export function Browse01({ navigation }: Props) {
               onPress={() => setActiveCategory(item)}
             />
           ))}
-        </View>
+        </ScrollView>
 
         <AppCard
           style={styles.heroCard}
@@ -140,11 +159,53 @@ export function Browse01({ navigation }: Props) {
           label="Contratar al Griller"
           variant="primary"
           onPress={() => {
-            selectChef(featured[0].chefId);
-            navigation.navigate('Schedule');
+            setShowGrillersModal(true);
           }}
         />
       </AppScreen>
+
+      <Modal visible={showGrillersModal} transparent animationType="fade" onRequestClose={() => setShowGrillersModal(false)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <AppText variant="section">Grillers disponibles</AppText>
+              <Pressable onPress={() => setShowGrillersModal(false)}>
+                <AppText variant="body" style={styles.modalClose}>Cerrar</AppText>
+              </Pressable>
+            </View>
+            <AppText variant="caption" style={styles.modalHint}>Mostrando primero los cercanos/populares en {nearestCity}.</AppText>
+
+            <ScrollView style={styles.modalList} contentContainerStyle={styles.modalListContent}>
+              {availableGrillers.map((griller) => {
+                const avatarUrl = getChefAvatarUrl(griller);
+                const avatarFallbackUrl = getLocalAvatarUriByChef(griller.id);
+                return (
+                  <AppCard key={griller.id} style={styles.grillerCard}>
+                    <View style={styles.grillerRow}>
+                      <ReliableImage uri={avatarUrl} fallbackUri={avatarFallbackUrl} style={styles.grillerAvatar} />
+                      <View style={styles.grillerBody}>
+                        <AppText variant="section" style={styles.grillerName}>{griller.name}</AppText>
+                        <AppText variant="caption">{griller.city} · {griller.rating.toFixed(1)} 🔥</AppText>
+                        <AppText variant="caption">Desde ${griller.basePrice.toLocaleString('es-MX')} MXN</AppText>
+                      </View>
+                      <Pressable
+                        style={styles.grillerAction}
+                        onPress={() => {
+                          selectChef(griller.id);
+                          setShowGrillersModal(false);
+                          navigation.navigate('Schedule');
+                        }}
+                      >
+                        <AppText variant="caption" style={styles.grillerActionLabel}>Reservar</AppText>
+                      </Pressable>
+                    </View>
+                  </AppCard>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
 
       <BottomNav activeTab="Browse01" onNavigate={(route) => navigation.navigate(route)} />
     </View>
@@ -157,11 +218,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background
   },
   scrollContent: {
-    paddingTop: 24,
+    paddingTop: 14,
     paddingBottom: 120
   },
   headerRow: {
     minHeight: 44,
+    marginTop: 8,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -169,8 +231,8 @@ const styles = StyleSheet.create({
   },
   title: {
     maxWidth: 250,
-    fontSize: 30,
-    lineHeight: 34
+    fontSize: 26,
+    lineHeight: 30
   },
   search: {
     color: colors.primary,
@@ -179,8 +241,8 @@ const styles = StyleSheet.create({
   categoriesRow: {
     marginTop: 8,
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: AppSpacing.s8
+    gap: AppSpacing.s8,
+    paddingRight: 24
   },
   heroCard: {
     marginTop: 4,
@@ -249,5 +311,71 @@ const styles = StyleSheet.create({
   itemPrice: {
     color: colors.primaryDark,
     fontWeight: '900'
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(17, 24, 39, 0.45)',
+    paddingHorizontal: 16,
+    justifyContent: 'center'
+  },
+  modalCard: {
+    maxHeight: '78%',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: '#FFFFFF',
+    padding: 14
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8
+  },
+  modalClose: {
+    color: colors.primary,
+    fontWeight: '800'
+  },
+  modalHint: {
+    marginTop: 4
+  },
+  modalList: {
+    marginTop: 10
+  },
+  modalListContent: {
+    gap: 8,
+    paddingBottom: 4
+  },
+  grillerCard: {
+    borderColor: '#F0F2F5'
+  },
+  grillerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10
+  },
+  grillerAvatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 50,
+    backgroundColor: '#F6F6F6'
+  },
+  grillerBody: {
+    flex: 1,
+    gap: 1
+  },
+  grillerName: {
+    fontSize: 16
+  },
+  grillerAction: {
+    minHeight: 32,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    backgroundColor: colors.primary,
+    justifyContent: 'center'
+  },
+  grillerActionLabel: {
+    color: '#FFFFFF',
+    fontWeight: '800'
   }
 });

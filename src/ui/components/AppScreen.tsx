@@ -1,5 +1,6 @@
 import { ReactNode } from 'react';
-import { SafeAreaView, ScrollView, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
+import { ScrollView, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors, spacing } from '../theme';
 
@@ -26,7 +27,7 @@ export function AppScreen({
   contentStyle
 }: AppScreenProps) {
   return (
-    <SafeAreaView style={[styles.safeArea, style]}>
+    <SafeAreaView edges={['top']} style={[styles.safeArea, style]}>
       {scroll ? (
         <ScrollView
           showsVerticalScrollIndicator={false}

@@ -1,31 +1,217 @@
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
+import { ReliableImage } from '../../components/ui/ReliableImage';
 import { RootStackParamList } from '../../navigation/screenConfig';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
+import { getLocalAvatarUriByChef } from '../../data/localMedia';
 import { useAppState } from '../../state/AppStateContext';
 import { ServiceMode } from '../../types/domain';
 import { colors } from '../../theme/colors';
+import { getChefAvatarUrl } from '../../utils/chefMedia';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Schedule'>;
+type DateOption = {
+  key: string;
+  label: string;
+  shortLabel: string;
+  monthKey: string;
+  monthLabel: string;
+  weekday: number;
+};
 
-const dayOptions = ['Viernes 12 Abril 2026', 'Sabado 13 Abril 2026', 'Domingo 14 Abril 2026', 'Lunes 15 Abril 2026'];
-const timeOptions = ['6:00 PM', '7:00 PM', '8:00 PM', '9:00 PM'];
 const modes: ServiceMode[] = ['A domicilio', 'En terraza del griller'];
 
-function shortenDateLabel(label: string): string {
-  return label
-    .replace('Viernes ', 'Vie ')
-    .replace('Sabado ', 'Sab ')
-    .replace('Domingo ', 'Dom ')
-    .replace('Lunes ', 'Lun ')
-    .replace(' Abril 2026', '');
+const monthLabels = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+const weekdayLabels = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'];
+const weekdayShort = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
+
+const availabilityByChefId: Record<
+  string,
+  {
+    weekdays: number[];
+    defaultTimes: string[];
+    timesByWeekday: Partial<Record<number, string[]>>;
+    blockedDates?: string[];
+  }
+> = {
+  'erick-martinez': {
+    weekdays: [3, 4, 5, 6, 0],
+    defaultTimes: ['6:00 PM', '7:00 PM', '8:00 PM', '9:00 PM'],
+    timesByWeekday: {
+      0: ['2:00 PM', '5:00 PM', '7:30 PM'],
+      5: ['6:00 PM', '7:00 PM', '8:00 PM', '9:30 PM'],
+      6: ['1:00 PM', '4:00 PM', '7:00 PM']
+    }
+  },
+  'carlos-bbq': {
+    weekdays: [2, 4, 5, 6, 0],
+    defaultTimes: ['2:00 PM', '5:00 PM', '8:00 PM'],
+    timesByWeekday: {
+      0: ['1:00 PM', '3:00 PM', '6:00 PM', '8:00 PM'],
+      6: ['1:00 PM', '4:00 PM', '7:00 PM']
+    }
+  },
+  'martin-asador': {
+    weekdays: [1, 3, 4, 5, 6],
+    defaultTimes: ['2:00 PM', '5:00 PM', '7:30 PM'],
+    timesByWeekday: {
+      4: ['2:00 PM', '5:00 PM', '7:30 PM', '9:30 PM'],
+      5: ['1:00 PM', '4:00 PM', '7:00 PM', '9:00 PM']
+    }
+  },
+  'luis-bbq': {
+    weekdays: [2, 4, 5, 6, 0],
+    defaultTimes: ['12:00 PM', '2:00 PM', '4:00 PM', '7:00 PM'],
+    timesByWeekday: {
+      0: ['11:00 AM', '1:00 PM', '4:00 PM', '7:00 PM'],
+      6: ['12:00 PM', '3:00 PM', '6:00 PM']
+    }
+  },
+  'cories-bbq': {
+    weekdays: [3, 5, 6, 0],
+    defaultTimes: ['2:00 PM', '5:00 PM', '8:00 PM'],
+    timesByWeekday: {
+      5: ['12:00 PM', '2:00 PM', '5:00 PM', '8:00 PM'],
+      6: ['1:00 PM', '3:30 PM', '6:30 PM']
+    }
+  }
+};
+
+function buildDateKey(date: Date): string {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, '0');
+  const day = `${date.getDate()}`.padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function buildDateLabel(date: Date): string {
+  const weekday = weekdayLabels[date.getDay()];
+  const month = monthLabels[date.getMonth()];
+  return `${weekday} ${date.getDate()} ${month} ${date.getFullYear()}`;
+}
+
+function buildShortDateLabel(date: Date): string {
+  const shortWeekday = weekdayShort[date.getDay()] ?? weekdayLabels[date.getDay()].slice(0, 3);
+  const day = date.getDate();
+  const shortMonth = monthLabels[date.getMonth()].slice(0, 3);
+  return `${shortWeekday} ${day} ${shortMonth}`;
+}
+
+function buildMonthKey(date: Date): string {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, '0');
+  return `${year}-${month}`;
+}
+
+function buildMonthLabel(date: Date): string {
+  const month = monthLabels[date.getMonth()];
+  return `${month} ${date.getFullYear()}`;
 }
 
 export function Schedule({ navigation }: Props) {
   const { selectedChef, bookingDraft, bookingSummary, updateBookingDraft } = useAppState();
+  const [showAllDates, setShowAllDates] = useState(false);
+  const [selectedMonthKey, setSelectedMonthKey] = useState<string>('all');
+  const avatarUrl = getChefAvatarUrl(selectedChef);
+  const avatarFallbackUrl = getLocalAvatarUriByChef(selectedChef.id);
+
+  const availability = availabilityByChefId[selectedChef.id] ?? {
+    weekdays: [1, 2, 3, 4, 5, 6, 0],
+    defaultTimes: ['6:00 PM', '7:00 PM', '8:00 PM'],
+    timesByWeekday: {}
+  };
+
+  const dateOptions = useMemo(() => {
+    const options: DateOption[] = [];
+    const start = new Date();
+    let offset = 0;
+
+    while (options.length < 56 && offset < 120) {
+      const candidate = new Date(start);
+      candidate.setDate(start.getDate() + offset);
+      const dateKey = buildDateKey(candidate);
+
+      if (availability.weekdays.includes(candidate.getDay()) && !availability.blockedDates?.includes(dateKey)) {
+        options.push({
+          key: dateKey,
+          label: buildDateLabel(candidate),
+          shortLabel: buildShortDateLabel(candidate),
+          monthKey: buildMonthKey(candidate),
+          monthLabel: buildMonthLabel(candidate),
+          weekday: candidate.getDay()
+        });
+      }
+
+      offset += 1;
+    }
+
+    return options;
+  }, [availability.blockedDates, availability.weekdays]);
+
+  const monthOptions = useMemo(() => {
+    const map = new Map<string, string>();
+
+    dateOptions.forEach((option) => {
+      if (!map.has(option.monthKey)) {
+        map.set(option.monthKey, option.monthLabel);
+      }
+    });
+
+    return [{ key: 'all', label: 'Todas' }, ...Array.from(map.entries()).map(([key, label]) => ({ key, label }))];
+  }, [dateOptions]);
+
+  const filteredDateOptions = useMemo(() => {
+    if (selectedMonthKey === 'all') {
+      return dateOptions;
+    }
+
+    return dateOptions.filter((option) => option.monthKey === selectedMonthKey);
+  }, [dateOptions, selectedMonthKey]);
+
+  const selectedDateOption = useMemo(() => {
+    return dateOptions.find((option) => option.label === bookingDraft.dateLabel) ?? null;
+  }, [bookingDraft.dateLabel, dateOptions]);
+
+  const timeOptions = useMemo(() => {
+    if (!selectedDateOption) {
+      return availability.defaultTimes;
+    }
+
+    return availability.timesByWeekday[selectedDateOption.weekday] ?? availability.defaultTimes;
+  }, [availability.defaultTimes, availability.timesByWeekday, selectedDateOption]);
+
+  const visibleDateOptions = showAllDates ? filteredDateOptions : filteredDateOptions.slice(0, 12);
+
+  useEffect(() => {
+    setShowAllDates(false);
+    setSelectedMonthKey('all');
+  }, [selectedChef.id]);
+
+  useEffect(() => {
+    if (!dateOptions.some((option) => option.label === bookingDraft.dateLabel) && dateOptions.length > 0) {
+      updateBookingDraft({ dateLabel: dateOptions[0].label });
+    }
+  }, [bookingDraft.dateLabel, dateOptions, updateBookingDraft]);
+
+  useEffect(() => {
+    if (selectedMonthKey === 'all') {
+      return;
+    }
+
+    if (!filteredDateOptions.some((option) => option.label === bookingDraft.dateLabel) && filteredDateOptions.length > 0) {
+      updateBookingDraft({ dateLabel: filteredDateOptions[0].label });
+    }
+  }, [bookingDraft.dateLabel, filteredDateOptions, selectedMonthKey, updateBookingDraft]);
+
+  useEffect(() => {
+    if (!timeOptions.includes(bookingDraft.timeLabel) && timeOptions.length > 0) {
+      updateBookingDraft({ timeLabel: timeOptions[0] });
+    }
+  }, [bookingDraft.timeLabel, timeOptions, updateBookingDraft]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -35,7 +221,7 @@ export function Schedule({ navigation }: Props) {
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
             <View style={styles.summaryCard}>
-              <View style={styles.summaryAvatar} />
+              <ReliableImage uri={avatarUrl} fallbackUri={avatarFallbackUrl} style={styles.summaryAvatar} />
               <View style={styles.summaryBody}>
                 <Text style={styles.summaryName}>{selectedChef.name}</Text>
                 <Text style={styles.summaryMeta}>{selectedChef.title}</Text>
@@ -45,17 +231,46 @@ export function Schedule({ navigation }: Props) {
 
             <View style={styles.block}>
               <Text style={styles.blockTitle}>Fecha</Text>
-              <View style={styles.chipRow}>
-                {dayOptions.map((day) => {
-                  const active = bookingDraft.dateLabel === day;
+              <Text style={styles.helperText}>Disponibilidad real segun calendario del griller.</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.monthScrollRow}>
+                {monthOptions.map((month) => {
+                  const active = selectedMonthKey === month.key;
 
                   return (
-                    <Pressable key={day} style={[styles.chip, active ? styles.chipActive : null]} onPress={() => updateBookingDraft({ dateLabel: day })}>
-                      <Text style={[styles.chipText, active ? styles.chipTextActive : null]}>{shortenDateLabel(day)}</Text>
+                    <Pressable
+                      key={month.key}
+                      style={[styles.monthChip, active ? styles.chipActive : null]}
+                      onPress={() => {
+                        setSelectedMonthKey(month.key);
+                        setShowAllDates(false);
+                      }}
+                    >
+                      <Text style={[styles.chipText, active ? styles.chipTextActive : null]}>{month.label}</Text>
                     </Pressable>
                   );
                 })}
-              </View>
+              </ScrollView>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dateScrollRow}>
+                {visibleDateOptions.map((option) => {
+                  const active = bookingDraft.dateLabel === option.label;
+
+                  return (
+                    <Pressable
+                      key={option.key}
+                      style={[styles.dateChip, active ? styles.chipActive : null]}
+                      onPress={() => updateBookingDraft({ dateLabel: option.label })}
+                    >
+                      <Text style={[styles.chipText, active ? styles.chipTextActive : null]}>{option.shortLabel}</Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+              {visibleDateOptions.length === 0 ? <Text style={styles.emptyState}>No hay fechas para este mes.</Text> : null}
+              {filteredDateOptions.length > 12 ? (
+                <Pressable style={styles.moreDatesBtn} onPress={() => setShowAllDates((prev) => !prev)}>
+                  <Text style={styles.moreDatesLabel}>{showAllDates ? 'Ver menos fechas' : 'Ver mas fechas'}</Text>
+                </Pressable>
+              ) : null}
             </View>
 
             <View style={styles.block}>
@@ -167,10 +382,46 @@ const styles = StyleSheet.create({
   block: {
     gap: 10
   },
+  helperText: {
+    color: colors.textSoft,
+    fontSize: 12,
+    fontWeight: '600'
+  },
   blockTitle: {
     color: colors.textStrong,
     fontSize: 18,
     fontWeight: '900'
+  },
+  dateScrollRow: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingRight: 20
+  },
+  monthScrollRow: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingRight: 20
+  },
+  monthChip: {
+    minHeight: 34,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 12,
+    justifyContent: 'center'
+  },
+  dateChip: {
+    minHeight: 36,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 12,
+    justifyContent: 'center'
+  },
+  emptyState: {
+    color: colors.textSoft,
+    fontWeight: '600',
+    fontSize: 12
   },
   chipRow: {
     flexDirection: 'row',
@@ -196,6 +447,20 @@ const styles = StyleSheet.create({
   },
   chipTextActive: {
     color: colors.primaryDark
+  },
+  moreDatesBtn: {
+    alignSelf: 'flex-start',
+    minHeight: 30,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 10,
+    justifyContent: 'center'
+  },
+  moreDatesLabel: {
+    color: colors.primary,
+    fontWeight: '800',
+    fontSize: 12
   },
   option: {
     minHeight: 46,

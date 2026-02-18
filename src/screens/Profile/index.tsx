@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { WebView } from 'react-native-webview';
 
 import { grillerzApi } from '../../api/grillerzApi';
 import { AppCard } from '../../components/ui/AppCard';
@@ -136,11 +137,23 @@ export function Profile({ navigation }: Props) {
   const [grillerVideos, setGrillerVideos] = useState<ChefVideo[]>(getGrillerVideos(selectedChef.id));
   const [reviews, setReviews] = useState<ChefReview[]>(fallbackReviewsByChefId[selectedChef.id] ?? []);
   const [selectedPackageId, setSelectedPackageId] = useState(chefPackages[0].id);
+  const [selectedVideo, setSelectedVideo] = useState<ChefVideo | null>(null);
+  const [showVideoModal, setShowVideoModal] = useState(false);
 
   useEffect(() => {
     const fallbackPackage = (packagesByChefId[selectedChef.id] ?? packagesByChefId['erick-martinez'])[0];
     setSelectedPackageId(fallbackPackage.id);
   }, [selectedChef.id]);
+
+  function openVideoModal(video: ChefVideo) {
+    setSelectedVideo(video);
+    setShowVideoModal(true);
+  }
+
+  function closeVideoModal() {
+    setShowVideoModal(false);
+    setSelectedVideo(null);
+  }
 
   useEffect(() => {
     let active = true;
@@ -301,7 +314,7 @@ export function Profile({ navigation }: Props) {
               <Text style={styles.sectionTitle}>Videos del griller (YouTube)</Text>
               <View style={styles.videosList}>
                 {grillerVideos.map((video) => (
-                  <AppCard key={video.id} padded={false} style={styles.videoCard} onPress={() => Linking.openURL(video.youtubeUrl)}>
+                  <AppCard key={video.id} padded={false} style={styles.videoCard} onPress={() => openVideoModal(video)}>
                     <ReliableImageBackground
                       uri={getYouTubeThumbnail(video.videoId)}
                       fallbackUri={getLocalVideoThumbUri(video.videoId)}
@@ -357,6 +370,29 @@ export function Profile({ navigation }: Props) {
             <PrimaryButton label="Reservar ahora" onPress={() => navigation.navigate('Schedule')} />
           </ScrollView>
         </View>
+
+        <Modal visible={showVideoModal} animationType="fade" transparent onRequestClose={closeVideoModal}>
+          <View style={styles.videoModalBackdrop}>
+            <View style={styles.videoModalCard}>
+              <View style={styles.videoModalHeader}>
+                <Text style={styles.videoModalTitle}>{selectedVideo?.title ?? 'Video del griller'}</Text>
+                <Pressable onPress={closeVideoModal}>
+                  <Text style={styles.videoModalClose}>Cerrar</Text>
+                </Pressable>
+              </View>
+              {selectedVideo ? (
+                <WebView
+                  source={{ uri: `https://www.youtube.com/embed/${selectedVideo.videoId}?autoplay=1&rel=0&modestbranding=1&playsinline=1` }}
+                  style={styles.videoWebview}
+                  javaScriptEnabled
+                  domStorageEnabled
+                  allowsInlineMediaPlayback
+                  mediaPlaybackRequiresUserAction={false}
+                />
+              ) : null}
+            </View>
+          </View>
+        </Modal>
 
         <BottomNav activeTab="Profile" onNavigate={(route) => navigation.navigate(route)} />
       </View>
@@ -631,5 +667,42 @@ const styles = StyleSheet.create({
     color: colors.textSoft,
     fontSize: 13,
     fontWeight: '600'
+  },
+  videoModalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 10, 8, 0.75)',
+    justifyContent: 'center',
+    paddingHorizontal: 12
+  },
+  videoModalCard: {
+    borderRadius: 14,
+    overflow: 'hidden',
+    backgroundColor: '#0B0D10',
+    borderWidth: 1,
+    borderColor: '#1F242D'
+  },
+  videoModalHeader: {
+    minHeight: 44,
+    backgroundColor: '#14181F',
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8
+  },
+  videoModalTitle: {
+    flex: 1,
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 14
+  },
+  videoModalClose: {
+    color: colors.primary,
+    fontWeight: '800'
+  },
+  videoWebview: {
+    width: '100%',
+    height: 260,
+    backgroundColor: '#000000'
   }
 });
