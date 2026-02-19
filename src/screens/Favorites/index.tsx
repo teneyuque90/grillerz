@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -8,21 +9,51 @@ import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import { BottomNav } from '../../components/ui/BottomNav';
 import { ReliableImage } from '../../components/ui/ReliableImage';
 import { ReliableImageBackground } from '../../components/ui/ReliableImageBackground';
+import { AppChip } from '../../components/ui/AppChip';
 import { useAppState } from '../../state/AppStateContext';
 import { colors } from '../../theme/colors';
+import { Chef } from '../../types/domain';
 import { getLocalAvatarUriByChef, getLocalCoverUriByChef } from '../../data/localMedia';
 import { getChefAvatarUrl, getChefCoverUrl } from '../../utils/chefMedia';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Favorites'>;
+type FavoritesFilter = 'all' | 'topRated' | 'nearMe';
 
-const favorites = [
-  { chefId: 'erick-martinez', specialty: 'Costillas / Tomahawk', price: '$2,800' },
-  { chefId: 'carlos-bbq', specialty: 'Parrilla Mixta', price: '$3,200' },
-  { chefId: 'martin-asador', specialty: 'Brisket / Costillas', price: '$3,600' }
-];
+function getFilterLabel(filter: FavoritesFilter) {
+  if (filter === 'topRated') {
+    return 'Top rated';
+  }
+
+  if (filter === 'nearMe') {
+    return 'Cerca de mi';
+  }
+
+  return 'Todos';
+}
 
 export function Favorites({ navigation }: Props) {
-  const { chefs, selectChef } = useAppState();
+  const [activeFilter, setActiveFilter] = useState<FavoritesFilter>('all');
+  const { authUser, chefs, favoriteChefIds, selectChef, toggleFavoriteChef } = useAppState();
+  const userCity = authUser?.city?.trim().toLowerCase() ?? '';
+
+  const favoriteChefs = useMemo(() => {
+    const byId = new Map(chefs.map((item) => [item.id, item]));
+    return favoriteChefIds.map((id) => byId.get(id)).filter(Boolean) as Chef[];
+  }, [chefs, favoriteChefIds]);
+
+  const filteredChefs = useMemo(() => {
+    const base = [...favoriteChefs].sort((a, b) => b.rating - a.rating);
+
+    if (activeFilter === 'topRated') {
+      return base.filter((item) => item.rating >= 4.8);
+    }
+
+    if (activeFilter === 'nearMe') {
+      return base.filter((item) => item.city.trim().toLowerCase() === userCity);
+    }
+
+    return base;
+  }, [activeFilter, favoriteChefs, userCity]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -36,62 +67,85 @@ export function Favorites({ navigation }: Props) {
           />
 
           <View style={styles.chipsRow}>
-            <Pressable style={[styles.chip, styles.chipActive]}>
-              <Text style={[styles.chipText, styles.chipTextActive]}>Todos</Text>
-            </Pressable>
-            <Pressable style={styles.chip}>
-              <Text style={styles.chipText}>Top rated</Text>
-            </Pressable>
-            <Pressable style={styles.chip}>
-              <Text style={styles.chipText}>Cerca de mi</Text>
-            </Pressable>
+            <AppChip label="Todos" selected={activeFilter === 'all'} onPress={() => setActiveFilter('all')} />
+            <AppChip label="Top rated" selected={activeFilter === 'topRated'} onPress={() => setActiveFilter('topRated')} />
+            <AppChip label="Cerca de mi" selected={activeFilter === 'nearMe'} onPress={() => setActiveFilter('nearMe')} />
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.list}>
-            {favorites.map((item) => {
-              const chef = chefs.find((candidate) => candidate.id === item.chefId);
+            {filteredChefs.length === 0 ? (
+              <View style={styles.emptyCard}>
+                <Text style={styles.emptyTitle}>No hay grillers en este filtro</Text>
+                <Text style={styles.emptySubtitle}>Filtro activo: {getFilterLabel(activeFilter)}. Prueba otro filtro o agrega favoritos desde su perfil.</Text>
+                <Pressable style={styles.emptyAction} onPress={() => navigation.navigate('Browse01')}>
+                  <Text style={styles.emptyActionLabel}>Ver grillers</Text>
+                </Pressable>
+              </View>
+            ) : null}
+
+            {filteredChefs.map((chef) => {
               const avatarUrl = getChefAvatarUrl(chef);
               const coverUrl = getChefCoverUrl(chef);
-              const avatarFallbackUrl = getLocalAvatarUriByChef(chef?.id ?? item.chefId);
-              const coverFallbackUrl = getLocalCoverUriByChef(chef?.id ?? item.chefId);
+              const avatarFallbackUrl = getLocalAvatarUriByChef(chef.id);
+              const coverFallbackUrl = getLocalCoverUriByChef(chef.id);
 
               return (
-                <View key={item.chefId} style={styles.card}>
-                  <ReliableImageBackground uri={coverUrl} fallbackUri={coverFallbackUrl} style={styles.cover} imageStyle={styles.coverImage}>
+                <View key={chef.id} style={styles.card}>
+                  <ReliableImageBackground
+                    uri={coverUrl}
+                    fallbackUri={coverFallbackUrl}
+                    style={styles.cover}
+                    imageStyle={styles.coverImage}
+                  >
                     <View style={styles.coverShade} />
                   </ReliableImageBackground>
-                  <View style={styles.topRow}>
+
+                  <View style={styles.profileRow}>
                     <ReliableImage uri={avatarUrl} fallbackUri={avatarFallbackUrl} style={styles.avatar} />
                     <View style={styles.headline}>
-                      <Text style={styles.name}>{chef?.name ?? 'Griller'}</Text>
-                      <Text style={styles.subline}>{item.specialty}</Text>
+                      <Text style={styles.name}>{chef.name}</Text>
+                      <Text style={styles.subline}>{chef.title}</Text>
                       <View style={styles.metaRow}>
-                        <Text style={styles.meta}>{chef?.city ?? 'Nuevo Laredo'}</Text>
+                        <Text style={styles.meta}>{chef.city}</Text>
                         <View style={styles.ratingChip}>
-                          <MaterialCommunityIcons name="fire" size={12} color={colors.primary} />
-                          <Text style={styles.ratingText}>{chef?.rating ?? 4.8}</Text>
+                          <MaterialCommunityIcons name="fire" size={14} color={colors.primary} />
+                          <Text style={styles.ratingText}>{chef.rating.toFixed(1)}</Text>
                         </View>
                       </View>
                     </View>
-                    <Text style={styles.heart}>Fav</Text>
+                    <Pressable
+                      style={styles.favoriteButton}
+                      onPress={() => toggleFavoriteChef(chef.id)}
+                      hitSlop={8}
+                    >
+                      <MaterialCommunityIcons name="heart" size={18} color={colors.primary} />
+                    </Pressable>
+                  </View>
+
+                  <View style={styles.specialtyWrap}>
+                    {chef.specialties.slice(0, 3).map((item) => (
+                      <View key={`${chef.id}-${item}`} style={styles.specialtyChip}>
+                        <Text style={styles.specialtyLabel}>{item}</Text>
+                      </View>
+                    ))}
                   </View>
 
                   <View style={styles.bottomRow}>
-                    <Text style={styles.price}>{item.price} MXN</Text>
+                    <Text style={styles.price}>Desde ${chef.basePrice.toLocaleString('es-MX')} MXN</Text>
                     <View style={styles.actionsRow}>
                       <Pressable
                         style={styles.secondaryBtn}
                         onPress={() => {
-                          selectChef(item.chefId);
+                          selectChef(chef.id);
                           navigation.navigate('Profile');
                         }}
                       >
-                        <Text style={styles.secondaryLabel}>Perfil</Text>
+                        <Text style={styles.secondaryLabel}>Ver perfil</Text>
                       </Pressable>
                       <Pressable
                         style={styles.primaryBtn}
                         onPress={() => {
-                          selectChef(item.chefId);
+                          selectChef(chef.id);
                           navigation.navigate('Schedule');
                         }}
                       >
@@ -127,44 +181,57 @@ const styles = StyleSheet.create({
     paddingBottom: 120
   },
   chipsRow: {
-    marginTop: 12,
+    marginTop: 14,
     flexDirection: 'row',
     gap: 8
   },
-  chip: {
-    minHeight: 34,
-    borderRadius: 999,
+  list: {
+    marginTop: 16,
+    gap: 16,
+    paddingBottom: 20
+  },
+  emptyCard: {
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: colors.border,
-    paddingHorizontal: 12,
+    padding: 16,
+    gap: 10,
+    backgroundColor: '#FFFFFF'
+  },
+  emptyTitle: {
+    color: colors.textStrong,
+    fontSize: 16,
+    fontWeight: '900'
+  },
+  emptySubtitle: {
+    color: colors.textMuted,
+    fontSize: 13,
+    fontWeight: '600',
+    lineHeight: 18
+  },
+  emptyAction: {
+    alignSelf: 'flex-start',
+    minHeight: 36,
+    borderRadius: 999,
+    backgroundColor: colors.primary,
+    paddingHorizontal: 14,
     justifyContent: 'center'
   },
-  chipActive: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primarySoft
-  },
-  chipText: {
-    color: colors.textMuted,
-    fontWeight: '700',
-    fontSize: 12
-  },
-  chipTextActive: {
-    color: colors.primaryDark
-  },
-  list: {
-    marginTop: 14,
-    gap: 12,
-    paddingBottom: 12
+  emptyActionLabel: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '800'
   },
   card: {
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: 10,
-    gap: 10
+    padding: 12,
+    gap: 12,
+    backgroundColor: '#FFFFFF'
   },
   cover: {
-    height: 74,
+    height: 116,
     borderRadius: 12,
     overflow: 'hidden'
   },
@@ -173,20 +240,20 @@ const styles = StyleSheet.create({
   },
   coverShade: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(15, 10, 8, 0.22)'
+    backgroundColor: 'rgba(15, 10, 8, 0.2)'
   },
-  topRow: {
-    marginTop: -16,
+  profileRow: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 10
+    gap: 10,
+    marginTop: -24,
+    alignItems: 'flex-end'
   },
   avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 56,
+    width: 68,
+    height: 68,
+    borderRadius: 68,
     backgroundColor: '#FFE5E2',
-    borderWidth: 2,
+    borderWidth: 3,
     borderColor: '#FFFFFF'
   },
   headline: {
@@ -195,24 +262,25 @@ const styles = StyleSheet.create({
   },
   name: {
     color: colors.textStrong,
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '900'
   },
   subline: {
-    color: colors.text,
+    color: colors.textMuted,
     fontSize: 13,
-    fontWeight: '600'
+    fontWeight: '700'
+  },
+  metaRow: {
+    marginTop: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8
   },
   meta: {
     color: colors.textMuted,
     fontSize: 12,
     fontWeight: '700'
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 8
   },
   ratingChip: {
     flexDirection: 'row',
@@ -222,18 +290,42 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#FFD4CC',
     backgroundColor: '#FFF1EE',
-    paddingHorizontal: 7,
-    paddingVertical: 2
+    paddingHorizontal: 8,
+    paddingVertical: 3
   },
   ratingText: {
     color: colors.primaryDark,
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '800'
   },
-  heart: {
-    color: colors.primary,
-    fontWeight: '800',
-    fontSize: 12
+  favoriteButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 36,
+    borderWidth: 1,
+    borderColor: '#FFD4CC',
+    backgroundColor: '#FFF1EE',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  specialtyWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8
+  },
+  specialtyChip: {
+    minHeight: 30,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: '#F9FAFB',
+    justifyContent: 'center',
+    paddingHorizontal: 10
+  },
+  specialtyLabel: {
+    color: colors.textMuted,
+    fontSize: 12,
+    fontWeight: '700'
   },
   bottomRow: {
     flexDirection: 'row',
@@ -242,8 +334,9 @@ const styles = StyleSheet.create({
     gap: 10
   },
   price: {
+    flex: 1,
     color: colors.primaryDark,
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '900'
   },
   actionsRow: {
@@ -251,7 +344,7 @@ const styles = StyleSheet.create({
     gap: 8
   },
   secondaryBtn: {
-    minHeight: 34,
+    minHeight: 36,
     borderRadius: 999,
     borderWidth: 1,
     borderColor: colors.borderStrong,
@@ -264,7 +357,7 @@ const styles = StyleSheet.create({
     fontSize: 12
   },
   primaryBtn: {
-    minHeight: 34,
+    minHeight: 36,
     borderRadius: 999,
     backgroundColor: colors.primary,
     paddingHorizontal: 12,

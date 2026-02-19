@@ -27,6 +27,7 @@ type AppStateContextValue = {
   isHydrated: boolean;
   authUser: User | null;
   chefs: Chef[];
+  favoriteChefIds: string[];
   selectedChef: Chef;
   bookingDraft: BookingDraft;
   bookingSummary: BookingSummary;
@@ -37,6 +38,8 @@ type AppStateContextValue = {
   completeVerification: (code: string) => Promise<ActionResult>;
   signOut: () => Promise<void>;
   selectChef: (chefId: string) => void;
+  toggleFavoriteChef: (chefId: string) => void;
+  isFavoriteChef: (chefId: string) => boolean;
   replaceChef: (chef: Chef) => void;
   replaceBookings: (items: Booking[]) => void;
   selectBooking: (bookingId: string) => void;
@@ -47,6 +50,7 @@ type AppStateContextValue = {
 type PersistedState = {
   authUser: User | null;
   authToken: string | null;
+  favoriteChefIds: string[];
   bookingDraft: BookingDraft;
   selectedChefId: string;
   bookings: Booking[];
@@ -61,6 +65,7 @@ type PendingRegistration = {
 
 const STORAGE_KEY = 'grillerz.app.state.v1';
 const DEFAULT_CHEF_ID = mockChefs[0].id;
+const DEFAULT_FAVORITES = ['erick-martinez', 'carlos-bbq'];
 const WAIT_MS = 260;
 const DEMO_ACCOUNTS = [
   {
@@ -172,6 +177,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [authUser, setAuthUser] = useState<User | null>(null);
   const [authToken, setAuthTokenState] = useState<string | null>(null);
   const [chefs, setChefs] = useState<Chef[]>(mockChefs);
+  const [favoriteChefIds, setFavoriteChefIds] = useState<string[]>(DEFAULT_FAVORITES);
   const [selectedChefId, setSelectedChefId] = useState<string>(DEFAULT_CHEF_ID);
   const [bookingDraft, setBookingDraft] = useState<BookingDraft>(createInitialDraft(DEFAULT_CHEF_ID));
   const [bookings, setBookings] = useState<Booking[]>(seedBookings(defaultUser.id));
@@ -194,6 +200,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         setAuthUser(parsed.authUser);
         setAuthTokenState(parsed.authToken ?? null);
         setAuthToken(parsed.authToken ?? null);
+        setFavoriteChefIds(parsed.favoriteChefIds ?? DEFAULT_FAVORITES);
         setSelectedChefId(parsed.selectedChefId);
         setBookingDraft(parsed.bookingDraft);
         setBookings(parsed.bookings);
@@ -265,6 +272,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     const payload: PersistedState = {
       authUser,
       authToken,
+      favoriteChefIds,
       selectedChefId,
       bookingDraft,
       bookings,
@@ -272,7 +280,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     };
 
     void AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-  }, [authToken, authUser, bookingDraft, bookings, isHydrated, selectedBookingId, selectedChefId]);
+  }, [authToken, authUser, bookingDraft, bookings, favoriteChefIds, isHydrated, selectedBookingId, selectedChefId]);
 
   const signIn = useCallback(async ({ email, password }: SignInPayload): Promise<ActionResult> => {
     if (!email.trim() || !password.trim()) {
@@ -387,6 +395,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     setAuthUser(null);
     setAuthTokenState(null);
     setAuthToken(null);
+    setFavoriteChefIds(DEFAULT_FAVORITES);
     setPendingRegistration(null);
     setSelectedChefId(DEFAULT_CHEF_ID);
     setBookingDraft(createInitialDraft(DEFAULT_CHEF_ID));
@@ -413,6 +422,23 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const selectBooking = useCallback((bookingId: string) => {
     setSelectedBookingId(bookingId);
   }, []);
+
+  const toggleFavoriteChef = useCallback((chefId: string) => {
+    setFavoriteChefIds((prev) => {
+      if (prev.includes(chefId)) {
+        return prev.filter((item) => item !== chefId);
+      }
+
+      return [chefId, ...prev];
+    });
+  }, []);
+
+  const isFavoriteChef = useCallback(
+    (chefId: string) => {
+      return favoriteChefIds.includes(chefId);
+    },
+    [favoriteChefIds]
+  );
 
   const replaceChef = useCallback((chef: Chef) => {
     setChefs((prev) => {
@@ -493,6 +519,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       isHydrated,
       authUser,
       chefs,
+      favoriteChefIds,
       selectedChef,
       bookingDraft,
       bookingSummary,
@@ -503,6 +530,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       completeVerification,
       signOut,
       selectChef,
+      toggleFavoriteChef,
+      isFavoriteChef,
       replaceChef,
       replaceBookings,
       selectBooking,
@@ -515,12 +544,15 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       bookingDraft,
       bookingSummary,
       bookings,
+      favoriteChefIds,
       chefs,
       completeVerification,
       confirmBooking,
       isHydrated,
+      isFavoriteChef,
       selectBooking,
       selectChef,
+      toggleFavoriteChef,
       replaceChef,
       replaceBookings,
       selectedBooking,

@@ -2,15 +2,20 @@ import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import * as ImagePicker from 'expo-image-picker';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { grillerzApi } from '../../api/grillerzApi';
 import { AppChip } from '../../components/ui/AppChip';
 import { BottomNav } from '../../components/ui/BottomNav';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
+import { ReliableImage } from '../../components/ui/ReliableImage';
+import { ReliableImageBackground } from '../../components/ui/ReliableImageBackground';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import { OFFLINE_DEMO_MODE } from '../../config/api';
 import { getFallbackChefPackages } from '../../data/chefPackages';
-import { getGrillerVideos } from '../../data/mediaLibrary';
+import { getLocalAvatarUriByChef, getLocalCoverUriByChef, getLocalGalleryUriByChef, getLocalVideoThumbUri } from '../../data/localMedia';
+import { getGrillerVideos, getYouTubeThumbnail } from '../../data/mediaLibrary';
 import { RootStackParamList } from '../../navigation/screenConfig';
 import { useAppState } from '../../state/AppStateContext';
 import { colors } from '../../theme/colors';
@@ -190,6 +195,45 @@ function parseGalleryUrls(input: string): string[] {
     .slice(0, 12);
 }
 
+function looksLikeLocalMedia(uri: string): boolean {
+  const value = uri.trim().toLowerCase();
+  return value.startsWith('file://') || value.startsWith('content://');
+}
+
+function extractYouTubeVideoId(rawInput: string): string {
+  const input = rawInput.trim();
+  if (!input) {
+    return '';
+  }
+
+  const withProtocol = /^https?:\/\//i.test(input) ? input : `https://${input}`;
+
+  try {
+    const url = new URL(withProtocol);
+    const host = url.hostname.replace(/^www\./, '').toLowerCase();
+
+    if (host === 'youtu.be') {
+      return url.pathname.split('/').filter(Boolean)[0] ?? '';
+    }
+
+    if (host === 'youtube.com' || host === 'm.youtube.com' || host === 'youtube-nocookie.com') {
+      const directId = url.searchParams.get('v')?.trim();
+      if (directId) {
+        return directId;
+      }
+
+      const parts = url.pathname.split('/').filter(Boolean);
+      if (parts[0] === 'embed' || parts[0] === 'shorts' || parts[0] === 'live') {
+        return parts[1] ?? '';
+      }
+    }
+  } catch {
+    return '';
+  }
+
+  return '';
+}
+
 function applyChefPatch(chef: Chef, patch: Partial<Chef>): Chef {
   return {
     ...chef,
@@ -245,6 +289,9 @@ export function Account({ navigation }: Props) {
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isSavingAvailability, setIsSavingAvailability] = useState(false);
   const [panelNotice, setPanelNotice] = useState<string | null>(null);
+  const [quickVideoUrl, setQuickVideoUrl] = useState('');
+  const [quickVideoTitle, setQuickVideoTitle] = useState('');
+  const [quickVideoSubtitle, setQuickVideoSubtitle] = useState('');
 
   useEffect(() => {
     if (manageableChefs.length === 0) {
@@ -270,6 +317,9 @@ export function Account({ navigation }: Props) {
     setAvailabilityTimesText((managedChef.availability?.times ?? ['6:00 PM']).join(', '));
     setBlockedDatesText((managedChef.availability?.blockedDates ?? []).join(', '));
     setSpecialDatesText(formatSpecialDatesInput(managedChef.availability?.specialDates));
+    setQuickVideoUrl('');
+    setQuickVideoTitle('');
+    setQuickVideoSubtitle('');
     setPanelNotice(null);
   }, [managedChef]);
 
@@ -318,6 +368,89 @@ export function Account({ navigation }: Props) {
       active = false;
     };
   }, [canManagePanel, managedChef]);
+
+  const parsedGallery = useMemo(() => parseGalleryUrls(profileDraft?.galleryText ?? ''), [profileDraft?.galleryText]);
+  const quickVideoId = useMemo(() => extractYouTubeVideoId(quickVideoUrl), [quickVideoUrl]);
+  const quickVideoPreviewUrl = quickVideoId ? getYouTubeThumbnail(quickVideoId) : '';
+  const quickVideoIsDuplicate = useMemo(() => {
+    if (!quickVideoId) {
+      return false;
+    }
+
+    return videoDraft.some((item) => extractYouTubeVideoId(item.youtubeUrl) === quickVideoId);
+  }, [quickVideoId, videoDraft]);
+  const avatarPreviewUri = profileDraft?.avatarUrl?.trim() || (managedChef ? getLocalAvatarUriByChef(managedChef.id) : '');
+  const coverPreviewUri = profileDraft?.coverUrl?.trim() || (managedChef ? getLocalCoverUriByChef(managedChef.id) : '');
+
+  function appendGalleryImage(uri: string) {
+    setProfileDraft((prev) => {
+      if (!prev) {
+        return prev;
+      }
+
+      const list = parseGalleryUrls(prev.galleryText);
+      if (list.length >= 12) {
+        setPanelNotice('Maximo 12 imagenes para menu visual.');
+        return prev;
+      }
+
+      return {
+        ...prev,
+        galleryText: [...list, uri].join(', ')
+      };
+    });
+  }
+
+  function removeGalleryImage(indexToRemove: number) {
+    setProfileDraft((prev) => {
+      if (!prev) {
+        return prev;
+      }
+
+      const next = parseGalleryUrls(prev.galleryText).filter((_, index) => index !== indexToRemove);
+      return {
+        ...prev,
+        galleryText: next.join(', ')
+      };
+    });
+  }
+
+  async function pickImage(field: 'avatarUrl' | 'coverUrl' | 'gallery') {
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        setPanelNotice('Debes permitir acceso a tus fotos para subir imagenes.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        quality: 0.9
+      });
+
+      if (result.canceled || !result.assets[0]) {
+        return;
+      }
+
+      const asset = result.assets[0];
+      if (asset.fileSize && asset.fileSize > 5 * 1024 * 1024) {
+        setPanelNotice('Imagen demasiado pesada. Usa una menor a 5MB.');
+        return;
+      }
+
+      if (field === 'gallery') {
+        appendGalleryImage(asset.uri);
+        setPanelNotice('Imagen agregada al menu visual.');
+        return;
+      }
+
+      setProfileDraft((prev) => (prev ? { ...prev, [field]: asset.uri } : prev));
+      setPanelNotice(field === 'avatarUrl' ? 'Avatar actualizado.' : 'Portada actualizada.');
+    } catch {
+      setPanelNotice('No se pudo abrir la galeria en este momento.');
+    }
+  }
 
   useEffect(() => {
     let active = true;
@@ -454,6 +587,42 @@ export function Account({ navigation }: Props) {
     ]);
   }
 
+  function addQuickVideoDraft() {
+    if (videoDraft.length >= 12) {
+      setPanelNotice('Maximo 12 videos por griller.');
+      return;
+    }
+
+    if (!quickVideoId) {
+      setPanelNotice('Pega un link valido de YouTube para agregar el video.');
+      return;
+    }
+
+    if (quickVideoIsDuplicate) {
+      setPanelNotice('Ese video ya esta agregado en tu lista.');
+      return;
+    }
+
+    const title = quickVideoTitle.trim() || `Video destacado #${videoDraft.length + 1}`;
+    const subtitle = quickVideoSubtitle.trim() || 'Video del griller';
+    const youtubeUrl = `https://www.youtube.com/watch?v=${quickVideoId}`;
+
+    setVideoDraft((prev) => [
+      {
+        id: buildDraftId(),
+        title,
+        subtitle,
+        youtubeUrl
+      },
+      ...prev
+    ]);
+
+    setQuickVideoUrl('');
+    setQuickVideoTitle('');
+    setQuickVideoSubtitle('');
+    setPanelNotice('Video agregado. No olvides presionar "Guardar videos".');
+  }
+
   function removeVideoDraft(id: string) {
     setVideoDraft((prev) => prev.filter((item) => item.id !== id));
   }
@@ -490,6 +659,8 @@ export function Account({ navigation }: Props) {
       gallery: parseGalleryUrls(profileDraft.galleryText)
     };
 
+    const hasLocalMedia = [payload.avatarUrl, payload.coverUrl, ...payload.gallery].some((item) => looksLikeLocalMedia(item));
+
     if (!payload.name || !payload.title || !payload.city || !payload.bio) {
       setPanelNotice('Completa nombre, titulo, ciudad y bio antes de guardar.');
       setIsSavingProfile(false);
@@ -508,7 +679,11 @@ export function Account({ navigation }: Props) {
         replaceChef(updatedChef);
       }
 
-      setPanelNotice('Perfil del griller actualizado.');
+      if (!OFFLINE_DEMO_MODE && hasLocalMedia) {
+        setPanelNotice('Perfil guardado. Nota: imagenes locales solo funcionan en este dispositivo; para produccion usa URLs publicas.');
+      } else {
+        setPanelNotice('Perfil del griller actualizado.');
+      }
     } catch (error) {
       setPanelNotice(error instanceof Error ? error.message : 'No se pudo guardar el perfil.');
     } finally {
@@ -700,6 +875,67 @@ export function Account({ navigation }: Props) {
                     <>
                       <View style={styles.subBlock}>
                         <Text style={styles.subBlockTitle}>Perfil del griller</Text>
+                        <Text style={styles.panelHint}>Edita tu portada, avatar y menu visual en 1 minuto. Recomendado: avatar 1024x1024, portada 1600x900.</Text>
+
+                        <View style={styles.mediaTemplateCard}>
+                          <ReliableImageBackground
+                            uri={coverPreviewUri}
+                            fallbackUri={managedChef ? getLocalCoverUriByChef(managedChef.id) : ''}
+                            style={styles.coverPreview}
+                            imageStyle={styles.coverPreviewImage}
+                          >
+                            <View style={styles.coverPreviewShade} />
+                          </ReliableImageBackground>
+
+                          <View style={styles.avatarPreviewWrap}>
+                            <ReliableImage
+                              uri={avatarPreviewUri}
+                              fallbackUri={managedChef ? getLocalAvatarUriByChef(managedChef.id) : ''}
+                              style={styles.avatarPreview}
+                            />
+                          </View>
+
+                          <View style={styles.mediaActionsRow}>
+                            <Pressable style={styles.quickActionButton} onPress={() => void pickImage('avatarUrl')}>
+                              <MaterialCommunityIcons name="camera-outline" size={14} color={colors.primaryDark} />
+                              <Text style={styles.quickActionLabel}>Cambiar avatar</Text>
+                            </Pressable>
+                            <Pressable style={styles.quickActionButton} onPress={() => void pickImage('coverUrl')}>
+                              <MaterialCommunityIcons name="image-outline" size={14} color={colors.primaryDark} />
+                              <Text style={styles.quickActionLabel}>Cambiar portada</Text>
+                            </Pressable>
+                          </View>
+                        </View>
+
+                        <View style={styles.galleryQuickBlock}>
+                          <View style={styles.galleryQuickHeader}>
+                            <Text style={styles.helperText}>Menu visual (recomendado 1200x800, max 12 fotos)</Text>
+                            <Pressable style={styles.galleryAddButton} onPress={() => void pickImage('gallery')}>
+                              <Text style={styles.galleryAddLabel}>+ Agregar foto</Text>
+                            </Pressable>
+                          </View>
+                          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.galleryQuickRow}>
+                            {parsedGallery.length > 0 ? (
+                              parsedGallery.map((uri, index) => (
+                                <View key={`${uri}-${index}`} style={styles.galleryQuickCard}>
+                                  <ReliableImage
+                                    uri={uri}
+                                    fallbackUri={managedChef ? getLocalGalleryUriByChef(managedChef.id, index) : ''}
+                                    style={styles.galleryQuickImage}
+                                  />
+                                  <Pressable style={styles.galleryRemoveButton} onPress={() => removeGalleryImage(index)}>
+                                    <MaterialCommunityIcons name="close" size={12} color="#FFFFFF" />
+                                  </Pressable>
+                                </View>
+                              ))
+                            ) : (
+                              <View style={styles.galleryEmptyCard}>
+                                <Text style={styles.galleryEmptyText}>Agrega fotos para mostrar tus cortes y paquetes.</Text>
+                              </View>
+                            )}
+                          </ScrollView>
+                        </View>
+
                         <TextInput
                           value={profileDraft.name}
                           onChangeText={(value) => setProfileDraft((prev) => (prev ? { ...prev, name: value } : prev))}
@@ -926,6 +1162,57 @@ export function Account({ navigation }: Props) {
                           </View>
                         ) : (
                           <View style={styles.videoEditorList}>
+                            <View style={styles.videoQuickAddCard}>
+                              <Text style={styles.videoEditorTitle}>Subida rapida</Text>
+                              <Text style={styles.helperMuted}>Pega el link de YouTube, revisa vista previa y agrega.</Text>
+
+                              <TextInput
+                                value={quickVideoUrl}
+                                onChangeText={setQuickVideoUrl}
+                                placeholder="https://www.youtube.com/watch?v=..."
+                                placeholderTextColor={colors.textSoft}
+                                style={styles.input}
+                                autoCapitalize="none"
+                              />
+
+                              {quickVideoId ? (
+                                <View style={styles.videoPreviewCard}>
+                                  <ReliableImage
+                                    uri={quickVideoPreviewUrl}
+                                    fallbackUri={getLocalVideoThumbUri(quickVideoId)}
+                                    style={styles.videoPreviewImage}
+                                  />
+                                  <View style={styles.videoPreviewBody}>
+                                    <Text style={styles.videoPreviewLabel}>ID detectado: {quickVideoId}</Text>
+                                    <Text style={[styles.videoPreviewStatus, quickVideoIsDuplicate ? styles.videoPreviewStatusWarn : null]}>
+                                      {quickVideoIsDuplicate ? 'Este video ya existe en tu lista.' : 'Link valido de YouTube.'}
+                                    </Text>
+                                  </View>
+                                </View>
+                              ) : quickVideoUrl.trim().length > 0 ? (
+                                <Text style={styles.videoInvalidHint}>No se detecta un link valido de YouTube.</Text>
+                              ) : null}
+
+                              <TextInput
+                                value={quickVideoTitle}
+                                onChangeText={setQuickVideoTitle}
+                                placeholder="Titulo (opcional)"
+                                placeholderTextColor={colors.textSoft}
+                                style={styles.input}
+                              />
+                              <TextInput
+                                value={quickVideoSubtitle}
+                                onChangeText={setQuickVideoSubtitle}
+                                placeholder="Subtitulo (opcional)"
+                                placeholderTextColor={colors.textSoft}
+                                style={styles.input}
+                              />
+
+                              <Pressable style={styles.videoQuickAddButton} onPress={addQuickVideoDraft}>
+                                <Text style={styles.videoQuickAddLabel}>Agregar video desde link</Text>
+                              </Pressable>
+                            </View>
+
                             {videoDraft.map((item, index) => (
                               <View key={item.id} style={styles.videoEditorCard}>
                                 <View style={styles.videoEditorHeader}>
@@ -1080,6 +1367,124 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '900'
   },
+  mediaTemplateCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: '#FFFFFF',
+    padding: 10,
+    gap: 10
+  },
+  coverPreview: {
+    height: 118,
+    borderRadius: 12,
+    overflow: 'hidden'
+  },
+  coverPreviewImage: {
+    borderRadius: 12
+  },
+  coverPreviewShade: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(15, 10, 8, 0.2)'
+  },
+  avatarPreviewWrap: {
+    marginTop: -34,
+    paddingLeft: 8
+  },
+  avatarPreview: {
+    width: 68,
+    height: 68,
+    borderRadius: 68,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    backgroundColor: '#FFE5E2'
+  },
+  mediaActionsRow: {
+    flexDirection: 'row',
+    gap: 8
+  },
+  quickActionButton: {
+    flex: 1,
+    minHeight: 38,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#FFD4CC',
+    backgroundColor: '#FFF1EE',
+    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6
+  },
+  quickActionLabel: {
+    color: colors.primaryDark,
+    fontSize: 12,
+    fontWeight: '800'
+  },
+  galleryQuickBlock: {
+    gap: 8
+  },
+  galleryQuickHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8
+  },
+  galleryAddButton: {
+    minHeight: 30,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    paddingHorizontal: 10,
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF'
+  },
+  galleryAddLabel: {
+    color: colors.primaryDark,
+    fontSize: 11,
+    fontWeight: '800'
+  },
+  galleryQuickRow: {
+    gap: 8,
+    paddingRight: 8
+  },
+  galleryQuickCard: {
+    width: 108,
+    height: 78,
+    borderRadius: 10,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.border
+  },
+  galleryQuickImage: {
+    width: '100%',
+    height: '100%'
+  },
+  galleryRemoveButton: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 20,
+    height: 20,
+    borderRadius: 20,
+    backgroundColor: 'rgba(15, 10, 8, 0.6)',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  galleryEmptyCard: {
+    minHeight: 68,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    paddingHorizontal: 10
+  },
+  galleryEmptyText: {
+    color: colors.textSoft,
+    fontSize: 12,
+    fontWeight: '600'
+  },
   field: {
     minHeight: 58,
     borderRadius: 12,
@@ -1203,6 +1608,60 @@ const styles = StyleSheet.create({
   },
   videoEditorList: {
     gap: 8
+  },
+  videoQuickAddCard: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#FFD4CC',
+    backgroundColor: '#FFF8F7',
+    padding: 10,
+    gap: 8
+  },
+  videoPreviewCard: {
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: '#FFFFFF',
+    overflow: 'hidden'
+  },
+  videoPreviewImage: {
+    width: '100%',
+    height: 112
+  },
+  videoPreviewBody: {
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    gap: 2
+  },
+  videoPreviewLabel: {
+    color: colors.textStrong,
+    fontSize: 12,
+    fontWeight: '700'
+  },
+  videoPreviewStatus: {
+    color: '#166534',
+    fontSize: 11,
+    fontWeight: '700'
+  },
+  videoPreviewStatusWarn: {
+    color: '#B45309'
+  },
+  videoInvalidHint: {
+    color: colors.primaryDark,
+    fontSize: 11,
+    fontWeight: '700'
+  },
+  videoQuickAddButton: {
+    minHeight: 42,
+    borderRadius: 10,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  videoQuickAddLabel: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 13
   },
   videoEditorCard: {
     borderRadius: 12,

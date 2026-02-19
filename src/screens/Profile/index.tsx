@@ -114,7 +114,9 @@ const fallbackReviewsByChefId: Record<string, ChefReview[]> = {
 };
 
 export function Profile({ navigation }: Props) {
-  const { selectedChef } = useAppState();
+  const { authUser, selectedChef, isFavoriteChef, toggleFavoriteChef } = useAppState();
+  const isClientView = authUser?.role === 'client';
+  const isFavorite = isFavoriteChef(selectedChef.id);
   const coverUrl = getChefCoverUrl(selectedChef);
   const avatarUrl = getChefAvatarUrl(selectedChef);
   const coverFallbackUrl = getLocalCoverUriByChef(selectedChef.id);
@@ -258,6 +260,13 @@ export function Profile({ navigation }: Props) {
               <ReliableImageBackground uri={coverUrl} fallbackUri={coverFallbackUrl} style={styles.heroMedia} imageStyle={styles.heroMediaImage}>
                 <View style={styles.heroShade} />
               </ReliableImageBackground>
+
+              {isClientView ? (
+                <Pressable style={styles.favoriteHeroButton} onPress={() => toggleFavoriteChef(selectedChef.id)}>
+                  <MaterialCommunityIcons name={isFavorite ? 'heart' : 'heart-outline'} size={16} color={colors.primary} />
+                  <Text style={styles.favoriteHeroLabel}>{isFavorite ? 'Favorito' : 'Guardar'}</Text>
+                </Pressable>
+              ) : null}
 
               <ReliableImage uri={avatarUrl} fallbackUri={avatarFallbackUrl} style={styles.avatar} />
               <View style={styles.heroCopy}>
@@ -491,6 +500,25 @@ const styles = StyleSheet.create({
   heroShade: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(15, 10, 8, 0.42)'
+  },
+  favoriteHeroButton: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    minHeight: 32,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#FFD4CC',
+    backgroundColor: '#FFF1EE',
+    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4
+  },
+  favoriteHeroLabel: {
+    color: colors.primaryDark,
+    fontSize: 11,
+    fontWeight: '800'
   },
   avatar: {
     width: 68,
