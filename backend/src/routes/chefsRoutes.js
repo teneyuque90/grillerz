@@ -45,7 +45,7 @@ chefsRoutes.get('/:chefId/videos', (req, res) => {
 chefsRoutes.put('/:chefId/videos', requireAuth, (req, res) => {
   try {
     const videos = saveChefVideos({
-      authUserId: req.auth.user.id,
+      authUser: req.auth.user,
       chefId: req.params.chefId,
       videos: req.body?.videos
     });

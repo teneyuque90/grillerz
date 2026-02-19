@@ -126,7 +126,39 @@ const seedUsers = [
     email: 'gabriel@email.com',
     password: '123456',
     phone: '+52 867 000 0000',
-    city: 'Nuevo Laredo'
+    city: 'Nuevo Laredo',
+    role: 'admin',
+    managedChefId: null
+  },
+  {
+    id: 'admin@grillerz.app',
+    name: 'Admin Grillerz',
+    email: 'admin@grillerz.app',
+    password: 'Admin123!',
+    phone: '+52 867 222 2222',
+    city: 'Nuevo Laredo',
+    role: 'admin',
+    managedChefId: null
+  },
+  {
+    id: 'erick@grillerz.app',
+    name: 'Erick Martinez',
+    email: 'erick@grillerz.app',
+    password: 'Griller123!',
+    phone: '+52 867 333 3333',
+    city: 'Nuevo Laredo',
+    role: 'griller',
+    managedChefId: 'erick-martinez'
+  },
+  {
+    id: 'cliente@grillerz.app',
+    name: 'Cliente Grillerz',
+    email: 'cliente@grillerz.app',
+    password: 'Cliente123!',
+    phone: '+52 867 444 4444',
+    city: 'Nuevo Laredo',
+    role: 'client',
+    managedChefId: null
   }
 ];
 
@@ -204,8 +236,8 @@ function seedUsersIfNeeded() {
   }
 
   const insert = db.prepare(`
-    INSERT INTO users (id, name, email, password_hash, phone, city, created_at)
-    VALUES (@id, @name, @email, @passwordHash, @phone, @city, @createdAt)
+    INSERT INTO users (id, name, email, password_hash, phone, city, role, managed_chef_id, created_at)
+    VALUES (@id, @name, @email, @passwordHash, @phone, @city, @role, @managedChefId, @createdAt)
   `);
 
   const transaction = db.transaction((items) => {
@@ -217,6 +249,8 @@ function seedUsersIfNeeded() {
         passwordHash: bcrypt.hashSync(user.password, 10),
         phone: user.phone,
         city: user.city,
+        role: user.role ?? 'client',
+        managedChefId: user.managedChefId ?? null,
         createdAt: nowIso()
       });
     }
@@ -307,7 +341,9 @@ export function toPublicUser(userRow) {
     name: userRow.name,
     email: userRow.email,
     phone: userRow.phone,
-    city: userRow.city
+    city: userRow.city,
+    role: userRow.role ?? 'client',
+    managedChefId: userRow.managed_chef_id ?? null
   };
 }
 

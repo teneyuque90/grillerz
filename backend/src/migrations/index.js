@@ -1,3 +1,5 @@
+import bcrypt from 'bcryptjs';
+
 const chefMediaSeedById = {
   'erick-martinez': {
     avatarUrl: 'https://i.pravatar.cc/300?img=11',
@@ -478,6 +480,102 @@ const migrations = [
 
       for (const item of chefVideosSeed) {
         insert.run(item);
+      }
+    }
+  },
+  {
+    id: '010_add_user_roles',
+    up(db) {
+      if (!hasColumn(db, 'users', 'role')) {
+        db.exec(`ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'client';`);
+      }
+
+      if (!hasColumn(db, 'users', 'managed_chef_id')) {
+        db.exec(`ALTER TABLE users ADD COLUMN managed_chef_id TEXT;`);
+      }
+
+      db.exec(`
+        CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
+        CREATE INDEX IF NOT EXISTS idx_users_managed_chef_id ON users(managed_chef_id);
+      `);
+
+      db.prepare(`UPDATE users SET role = 'client' WHERE role IS NULL OR TRIM(role) = '';`).run();
+      db.prepare(`UPDATE users SET managed_chef_id = NULL WHERE managed_chef_id IS NOT NULL AND TRIM(managed_chef_id) = '';`).run();
+    }
+  },
+  {
+    id: '011_seed_users_by_role',
+    up(db) {
+      const now = new Date().toISOString();
+      const usersSeed = [
+        {
+          id: 'gabriel@email.com',
+          name: 'Gabriel Teneyuque',
+          email: 'gabriel@email.com',
+          passwordHash: bcrypt.hashSync('123456', 10),
+          phone: '+52 867 000 0000',
+          city: 'Nuevo Laredo',
+          role: 'admin',
+          managedChefId: null
+        },
+        {
+          id: 'admin@grillerz.app',
+          name: 'Admin Grillerz',
+          email: 'admin@grillerz.app',
+          passwordHash: bcrypt.hashSync('Admin123!', 10),
+          phone: '+52 867 222 2222',
+          city: 'Nuevo Laredo',
+          role: 'admin',
+          managedChefId: null
+        },
+        {
+          id: 'erick@grillerz.app',
+          name: 'Erick Martinez',
+          email: 'erick@grillerz.app',
+          passwordHash: bcrypt.hashSync('Griller123!', 10),
+          phone: '+52 867 333 3333',
+          city: 'Nuevo Laredo',
+          role: 'griller',
+          managedChefId: 'erick-martinez'
+        },
+        {
+          id: 'cliente@grillerz.app',
+          name: 'Cliente Grillerz',
+          email: 'cliente@grillerz.app',
+          passwordHash: bcrypt.hashSync('Cliente123!', 10),
+          phone: '+52 867 444 4444',
+          city: 'Nuevo Laredo',
+          role: 'client',
+          managedChefId: null
+        }
+      ];
+
+      const existingByEmail = db.prepare('SELECT id, email FROM users WHERE email = ?');
+      const insert = db.prepare(`
+        INSERT INTO users (id, name, email, password_hash, phone, city, role, managed_chef_id, created_at)
+        VALUES (@id, @name, @email, @passwordHash, @phone, @city, @role, @managedChefId, @createdAt)
+      `);
+      const updateRole = db.prepare(`
+        UPDATE users
+        SET role = @role, managed_chef_id = @managedChefId
+        WHERE email = @email
+      `);
+
+      for (const item of usersSeed) {
+        const existing = existingByEmail.get(item.email);
+        if (existing) {
+          updateRole.run({
+            email: item.email,
+            role: item.role,
+            managedChefId: item.managedChefId
+          });
+          continue;
+        }
+
+        insert.run({
+          ...item,
+          createdAt: now
+        });
       }
     }
   }

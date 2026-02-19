@@ -131,6 +131,8 @@ export function verifySignup({ email, code, userAgent }) {
     passwordHash: pending.password_hash,
     phone: '+52 867 000 0000',
     city: 'Nuevo Laredo',
+    role: 'client',
+    managedChefId: null,
     createdAt: new Date().toISOString()
   });
 

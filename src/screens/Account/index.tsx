@@ -23,7 +23,11 @@ type VideoDraft = {
   youtubeUrl: string;
 };
 
-const VIDEO_MANAGERS = new Set(['gabriel@email.com', 'admin@grillerz.app', 'demo@grillerz.app']);
+const roleLabel: Record<'client' | 'griller' | 'admin', string> = {
+  client: 'Cliente',
+  griller: 'Griller',
+  admin: 'Admin'
+};
 
 function Field({ label, value }: { label: string; value: string }) {
   return (
@@ -52,6 +56,25 @@ export function Account({ navigation }: Props) {
   const userName = authUser?.name ?? 'Usuario Grillerz';
   const userEmail = authUser?.email ?? 'guest@grillerz.app';
   const userPhone = authUser?.phone ?? '+52 867 000 0000';
+  const userRole = authUser?.role ?? 'client';
+  const userRoleLabel = roleLabel[userRole];
+  const manageableChefs = useMemo(() => {
+    if (userRole === 'admin') {
+      return chefs;
+    }
+
+    if (userRole === 'griller') {
+      const managedChefId = authUser?.managedChefId;
+      if (!managedChefId) {
+        return [];
+      }
+
+      return chefs.filter((item) => item.id === managedChefId);
+    }
+
+    return [];
+  }, [authUser?.managedChefId, chefs, userRole]);
+  const canManageVideos = userRole === 'admin' || (userRole === 'griller' && manageableChefs.length > 0);
   const [managedChefId, setManagedChefId] = useState(selectedChef.id);
   const [videoDraft, setVideoDraft] = useState<VideoDraft[]>([]);
   const [isLoadingVideos, setIsLoadingVideos] = useState(false);
@@ -62,10 +85,28 @@ export function Account({ navigation }: Props) {
     return chefs.find((item) => item.id === managedChefId)?.name ?? 'Griller';
   }, [chefs, managedChefId]);
 
-  const canManageVideos = VIDEO_MANAGERS.has(userEmail.toLowerCase());
+  useEffect(() => {
+    if (manageableChefs.length === 0) {
+      return;
+    }
+
+    const hasCurrentManagedChef = manageableChefs.some((item) => item.id === managedChefId);
+    if (!hasCurrentManagedChef) {
+      setManagedChefId(manageableChefs[0].id);
+    }
+  }, [manageableChefs, managedChefId]);
 
   useEffect(() => {
     let active = true;
+    if (!canManageVideos) {
+      setVideoDraft([]);
+      setIsLoadingVideos(false);
+      setVideosNotice(null);
+      return () => {
+        active = false;
+      };
+    }
+
     setIsLoadingVideos(true);
     setVideosNotice(null);
 
@@ -101,7 +142,7 @@ export function Account({ navigation }: Props) {
     return () => {
       active = false;
     };
-  }, [managedChefId]);
+  }, [canManageVideos, managedChefId]);
 
   function updateDraftVideo(id: string, key: 'title' | 'subtitle' | 'youtubeUrl', value: string) {
     setVideoDraft((prev) =>
@@ -211,6 +252,10 @@ export function Account({ navigation }: Props) {
               <Field label="Nombre" value={userName} />
               <Field label="Telefono" value={userPhone} />
               <Field label="Correo" value={userEmail} />
+              <Field label="Rol" value={userRoleLabel} />
+              {userRole === 'griller' && authUser?.managedChefId ? (
+                <Field label="Perfil asignado" value={chefs.find((item) => item.id === authUser.managedChefId)?.name ?? authUser.managedChefId} />
+              ) : null}
             </View>
 
             <View style={styles.block}>
@@ -249,86 +294,92 @@ export function Account({ navigation }: Props) {
 
             <View style={styles.block}>
               <Text style={styles.blockTitle}>Panel de videos (YouTube)</Text>
-              <Text style={styles.panelHint}>
-                Selecciona un griller y guarda sus links. Estos videos se veran en el perfil publico.
-              </Text>
+              {canManageVideos ? (
+                <>
+                  <Text style={styles.panelHint}>
+                    {userRole === 'admin'
+                      ? 'Admin: selecciona un griller y guarda sus links. Estos videos se veran en el perfil publico.'
+                      : 'Griller: administra los videos de tu perfil publico.'}
+                  </Text>
 
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chefsRow}>
-                {chefs.map((item) => {
-                  const isActive = item.id === managedChefId;
-                  return (
-                    <Pressable key={item.id} style={[styles.chefChip, isActive ? styles.chefChipActive : null]} onPress={() => setManagedChefId(item.id)}>
-                      <Text style={[styles.chefChipLabel, isActive ? styles.chefChipLabelActive : null]}>{item.name}</Text>
-                    </Pressable>
-                  );
-                })}
-              </ScrollView>
-
-              {isLoadingVideos ? (
-                <View style={styles.loadingRow}>
-                  <ActivityIndicator color={colors.primary} />
-                  <Text style={styles.loadingText}>Cargando videos de {managedChefName}...</Text>
-                </View>
-              ) : (
-                <View style={styles.videoEditorList}>
-                  {videoDraft.map((item, index) => (
-                    <View key={item.id} style={styles.videoEditorCard}>
-                      <View style={styles.videoEditorHeader}>
-                        <Text style={styles.videoEditorTitle}>Video {index + 1}</Text>
-                        <Pressable onPress={() => removeVideoDraft(item.id)}>
-                          <Text style={styles.removeVideo}>Eliminar</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chefsRow}>
+                    {manageableChefs.map((item) => {
+                      const isActive = item.id === managedChefId;
+                      return (
+                        <Pressable key={item.id} style={[styles.chefChip, isActive ? styles.chefChipActive : null]} onPress={() => setManagedChefId(item.id)}>
+                          <Text style={[styles.chefChipLabel, isActive ? styles.chefChipLabelActive : null]}>{item.name}</Text>
                         </Pressable>
-                      </View>
-                      <TextInput
-                        value={item.title}
-                        onChangeText={(value) => updateDraftVideo(item.id, 'title', value)}
-                        placeholder="Titulo del video"
-                        placeholderTextColor={colors.textSoft}
-                        style={styles.input}
-                      />
-                      <TextInput
-                        value={item.subtitle}
-                        onChangeText={(value) => updateDraftVideo(item.id, 'subtitle', value)}
-                        placeholder="Subtitulo opcional"
-                        placeholderTextColor={colors.textSoft}
-                        style={styles.input}
-                      />
-                      <TextInput
-                        value={item.youtubeUrl}
-                        onChangeText={(value) => updateDraftVideo(item.id, 'youtubeUrl', value)}
-                        placeholder="https://www.youtube.com/watch?v=..."
-                        placeholderTextColor={colors.textSoft}
-                        style={styles.input}
-                        autoCapitalize="none"
-                      />
+                      );
+                    })}
+                  </ScrollView>
+
+                  {isLoadingVideos ? (
+                    <View style={styles.loadingRow}>
+                      <ActivityIndicator color={colors.primary} />
+                      <Text style={styles.loadingText}>Cargando videos de {managedChefName}...</Text>
                     </View>
-                  ))}
+                  ) : (
+                    <View style={styles.videoEditorList}>
+                      {videoDraft.map((item, index) => (
+                        <View key={item.id} style={styles.videoEditorCard}>
+                          <View style={styles.videoEditorHeader}>
+                            <Text style={styles.videoEditorTitle}>Video {index + 1}</Text>
+                            <Pressable onPress={() => removeVideoDraft(item.id)}>
+                              <Text style={styles.removeVideo}>Eliminar</Text>
+                            </Pressable>
+                          </View>
+                          <TextInput
+                            value={item.title}
+                            onChangeText={(value) => updateDraftVideo(item.id, 'title', value)}
+                            placeholder="Titulo del video"
+                            placeholderTextColor={colors.textSoft}
+                            style={styles.input}
+                          />
+                          <TextInput
+                            value={item.subtitle}
+                            onChangeText={(value) => updateDraftVideo(item.id, 'subtitle', value)}
+                            placeholder="Subtitulo opcional"
+                            placeholderTextColor={colors.textSoft}
+                            style={styles.input}
+                          />
+                          <TextInput
+                            value={item.youtubeUrl}
+                            onChangeText={(value) => updateDraftVideo(item.id, 'youtubeUrl', value)}
+                            placeholder="https://www.youtube.com/watch?v=..."
+                            placeholderTextColor={colors.textSoft}
+                            style={styles.input}
+                            autoCapitalize="none"
+                          />
+                        </View>
+                      ))}
 
-                  <Pressable style={styles.addVideoButton} onPress={addVideoDraft}>
-                    <Text style={styles.addVideoLabel}>+ Agregar video</Text>
-                  </Pressable>
-                </View>
-              )}
+                      <Pressable style={styles.addVideoButton} onPress={addVideoDraft}>
+                        <Text style={styles.addVideoLabel}>+ Agregar video</Text>
+                      </Pressable>
+                    </View>
+                  )}
 
-              {!canManageVideos ? (
+                  {videosNotice ? <Text style={styles.notice}>{videosNotice}</Text> : null}
+                </>
+              ) : (
                 <Text style={styles.warning}>
-                  Cuenta sin permisos de panel. Usa `gabriel@email.com` / `123456` para editar videos.
+                  Tu rol actual es Cliente. El panel de gestion (videos, menu, disponibilidad) solo aplica para cuentas Griller o Admin.
                 </Text>
-              ) : null}
-
-              {videosNotice ? <Text style={styles.notice}>{videosNotice}</Text> : null}
+              )}
             </View>
           </ScrollView>
         </View>
 
-        <View style={styles.footer}>
-          <PrimaryButton
-            label={isSavingVideos ? 'Guardando videos...' : 'Guardar videos del panel'}
-            onPress={() => {
-              void saveVideos();
-            }}
-          />
-        </View>
+        {canManageVideos ? (
+          <View style={styles.footer}>
+            <PrimaryButton
+              label={isSavingVideos ? 'Guardando videos...' : 'Guardar videos del panel'}
+              onPress={() => {
+                void saveVideos();
+              }}
+            />
+          </View>
+        ) : null}
 
         <BottomNav activeTab="Settings" onNavigate={(route) => navigation.navigate(route)} />
       </View>

@@ -78,6 +78,9 @@ export function SignIn({ navigation }: Props) {
             <View style={styles.offlineNotice}>
               <Text style={styles.offlineTitle}>Modo demo offline activado</Text>
               <Text style={styles.offlineText}>Esta app funciona sin internet para presentaciones.</Text>
+              <Text style={styles.offlineHint}>Cliente: cliente@grillerz.app / Cliente123!</Text>
+              <Text style={styles.offlineHint}>Griller: erick@grillerz.app / Griller123!</Text>
+              <Text style={styles.offlineHint}>Admin: gabriel@email.com / 123456</Text>
             </View>
           ) : null}
 
@@ -172,6 +175,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 12,
     lineHeight: 16
+  },
+  offlineHint: {
+    color: colors.text,
+    fontWeight: '700',
+    fontSize: 12
   },
   errorText: {
     color: colors.primaryDark,

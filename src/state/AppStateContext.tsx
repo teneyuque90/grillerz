@@ -69,18 +69,22 @@ const DEMO_ACCOUNTS = [
       name: 'Gabriel Teneyuque',
       email: 'gabriel@email.com',
       phone: '+52 867 000 0000',
-      city: 'Nuevo Laredo'
+      city: 'Nuevo Laredo',
+      role: 'admin',
+      managedChefId: null
     }
   },
   {
-    email: 'demo@grillerz.app',
-    password: 'Grillerz123!',
+    email: 'erick@grillerz.app',
+    password: 'Griller123!',
     user: {
-      id: 'demo@grillerz.app',
-      name: 'Demo Grillerz',
-      email: 'demo@grillerz.app',
-      phone: '+52 867 111 1111',
-      city: 'Nuevo Laredo'
+      id: 'erick@grillerz.app',
+      name: 'Erick Martinez',
+      email: 'erick@grillerz.app',
+      phone: '+52 867 333 3333',
+      city: 'Nuevo Laredo',
+      role: 'griller',
+      managedChefId: 'erick-martinez'
     }
   },
   {
@@ -91,7 +95,22 @@ const DEMO_ACCOUNTS = [
       name: 'Admin Grillerz',
       email: 'admin@grillerz.app',
       phone: '+52 867 222 2222',
-      city: 'Nuevo Laredo'
+      city: 'Nuevo Laredo',
+      role: 'admin',
+      managedChefId: null
+    }
+  },
+  {
+    email: 'cliente@grillerz.app',
+    password: 'Cliente123!',
+    user: {
+      id: 'cliente@grillerz.app',
+      name: 'Cliente Grillerz',
+      email: 'cliente@grillerz.app',
+      phone: '+52 867 444 4444',
+      city: 'Nuevo Laredo',
+      role: 'client',
+      managedChefId: null
     }
   }
 ] as const;
@@ -122,7 +141,9 @@ function createOfflineUserFromEmail(email: string): User {
     name,
     email,
     phone: '+52 867 000 0000',
-    city: 'Nuevo Laredo'
+    city: 'Nuevo Laredo',
+    role: 'client',
+    managedChefId: null
   };
 }
 

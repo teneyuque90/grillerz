@@ -1,6 +1,7 @@
 export type ServiceMode = 'A domicilio' | 'En terraza del griller';
 export type PaymentMethod = 'Tarjeta' | 'Transferencia' | 'Efectivo';
 export type BookingStatus = 'Pendiente' | 'Confirmada' | 'Cancelada';
+export type UserRole = 'client' | 'griller' | 'admin';
 
 export type User = {
   id: string;
@@ -8,6 +9,8 @@ export type User = {
   email: string;
   phone: string;
   city: string;
+  role: UserRole;
+  managedChefId: string | null;
 };
 
 export type Chef = {

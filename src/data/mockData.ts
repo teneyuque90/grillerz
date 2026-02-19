@@ -103,7 +103,9 @@ export const defaultUser: User = {
   name: 'Invitado Grillerz',
   email: 'guest@grillerz.app',
   phone: '+52 000 000 0000',
-  city: 'Nuevo Laredo'
+  city: 'Nuevo Laredo',
+  role: 'client',
+  managedChefId: null
 };
 
 export const createInitialDraft = (chefId: string): BookingDraft => ({

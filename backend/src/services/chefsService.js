@@ -83,12 +83,21 @@ function normalizeVideosPayload(videos) {
   });
 }
 
-function canManageChefVideos(authUserId) {
-  return (
-    authUserId === 'admin@grillerz.app' ||
-    authUserId === 'gabriel@email.com' ||
-    authUserId === 'demo@grillerz.app'
-  );
+function canManageChefVideos(authUser, chefId) {
+  if (!authUser) {
+    return false;
+  }
+
+  const role = String(authUser.role ?? 'client');
+  if (role === 'admin') {
+    return true;
+  }
+
+  if (role === 'griller') {
+    return String(authUser.managed_chef_id ?? '') === chefId;
+  }
+
+  return false;
 }
 
 export function getChefVideos(chefId) {
@@ -102,8 +111,8 @@ export function getChefVideos(chefId) {
   return rows.map(mapChefVideoRow);
 }
 
-export function saveChefVideos({ authUserId, chefId, videos }) {
-  if (!canManageChefVideos(authUserId)) {
+export function saveChefVideos({ authUser, chefId, videos }) {
+  if (!canManageChefVideos(authUser, chefId)) {
     throw new AppError('No tienes permisos para actualizar videos de grillers.', 403);
   }
 

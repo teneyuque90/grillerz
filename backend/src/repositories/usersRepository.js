@@ -15,11 +15,13 @@ export function createUser({
   passwordHash,
   phone,
   city,
+  role,
+  managedChefId,
   createdAt
 }) {
   db.prepare(`
-    INSERT INTO users (id, name, email, password_hash, phone, city, created_at)
-    VALUES (@id, @name, @email, @passwordHash, @phone, @city, @createdAt)
+    INSERT INTO users (id, name, email, password_hash, phone, city, role, managed_chef_id, created_at)
+    VALUES (@id, @name, @email, @passwordHash, @phone, @city, @role, @managedChefId, @createdAt)
   `).run({
     id,
     name,
@@ -27,6 +29,8 @@ export function createUser({
     passwordHash,
     phone,
     city,
+    role: role ?? 'client',
+    managedChefId: managedChefId ?? null,
     createdAt
   });
 }

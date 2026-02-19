@@ -9,6 +9,11 @@ import { useAppState } from '../../state/AppStateContext';
 import { colors } from '../../theme/colors';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Settings'>;
+const roleLabel: Record<'client' | 'griller' | 'admin', string> = {
+  client: 'Cliente',
+  griller: 'Griller',
+  admin: 'Admin'
+};
 
 function SectionRow({
   label,
@@ -36,6 +41,7 @@ export function Settings({ navigation }: Props) {
   const { authUser, signOut } = useAppState();
   const userName = authUser?.name ?? 'Usuario Grillerz';
   const userEmail = authUser?.email ?? 'guest@grillerz.app';
+  const userRoleLabel = roleLabel[authUser?.role ?? 'client'];
 
   async function handleSignOut() {
     await signOut();
@@ -67,6 +73,7 @@ export function Settings({ navigation }: Props) {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Cuenta</Text>
               <SectionRow label="Informacion personal" onPress={() => navigation.navigate('Account')} />
+              <SectionRow label="Rol" value={userRoleLabel} onPress={() => navigation.navigate('Account')} />
               <SectionRow label="Metodos de pago" value="1 tarjeta" onPress={() => navigation.navigate('Payment')} />
               <SectionRow label="Direcciones" value="Casa" onPress={() => navigation.navigate('ChooseLocation')} />
             </View>
