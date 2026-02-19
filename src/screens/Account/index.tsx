@@ -9,11 +9,12 @@ import { BottomNav } from '../../components/ui/BottomNav';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import { OFFLINE_DEMO_MODE } from '../../config/api';
+import { getFallbackChefPackages } from '../../data/chefPackages';
 import { getGrillerVideos } from '../../data/mediaLibrary';
 import { RootStackParamList } from '../../navigation/screenConfig';
 import { useAppState } from '../../state/AppStateContext';
 import { colors } from '../../theme/colors';
-import { Chef, ChefVideo } from '../../types/domain';
+import { Chef, ChefPackage, ChefVideo } from '../../types/domain';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Account'>;
 
@@ -24,10 +25,21 @@ type VideoDraft = {
   youtubeUrl: string;
 };
 
+type PackageDraft = {
+  id: string;
+  name: string;
+  details: string;
+  price: string;
+  isActive: boolean;
+};
+
 type ProfileDraft = {
   name: string;
   title: string;
   city: string;
+  avatarUrl: string;
+  coverUrl: string;
+  galleryText: string;
   basePrice: string;
   bio: string;
   specialtiesText: string;
@@ -73,11 +85,24 @@ function toVideoDraft(videos: ChefVideo[]): VideoDraft[] {
   }));
 }
 
+function toPackageDraft(packages: ChefPackage[]): PackageDraft[] {
+  return packages.map((item) => ({
+    id: item.id,
+    name: item.name,
+    details: item.details,
+    price: String(item.price),
+    isActive: item.isActive
+  }));
+}
+
 function toProfileDraft(chef: Chef): ProfileDraft {
   return {
     name: chef.name,
     title: chef.title,
     city: chef.city,
+    avatarUrl: chef.avatarUrl,
+    coverUrl: chef.coverUrl,
+    galleryText: chef.gallery.join(', '),
     basePrice: String(chef.basePrice),
     bio: chef.bio,
     specialtiesText: chef.specialties.join(', ')
@@ -98,6 +123,71 @@ function parseTimes(input: string): string[] {
     .map((item) => item.trim())
     .filter(Boolean)
     .slice(0, 16);
+}
+
+function parseDateKeys(input: string): string[] {
+  const validDatePattern = /^\d{4}-\d{2}-\d{2}$/;
+  const items = input
+    .split(/[\n,]/)
+    .map((item) => item.trim())
+    .filter((item) => validDatePattern.test(item))
+    .slice(0, 40);
+
+  return Array.from(new Set(items)).sort();
+}
+
+function parseSpecialDatesInput(input: string): Array<{ date: string; times: string[] }> {
+  const validDatePattern = /^\d{4}-\d{2}-\d{2}$/;
+
+  const rows = input
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .slice(0, 24);
+
+  const parsed = rows
+    .map((row) => {
+      const separatorIndex = row.indexOf(':');
+      if (separatorIndex === -1) {
+        return { date: '', times: [] as string[] };
+      }
+
+      const date = row.slice(0, separatorIndex).trim();
+      const timesRaw = row.slice(separatorIndex + 1);
+      const times = timesRaw
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .slice(0, 16);
+
+      return { date, times: Array.from(new Set(times)) };
+    })
+    .filter((item) => validDatePattern.test(item.date) && item.times.length > 0);
+
+  const byDate = new Map<string, { date: string; times: string[] }>();
+  parsed.forEach((item) => {
+    byDate.set(item.date, item);
+  });
+
+  return Array.from(byDate.values()).sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function formatSpecialDatesInput(value: Array<{ date: string; times: string[] }> | undefined): string {
+  if (!value || value.length === 0) {
+    return '';
+  }
+
+  return value
+    .map((item) => `${item.date}: ${item.times.join(', ')}`)
+    .join('\n');
+}
+
+function parseGalleryUrls(input: string): string[] {
+  return input
+    .split(/[\n,]/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .slice(0, 12);
 }
 
 function applyChefPatch(chef: Chef, patch: Partial<Chef>): Chef {
@@ -143,10 +233,15 @@ export function Account({ navigation }: Props) {
   const [profileDraft, setProfileDraft] = useState<ProfileDraft | null>(managedChef ? toProfileDraft(managedChef) : null);
   const [availabilityWeekdays, setAvailabilityWeekdays] = useState<number[]>(managedChef?.availability?.weekdays ?? []);
   const [availabilityTimesText, setAvailabilityTimesText] = useState((managedChef?.availability?.times ?? []).join(', '));
+  const [blockedDatesText, setBlockedDatesText] = useState((managedChef?.availability?.blockedDates ?? []).join(', '));
+  const [specialDatesText, setSpecialDatesText] = useState(formatSpecialDatesInput(managedChef?.availability?.specialDates));
 
   const [videoDraft, setVideoDraft] = useState<VideoDraft[]>([]);
+  const [packagesDraft, setPackagesDraft] = useState<PackageDraft[]>([]);
   const [isLoadingVideos, setIsLoadingVideos] = useState(false);
+  const [isLoadingPackages, setIsLoadingPackages] = useState(false);
   const [isSavingVideos, setIsSavingVideos] = useState(false);
+  const [isSavingPackages, setIsSavingPackages] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isSavingAvailability, setIsSavingAvailability] = useState(false);
   const [panelNotice, setPanelNotice] = useState<string | null>(null);
@@ -173,6 +268,8 @@ export function Account({ navigation }: Props) {
     setProfileDraft(toProfileDraft(managedChef));
     setAvailabilityWeekdays(managedChef.availability?.weekdays ?? [1, 2, 3, 4, 5, 6, 0]);
     setAvailabilityTimesText((managedChef.availability?.times ?? ['6:00 PM']).join(', '));
+    setBlockedDatesText((managedChef.availability?.blockedDates ?? []).join(', '));
+    setSpecialDatesText(formatSpecialDatesInput(managedChef.availability?.specialDates));
     setPanelNotice(null);
   }, [managedChef]);
 
@@ -222,6 +319,52 @@ export function Account({ navigation }: Props) {
     };
   }, [canManagePanel, managedChef]);
 
+  useEffect(() => {
+    let active = true;
+
+    if (!canManagePanel || !managedChef) {
+      setPackagesDraft([]);
+      setIsLoadingPackages(false);
+      return () => {
+        active = false;
+      };
+    }
+
+    const chefId = managedChef.id;
+    setIsLoadingPackages(true);
+
+    if (OFFLINE_DEMO_MODE) {
+      setPackagesDraft(toPackageDraft(getFallbackChefPackages(chefId)));
+      setIsLoadingPackages(false);
+      return () => {
+        active = false;
+      };
+    }
+
+    async function loadChefPackages() {
+      try {
+        const remotePackages = await grillerzApi.getChefPackages(chefId);
+        if (active) {
+          setPackagesDraft(toPackageDraft(remotePackages));
+        }
+      } catch {
+        if (active) {
+          setPackagesDraft(toPackageDraft(getFallbackChefPackages(chefId)));
+        }
+      } finally {
+        if (active) {
+          setIsLoadingPackages(false);
+        }
+      }
+    }
+
+    void loadChefPackages();
+
+    return () => {
+      active = false;
+    };
+  }, [canManagePanel, managedChef]);
+
   function toggleWeekday(day: number) {
     setAvailabilityWeekdays((prev) => {
       if (prev.includes(day)) {
@@ -255,6 +398,43 @@ export function Account({ navigation }: Props) {
         };
       })
     );
+  }
+
+  function updateDraftPackage(id: string, key: keyof PackageDraft, value: string | boolean) {
+    setPackagesDraft((prev) =>
+      prev.map((item) => {
+        if (item.id !== id) {
+          return item;
+        }
+
+        return {
+          ...item,
+          [key]: value
+        };
+      })
+    );
+  }
+
+  function addPackageDraft() {
+    if (packagesDraft.length >= 20) {
+      setPanelNotice('Maximo 20 paquetes por griller.');
+      return;
+    }
+
+    setPackagesDraft((prev) => [
+      ...prev,
+      {
+        id: buildDraftId(),
+        name: '',
+        details: '',
+        price: '',
+        isActive: true
+      }
+    ]);
+  }
+
+  function removePackageDraft(id: string) {
+    setPackagesDraft((prev) => prev.filter((item) => item.id !== id));
   }
 
   function addVideoDraft() {
@@ -304,7 +484,10 @@ export function Account({ navigation }: Props) {
       city: profileDraft.city.trim(),
       basePrice: Math.round(parsedPrice),
       bio: profileDraft.bio.trim(),
-      specialties
+      specialties,
+      avatarUrl: profileDraft.avatarUrl.trim(),
+      coverUrl: profileDraft.coverUrl.trim(),
+      gallery: parseGalleryUrls(profileDraft.galleryText)
     };
 
     if (!payload.name || !payload.title || !payload.city || !payload.bio) {
@@ -315,7 +498,10 @@ export function Account({ navigation }: Props) {
 
     try {
       if (OFFLINE_DEMO_MODE) {
-        const nextChef = applyChefPatch(managedChef, payload);
+        const nextChef = applyChefPatch(managedChef, {
+          ...payload,
+          gallery: payload.gallery.length > 0 ? payload.gallery : managedChef.gallery
+        });
         replaceChef(nextChef);
       } else {
         const updatedChef = await grillerzApi.updateChefProfile(managedChef.id, payload);
@@ -336,6 +522,8 @@ export function Account({ navigation }: Props) {
     }
 
     const times = parseTimes(availabilityTimesText);
+    const blockedDates = parseDateKeys(blockedDatesText);
+    const specialDates = parseSpecialDatesInput(specialDatesText);
     if (availabilityWeekdays.length === 0 || times.length === 0) {
       setPanelNotice('Selecciona al menos un dia y un horario para la agenda.');
       return;
@@ -349,14 +537,18 @@ export function Account({ navigation }: Props) {
         const nextChef = applyChefPatch(managedChef, {
           availability: {
             weekdays: availabilityWeekdays,
-            times
+            times,
+            blockedDates,
+            specialDates
           }
         });
         replaceChef(nextChef);
       } else {
         const updatedChef = await grillerzApi.updateChefAvailability(managedChef.id, {
           weekdays: availabilityWeekdays,
-          times
+          times,
+          blockedDates,
+          specialDates
         });
         replaceChef(updatedChef);
       }
@@ -407,6 +599,45 @@ export function Account({ navigation }: Props) {
     }
   }
 
+  async function savePackages() {
+    if (isSavingPackages || !managedChef) {
+      return;
+    }
+
+    const payloadPackages = packagesDraft
+      .map((item) => ({
+        name: item.name.trim(),
+        details: item.details.trim(),
+        price: Number(item.price),
+        isActive: item.isActive
+      }))
+      .filter((item) => item.name && Number.isFinite(item.price) && item.price >= 500);
+
+    if (payloadPackages.length === 0) {
+      setPanelNotice('Agrega al menos un paquete con nombre y precio valido (>= 500).');
+      return;
+    }
+
+    setIsSavingPackages(true);
+    setPanelNotice(null);
+
+    try {
+      if (OFFLINE_DEMO_MODE) {
+        setPanelNotice('Modo offline: paquetes guardados solo en esta sesion de demo.');
+      } else {
+        const savedPackages = await grillerzApi.updateChefPackages(managedChef.id, {
+          packages: payloadPackages
+        });
+        setPackagesDraft(toPackageDraft(savedPackages));
+        setPanelNotice('Paquetes del griller guardados.');
+      }
+    } catch (error) {
+      setPanelNotice(error instanceof Error ? error.message : 'No se pudieron guardar los paquetes.');
+    } finally {
+      setIsSavingPackages(false);
+    }
+  }
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.screen}>
@@ -449,7 +680,7 @@ export function Account({ navigation }: Props) {
               {canManagePanel && manageableChefs.length > 0 ? (
                 <>
                   <Text style={styles.panelHint}>
-                    Admin y Griller pueden actualizar perfil, menu (especialidades), agenda y videos del perfil publico.
+                    Admin y Griller pueden actualizar perfil, imagenes (avatar, portada, menu visual), menu, agenda y videos del perfil publico.
                   </Text>
 
                   {userRole === 'admin' ? (
@@ -489,6 +720,31 @@ export function Account({ navigation }: Props) {
                           placeholder="Ciudad"
                           placeholderTextColor={colors.textSoft}
                           style={styles.input}
+                        />
+                        <TextInput
+                          value={profileDraft.avatarUrl}
+                          onChangeText={(value) => setProfileDraft((prev) => (prev ? { ...prev, avatarUrl: value } : prev))}
+                          placeholder="URL imagen de perfil (avatar)"
+                          placeholderTextColor={colors.textSoft}
+                          style={styles.input}
+                          autoCapitalize="none"
+                        />
+                        <TextInput
+                          value={profileDraft.coverUrl}
+                          onChangeText={(value) => setProfileDraft((prev) => (prev ? { ...prev, coverUrl: value } : prev))}
+                          placeholder="URL imagen de portada (banner)"
+                          placeholderTextColor={colors.textSoft}
+                          style={styles.input}
+                          autoCapitalize="none"
+                        />
+                        <TextInput
+                          value={profileDraft.galleryText}
+                          onChangeText={(value) => setProfileDraft((prev) => (prev ? { ...prev, galleryText: value } : prev))}
+                          placeholder="URLs del menu visual (separadas por coma)"
+                          placeholderTextColor={colors.textSoft}
+                          style={[styles.input, styles.textArea]}
+                          multiline
+                          autoCapitalize="none"
                         />
                         <TextInput
                           value={profileDraft.basePrice}
@@ -555,6 +811,29 @@ export function Account({ navigation }: Props) {
                           ))}
                         </View>
 
+                        <Text style={styles.helperText}>Fechas bloqueadas (YYYY-MM-DD)</Text>
+                        <TextInput
+                          value={blockedDatesText}
+                          onChangeText={setBlockedDatesText}
+                          placeholder="Ejemplo: 2026-04-26, 2026-05-03"
+                          placeholderTextColor={colors.textSoft}
+                          style={[styles.input, styles.textArea]}
+                          multiline
+                          autoCapitalize="none"
+                        />
+
+                        <Text style={styles.helperText}>Horarios especiales por fecha</Text>
+                        <Text style={styles.helperMuted}>Formato por linea: 2026-05-01: 1:00 PM, 4:00 PM</Text>
+                        <TextInput
+                          value={specialDatesText}
+                          onChangeText={setSpecialDatesText}
+                          placeholder="2026-05-01: 12:00 PM, 2:00 PM"
+                          placeholderTextColor={colors.textSoft}
+                          style={[styles.input, styles.textAreaLarge]}
+                          multiline
+                          autoCapitalize="none"
+                        />
+
                         <PrimaryButton
                           label={isSavingAvailability ? 'Guardando agenda...' : 'Guardar agenda'}
                           compact
@@ -572,6 +851,70 @@ export function Account({ navigation }: Props) {
                           compact
                           onPress={() => navigation.navigate('Bookings')}
                         />
+                      </View>
+
+                      <View style={styles.subBlock}>
+                        <Text style={styles.subBlockTitle}>Paquetes y menu</Text>
+                        <Text style={styles.panelHint}>Configura los paquetes que vera el cliente al visitar tu perfil.</Text>
+                        {isLoadingPackages ? (
+                          <View style={styles.loadingRow}>
+                            <ActivityIndicator color={colors.primary} />
+                            <Text style={styles.loadingText}>Cargando paquetes...</Text>
+                          </View>
+                        ) : (
+                          <View style={styles.videoEditorList}>
+                            {packagesDraft.map((item, index) => (
+                              <View key={item.id} style={styles.videoEditorCard}>
+                                <View style={styles.videoEditorHeader}>
+                                  <Text style={styles.videoEditorTitle}>Paquete {index + 1}</Text>
+                                  <Pressable onPress={() => removePackageDraft(item.id)}>
+                                    <Text style={styles.removeVideo}>Eliminar</Text>
+                                  </Pressable>
+                                </View>
+                                <TextInput
+                                  value={item.name}
+                                  onChangeText={(value) => updateDraftPackage(item.id, 'name', value)}
+                                  placeholder="Nombre del paquete"
+                                  placeholderTextColor={colors.textSoft}
+                                  style={styles.input}
+                                />
+                                <TextInput
+                                  value={item.details}
+                                  onChangeText={(value) => updateDraftPackage(item.id, 'details', value)}
+                                  placeholder="Detalle del paquete"
+                                  placeholderTextColor={colors.textSoft}
+                                  style={styles.input}
+                                />
+                                <TextInput
+                                  value={item.price}
+                                  onChangeText={(value) => updateDraftPackage(item.id, 'price', value)}
+                                  placeholder="Precio en MXN"
+                                  placeholderTextColor={colors.textSoft}
+                                  style={styles.input}
+                                  keyboardType="numeric"
+                                />
+                                <Pressable
+                                  style={styles.quickTime}
+                                  onPress={() => updateDraftPackage(item.id, 'isActive', !item.isActive)}
+                                >
+                                  <Text style={styles.quickTimeText}>{item.isActive ? 'Visible al cliente' : 'Oculto al cliente'}</Text>
+                                </Pressable>
+                              </View>
+                            ))}
+
+                            <Pressable style={styles.addVideoButton} onPress={addPackageDraft}>
+                              <Text style={styles.addVideoLabel}>+ Agregar paquete</Text>
+                            </Pressable>
+
+                            <PrimaryButton
+                              label={isSavingPackages ? 'Guardando paquetes...' : 'Guardar paquetes'}
+                              compact
+                              onPress={() => {
+                                void savePackages();
+                              }}
+                            />
+                          </View>
+                        )}
                       </View>
 
                       <View style={styles.subBlock}>
@@ -645,7 +988,7 @@ export function Account({ navigation }: Props) {
           </ScrollView>
         </View>
 
-        <BottomNav activeTab="Settings" onNavigate={(route) => navigation.navigate(route)} />
+        <BottomNav activeTab="Account" onNavigate={(route) => navigation.navigate(route)} />
       </View>
     </SafeAreaView>
   );
@@ -812,6 +1155,11 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 12,
     fontWeight: '700'
+  },
+  helperMuted: {
+    color: colors.textSoft,
+    fontSize: 11,
+    fontWeight: '600'
   },
   daysWrap: {
     flexDirection: 'row',

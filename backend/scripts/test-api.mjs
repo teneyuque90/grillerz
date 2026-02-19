@@ -6,6 +6,8 @@ import supertest from 'supertest';
 
 const SEED_EMAIL = 'gabriel@email.com';
 const SEED_PASSWORD = '123456';
+const GRILLER_EMAIL = 'erick@grillerz.app';
+const GRILLER_PASSWORD = 'Griller123!';
 
 function logStep(message) {
   console.log(`[api-test] ${message}`);
@@ -102,6 +104,13 @@ async function run() {
     assert.ok(videos.body.videos.length > 0);
     assert.equal(videos.body.videos[0].chefId, 'erick-martinez');
 
+    logStep('GET /chefs/:chefId/packages');
+    const packages = await request.get('/chefs/erick-martinez/packages');
+    assert.equal(packages.status, 200);
+    assert.ok(Array.isArray(packages.body.packages));
+    assert.ok(packages.body.packages.length > 0);
+    assert.equal(packages.body.packages[0].chefId, 'erick-martinez');
+
     logStep('PUT /chefs/:chefId/videos autenticado');
     const updateVideos = await request
       .put('/chefs/erick-martinez/videos')
@@ -118,6 +127,24 @@ async function run() {
     assert.equal(updateVideos.status, 200);
     assert.equal(updateVideos.body.videos.length, 1);
     assert.equal(updateVideos.body.videos[0].title, 'Corte premium de prueba');
+
+    logStep('PUT /chefs/:chefId/packages autenticado');
+    const updatePackages = await request
+      .put('/chefs/erick-martinez/packages')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        packages: [
+          {
+            name: 'Paquete Test',
+            details: 'Hasta 8 personas',
+            price: 3000,
+            isActive: true
+          }
+        ]
+      });
+    assert.equal(updatePackages.status, 200);
+    assert.equal(updatePackages.body.packages.length, 1);
+    assert.equal(updatePackages.body.packages[0].name, 'Paquete Test');
 
     logStep('GET /bookings sin token');
     const bookingsNoToken = await request.get('/bookings');
@@ -163,6 +190,30 @@ async function run() {
       .get(`/bookings?userId=${encodeURIComponent(SEED_EMAIL)}`)
       .set('Authorization', `Bearer ${verify.body.token}`);
     assert.equal(forbidden.status, 403);
+
+    logStep('flujo de estados de reserva para griller');
+    const grillerLogin = await request
+      .post('/auth/login')
+      .send({ email: GRILLER_EMAIL, password: GRILLER_PASSWORD });
+    assert.equal(grillerLogin.status, 200);
+    const grillerToken = grillerLogin.body.token;
+
+    const statusFlow = ['Confirmada', 'En camino', 'En servicio', 'Completada'];
+    for (const status of statusFlow) {
+      const update = await request
+        .put('/bookings/GRZ-4730/status')
+        .set('Authorization', `Bearer ${grillerToken}`)
+        .send({ status });
+
+      assert.equal(update.status, 200);
+      assert.equal(update.body.booking.status, status);
+    }
+
+    const invalidTransition = await request
+      .put('/bookings/GRZ-4730/status')
+      .set('Authorization', `Bearer ${grillerToken}`)
+      .send({ status: 'Confirmada' });
+    assert.equal(invalidTransition.status, 400);
 
     logStep('OK - todas las validaciones pasaron');
   } finally {

@@ -386,7 +386,9 @@ export function mapChefRow(row) {
     bio: row.bio,
     availability: {
       weekdays: safeJsonParse(row.availability_weekdays_json ?? '[1,2,3,4,5,6,0]', [1, 2, 3, 4, 5, 6, 0]),
-      times: safeJsonParse(row.availability_times_json ?? '["6:00 PM","7:00 PM","8:00 PM"]', ['6:00 PM', '7:00 PM', '8:00 PM'])
+      times: safeJsonParse(row.availability_times_json ?? '["6:00 PM","7:00 PM","8:00 PM"]', ['6:00 PM', '7:00 PM', '8:00 PM']),
+      blockedDates: safeJsonParse(row.availability_blocked_dates_json ?? '[]', []),
+      specialDates: safeJsonParse(row.availability_special_dates_json ?? '[]', [])
     },
     stats: {
       services: row.services,
@@ -438,6 +440,20 @@ export function mapChefVideoRow(row) {
     subtitle: row.subtitle,
     youtubeUrl: row.youtube_url,
     videoId: row.video_id,
+    displayOrder: row.display_order,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
+
+export function mapChefPackageRow(row) {
+  return {
+    id: row.id,
+    chefId: row.chef_id,
+    name: row.name,
+    details: row.details,
+    price: row.price,
+    isActive: Number(row.is_active ?? 1) === 1,
     displayOrder: row.display_order,
     createdAt: row.created_at,
     updatedAt: row.updated_at

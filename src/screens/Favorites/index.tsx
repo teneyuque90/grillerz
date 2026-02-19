@@ -105,7 +105,7 @@ export function Favorites({ navigation }: Props) {
           </ScrollView>
         </View>
 
-        <BottomNav activeTab="Profile" onNavigate={(route) => navigation.navigate(route)} />
+        <BottomNav activeTab="Favorites" onNavigate={(route) => navigation.navigate(route)} />
       </View>
     </SafeAreaView>
   );

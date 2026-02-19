@@ -668,6 +668,115 @@ const migrations = [
         createdAt: new Date().toISOString()
       });
     }
+  },
+  {
+    id: '014_add_chef_availability_exceptions',
+    up(db) {
+      if (!hasColumn(db, 'chefs', 'availability_blocked_dates_json')) {
+        db.exec(`ALTER TABLE chefs ADD COLUMN availability_blocked_dates_json TEXT NOT NULL DEFAULT '[]';`);
+      }
+
+      if (!hasColumn(db, 'chefs', 'availability_special_dates_json')) {
+        db.exec(`ALTER TABLE chefs ADD COLUMN availability_special_dates_json TEXT NOT NULL DEFAULT '[]';`);
+      }
+
+      const seed = {
+        'erick-martinez': {
+          blockedDates: '["2026-04-26","2026-05-03"]',
+          specialDates: '[{"date":"2026-04-24","times":["1:00 PM","3:30 PM","6:00 PM"]},{"date":"2026-05-01","times":["12:00 PM","2:00 PM"]}]'
+        }
+      };
+
+      const update = db.prepare(`
+        UPDATE chefs
+        SET availability_blocked_dates_json = @blockedDates,
+            availability_special_dates_json = @specialDates
+        WHERE id = @id
+      `);
+
+      for (const [id, item] of Object.entries(seed)) {
+        update.run({
+          id,
+          blockedDates: item.blockedDates,
+          specialDates: item.specialDates
+        });
+      }
+    }
+  },
+  {
+    id: '015_create_chef_packages',
+    up(db) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS chef_packages (
+          id TEXT PRIMARY KEY,
+          chef_id TEXT NOT NULL,
+          name TEXT NOT NULL,
+          details TEXT NOT NULL,
+          price INTEGER NOT NULL,
+          is_active INTEGER NOT NULL DEFAULT 1,
+          display_order INTEGER NOT NULL DEFAULT 0,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_chef_packages_chef_id ON chef_packages(chef_id);
+        CREATE INDEX IF NOT EXISTS idx_chef_packages_display_order ON chef_packages(display_order);
+      `);
+
+      const count = db.prepare('SELECT COUNT(*) AS total FROM chef_packages').get().total;
+      if (count > 0) {
+        return;
+      }
+
+      const seed = {
+        'erick-martinez': [
+          { name: 'Paquete Basico', details: 'Hasta 5 personas', price: 2200 },
+          { name: 'Paquete Familiar', details: 'Hasta 10 personas', price: 4200 },
+          { name: 'Evento Privado', details: 'Hasta 20 personas', price: 7600 }
+        ],
+        'carlos-bbq': [
+          { name: 'Parrilla Express', details: 'Hasta 6 personas', price: 2500 },
+          { name: 'Parrilla Familiar', details: 'Hasta 12 personas', price: 4800 }
+        ],
+        'martin-asador': [
+          { name: 'Smoke Basico', details: 'Hasta 6 personas', price: 2800 },
+          { name: 'Smoke Premium', details: 'Hasta 15 personas', price: 6200 }
+        ],
+        'luis-bbq': [
+          { name: 'Asado Regio', details: 'Hasta 8 personas', price: 3000 },
+          { name: 'Asado para Evento', details: 'Hasta 18 personas', price: 6500 }
+        ],
+        'cories-bbq': [
+          { name: 'Ribeye Basico', details: 'Hasta 5 personas', price: 2600 },
+          { name: 'Ribeye Familiar', details: 'Hasta 10 personas', price: 5000 }
+        ]
+      };
+
+      const insert = db.prepare(`
+        INSERT INTO chef_packages (
+          id, chef_id, name, details, price, is_active, display_order, created_at, updated_at
+        ) VALUES (
+          @id, @chefId, @name, @details, @price, @isActive, @displayOrder, @createdAt, @updatedAt
+        )
+      `);
+
+      for (const [chefId, packages] of Object.entries(seed)) {
+        packages.forEach((item, index) => {
+          const now = new Date().toISOString();
+          insert.run({
+            id: `${chefId}-pkg-${index + 1}`,
+            chefId,
+            name: item.name,
+            details: item.details,
+            price: item.price,
+            isActive: 1,
+            displayOrder: index,
+            createdAt: now,
+            updatedAt: now
+          });
+        });
+      }
+    }
   }
 ];
 

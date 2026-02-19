@@ -3,6 +3,15 @@ import { AppError } from '../lib/AppError.js';
 import { insertBooking, listBookingsByUserId, findBookingById, listBookingsByChefId, updateBookingStatusById, listAllBookings } from '../repositories/bookingsRepository.js';
 import { findChefById } from '../repositories/chefsRepository.js';
 
+const bookingStatusFlow = {
+  Pendiente: ['Confirmada', 'Cancelada'],
+  Confirmada: ['En camino', 'Cancelada'],
+  'En camino': ['En servicio', 'Cancelada'],
+  'En servicio': ['Completada'],
+  Completada: [],
+  Cancelada: []
+};
+
 function stringOrFallback(value, fallbackValue) {
   if (typeof value === 'string' && value.trim()) {
     return value.trim();
@@ -125,9 +134,9 @@ export function updateBookingStatusForGriller({
   }
 
   const normalizedStatus = String(status ?? '').trim();
-  const allowedStatuses = new Set(['Confirmada', 'Cancelada']);
+  const allowedStatuses = new Set(['Confirmada', 'En camino', 'En servicio', 'Completada', 'Cancelada']);
   if (!allowedStatuses.has(normalizedStatus)) {
-    throw new AppError('Status invalido. Usa Confirmada o Cancelada.', 400);
+    throw new AppError('Status invalido para reserva.', 400);
   }
 
   const row = findBookingById(bookingId);
@@ -140,6 +149,12 @@ export function updateBookingStatusForGriller({
     if (!managedChefId || row.chef_id !== managedChefId) {
       throw new AppError('No puedes modificar reservas de otro griller.', 403);
     }
+  }
+
+  const currentStatus = String(row.status ?? 'Pendiente');
+  const allowedNextStatuses = bookingStatusFlow[currentStatus] ?? [];
+  if (!allowedNextStatuses.includes(normalizedStatus)) {
+    throw new AppError(`Transicion invalida: ${currentStatus} -> ${normalizedStatus}.`, 400);
   }
 
   updateBookingStatusById({

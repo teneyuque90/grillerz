@@ -2,7 +2,7 @@ import { Router } from 'express';
 
 import { handleHttpError } from '../lib/http.js';
 import { requireAuth } from '../middleware/requireAuth.js';
-import { getChefById, getChefReviews, getChefVideos, getChefs, saveChefVideos, updateChefAvailability, updateChefProfile } from '../services/chefsService.js';
+import { getChefById, getChefPackages, getChefReviews, getChefVideos, getChefs, saveChefPackages, saveChefVideos, updateChefAvailability, updateChefProfile } from '../services/chefsService.js';
 
 export const chefsRoutes = Router();
 
@@ -42,6 +42,15 @@ chefsRoutes.get('/:chefId/videos', (req, res) => {
   }
 });
 
+chefsRoutes.get('/:chefId/packages', (req, res) => {
+  try {
+    const packages = getChefPackages(req.params.chefId);
+    res.json({ packages });
+  } catch (error) {
+    handleHttpError(res, error);
+  }
+});
+
 chefsRoutes.put('/:chefId/videos', requireAuth, (req, res) => {
   try {
     const videos = saveChefVideos({
@@ -51,6 +60,20 @@ chefsRoutes.put('/:chefId/videos', requireAuth, (req, res) => {
     });
 
     res.json({ videos });
+  } catch (error) {
+    handleHttpError(res, error);
+  }
+});
+
+chefsRoutes.put('/:chefId/packages', requireAuth, (req, res) => {
+  try {
+    const packages = saveChefPackages({
+      authUser: req.auth.user,
+      chefId: req.params.chefId,
+      packages: req.body?.packages
+    });
+
+    res.json({ packages });
   } catch (error) {
     handleHttpError(res, error);
   }

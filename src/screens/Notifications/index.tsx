@@ -53,7 +53,7 @@ export function Notifications({ navigation }: Props) {
           </ScrollView>
         </View>
 
-        <BottomNav activeTab="Settings" onNavigate={(route) => navigation.navigate(route)} />
+        <BottomNav activeTab="Account" onNavigate={(route) => navigation.navigate(route)} />
       </View>
     </SafeAreaView>
   );

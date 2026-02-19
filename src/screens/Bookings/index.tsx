@@ -12,14 +12,56 @@ import { BottomNav } from '../../components/ui/BottomNav';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import { useAppState } from '../../state/AppStateContext';
 import { colors } from '../../theme/colors';
-import { Booking } from '../../types/domain';
+import { Booking, BookingStatus } from '../../types/domain';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Bookings'>;
 type BookingTab = 'Proximas' | 'Pasadas';
 
+const finalizedStatuses: BookingStatus[] = ['Completada', 'Cancelada'];
+const statusProgressNext: Record<BookingStatus, BookingStatus | null> = {
+  Pendiente: 'Confirmada',
+  Confirmada: 'En camino',
+  'En camino': 'En servicio',
+  'En servicio': 'Completada',
+  Completada: null,
+  Cancelada: null
+};
+const statusProgressLabel: Record<BookingStatus, string> = {
+  Pendiente: 'Aceptar',
+  Confirmada: 'Marcar en camino',
+  'En camino': 'Marcar en servicio',
+  'En servicio': 'Marcar completada',
+  Completada: 'Completada',
+  Cancelada: 'Cancelada'
+};
+
+function canCancelBooking(status: BookingStatus): boolean {
+  return status === 'Pendiente' || status === 'Confirmada' || status === 'En camino';
+}
+
+function badgeStyleByStatus(status: BookingStatus) {
+  switch (status) {
+    case 'Pendiente':
+      return styles.badgePending;
+    case 'Confirmada':
+      return styles.badgeOk;
+    case 'En camino':
+      return styles.badgeRoute;
+    case 'En servicio':
+      return styles.badgeService;
+    case 'Completada':
+      return styles.badgeDone;
+    case 'Cancelada':
+      return styles.badgeCancelled;
+    default:
+      return styles.badgePending;
+  }
+}
+
 export function Bookings({ navigation }: Props) {
-  const { authUser, bookings, selectBooking, selectChef } = useAppState();
+  const { authUser, bookings, replaceBookings, selectBooking, selectChef } = useAppState();
   const [activeTab, setActiveTab] = useState<BookingTab>('Proximas');
+  const [clientBookings, setClientBookings] = useState<Booking[]>(bookings);
   const [grillerBookings, setGrillerBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [updatingBookingId, setUpdatingBookingId] = useState<string | null>(null);
@@ -27,30 +69,30 @@ export function Bookings({ navigation }: Props) {
   const managedChefId = authUser?.managedChefId ?? undefined;
 
   useEffect(() => {
-    let active = true;
-
     if (!isGrillerView) {
-      setGrillerBookings([]);
-      return () => {
-        active = false;
-      };
+      setClientBookings(bookings);
+    }
+  }, [bookings, isGrillerView]);
+
+  useEffect(() => {
+    if (!OFFLINE_DEMO_MODE || !isGrillerView) {
+      return;
     }
 
-    if (OFFLINE_DEMO_MODE) {
-      const fallback = bookings.filter((item) => {
-        if (authUser?.role === 'admin') {
-          return true;
-        }
-        return item.chefId === managedChefId;
-      });
-      setGrillerBookings(fallback);
-      return () => {
-        active = false;
-      };
-    }
+    const fallback = bookings.filter((item) => {
+      if (authUser?.role === 'admin') {
+        return true;
+      }
+      return item.chefId === managedChefId;
+    });
+    setGrillerBookings(fallback);
+  }, [authUser?.role, bookings, isGrillerView, managedChefId]);
 
-    setIsLoading(true);
-    async function load() {
+  useEffect(() => {
+    let active = true;
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+
+    async function loadGrillerBookings() {
       try {
         const remote = await grillerzApi.getGrillerBookings(authUser?.role === 'admin' ? undefined : managedChefId);
         if (active) {
@@ -67,28 +109,84 @@ export function Bookings({ navigation }: Props) {
       }
     }
 
-    void load();
+    async function loadClientBookings() {
+      try {
+        const remote = await grillerzApi.getBookings();
+        if (active) {
+          setClientBookings(remote);
+          replaceBookings(remote);
+        }
+      } catch {
+        if (active) {
+          setClientBookings(bookings);
+        }
+      } finally {
+        if (active) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    if (OFFLINE_DEMO_MODE) {
+      if (!isGrillerView) {
+        setClientBookings(bookings);
+      }
+
+      return () => {
+        active = false;
+      };
+    }
+
+    setIsLoading(true);
+    if (isGrillerView) {
+      void loadGrillerBookings();
+      intervalId = setInterval(() => {
+        void loadGrillerBookings();
+      }, 12000);
+    } else {
+      void loadClientBookings();
+      intervalId = setInterval(() => {
+        void loadClientBookings();
+      }, 12000);
+    }
 
     return () => {
       active = false;
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
     };
-  }, [authUser?.role, bookings, isGrillerView, managedChefId]);
+  }, [authUser?.role, isGrillerView, managedChefId, replaceBookings]);
 
-  async function updateStatus(bookingId: string, status: 'Confirmada' | 'Cancelada') {
+  async function updateStatus(bookingId: string, status: BookingStatus) {
     if (updatingBookingId) {
       return;
     }
 
     setUpdatingBookingId(bookingId);
+
     if (OFFLINE_DEMO_MODE) {
-      setGrillerBookings((prev) => prev.map((item) => (item.id === bookingId ? { ...item, status } : item)));
+      if (isGrillerView) {
+        setGrillerBookings((prev) => prev.map((item) => (item.id === bookingId ? { ...item, status } : item)));
+      } else {
+        setClientBookings((prev) => prev.map((item) => (item.id === bookingId ? { ...item, status } : item)));
+      }
       setUpdatingBookingId(null);
       return;
     }
 
     try {
       const updated = await grillerzApi.updateBookingStatus(bookingId, status);
-      setGrillerBookings((prev) => prev.map((item) => (item.id === bookingId ? updated : item)));
+
+      if (isGrillerView) {
+        setGrillerBookings((prev) => prev.map((item) => (item.id === bookingId ? updated : item)));
+      } else {
+        setClientBookings((prev) => {
+          const next = prev.map((item) => (item.id === bookingId ? updated : item));
+          replaceBookings(next);
+          return next;
+        });
+      }
     } catch {
       // keep current list
     } finally {
@@ -97,19 +195,20 @@ export function Bookings({ navigation }: Props) {
   }
 
   const visibleBookings = useMemo(() => {
-    const source = isGrillerView ? grillerBookings : bookings;
+    const source = isGrillerView ? grillerBookings : clientBookings;
+
     if (activeTab === 'Pasadas') {
-      return source.filter((item) => item.status === 'Cancelada');
+      return source.filter((item) => finalizedStatuses.includes(item.status));
     }
 
-    return source.filter((item) => item.status !== 'Cancelada');
-  }, [activeTab, bookings, grillerBookings, isGrillerView]);
+    return source.filter((item) => !finalizedStatuses.includes(item.status));
+  }, [activeTab, clientBookings, grillerBookings, isGrillerView]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.screen}>
         <View style={styles.content}>
-          <ScreenHeader title="Reservas" rightAction="Historial" onRightAction={() => {}} />
+          <ScreenHeader title="Reservas" rightAction="Historial" onRightAction={() => setActiveTab('Pasadas')} />
 
           <View style={styles.tabsRow}>
             <AppChip label="Proximas" selected={activeTab === 'Proximas'} onPress={() => setActiveTab('Proximas')} />
@@ -120,63 +219,68 @@ export function Bookings({ navigation }: Props) {
             {isLoading ? (
               <View style={styles.loadingRow}>
                 <ActivityIndicator color={colors.primary} />
-                <Text style={styles.loadingText}>Cargando solicitudes del griller...</Text>
+                <Text style={styles.loadingText}>
+                  {isGrillerView ? 'Actualizando solicitudes del griller...' : 'Actualizando estado de tus reservas...'}
+                </Text>
               </View>
             ) : null}
-            {visibleBookings.map((item) => (
-              <AppCard
-                key={item.id}
-                style={styles.card}
-                onPress={() => {
-                  if (isGrillerView) {
-                    return;
-                  }
-                  selectBooking(item.id);
-                  selectChef(item.chefId);
-                  navigation.navigate('BookingDetails');
-                }}
-              >
-                <View style={styles.cardTop}>
-                  <Text style={styles.cardId}>#{item.id}</Text>
-                  <Text
-                    style={[
-                      styles.badge,
-                      item.status === 'Confirmada' ? styles.badgeOk : null,
-                      item.status === 'Pendiente' ? styles.badgePending : null,
-                      item.status === 'Cancelada' ? styles.badgeCancelled : null
-                    ]}
-                  >
-                    {item.status}
-                  </Text>
-                </View>
-                <Text style={styles.cardChef}>{item.chefName}</Text>
-                <Text style={styles.cardDate}>{item.dateLabel}  -  {item.timeLabel}</Text>
-                <View style={styles.cardBottom}>
-                  <Text style={styles.cardPrice}>${item.total} MXN</Text>
-                  <Text style={styles.cardAction}>{isGrillerView ? 'Solicitud' : 'Ver detalle'}</Text>
-                </View>
-                {isGrillerView && item.status === 'Pendiente' ? (
-                  <View style={styles.actionsRow}>
-                    <Pressable
-                      style={[styles.actionButton, styles.acceptButton, updatingBookingId === item.id ? styles.disabledButton : null]}
-                      onPress={() => {
-                        void updateStatus(item.id, 'Confirmada');
-                      }}
-                    >
-                      <Text style={styles.actionLabel}>Aceptar</Text>
-                    </Pressable>
-                    <Pressable
-                      style={[styles.actionButton, styles.rejectButton, updatingBookingId === item.id ? styles.disabledButton : null]}
-                      onPress={() => {
-                        void updateStatus(item.id, 'Cancelada');
-                      }}
-                    >
-                      <Text style={[styles.actionLabel, styles.rejectLabel]}>Rechazar</Text>
-                    </Pressable>
+
+            {visibleBookings.map((item) => {
+              const nextStatus = statusProgressNext[item.status];
+
+              return (
+                <AppCard
+                  key={item.id}
+                  style={styles.card}
+                  onPress={() => {
+                    if (isGrillerView) {
+                      return;
+                    }
+                    selectBooking(item.id);
+                    selectChef(item.chefId);
+                    navigation.navigate('BookingDetails');
+                  }}
+                >
+                  <View style={styles.cardTop}>
+                    <Text style={styles.cardId}>#{item.id}</Text>
+                    <Text style={[styles.badge, badgeStyleByStatus(item.status)]}>{item.status}</Text>
                   </View>
-                ) : null}
-              </AppCard>
-            ))}
+                  <Text style={styles.cardChef}>{item.chefName}</Text>
+                  <Text style={styles.cardDate}>{item.dateLabel}  -  {item.timeLabel}</Text>
+                  <View style={styles.cardBottom}>
+                    <Text style={styles.cardPrice}>${item.total} MXN</Text>
+                    <Text style={styles.cardAction}>{isGrillerView ? 'Gestion de servicio' : 'Ver detalle'}</Text>
+                  </View>
+
+                  {isGrillerView ? (
+                    <View style={styles.actionsRow}>
+                      {nextStatus ? (
+                        <Pressable
+                          style={[styles.actionButton, styles.acceptButton, updatingBookingId === item.id ? styles.disabledButton : null]}
+                          onPress={() => {
+                            void updateStatus(item.id, nextStatus);
+                          }}
+                        >
+                          <Text style={styles.actionLabel}>{statusProgressLabel[item.status]}</Text>
+                        </Pressable>
+                      ) : null}
+
+                      {canCancelBooking(item.status) ? (
+                        <Pressable
+                          style={[styles.actionButton, styles.rejectButton, updatingBookingId === item.id ? styles.disabledButton : null]}
+                          onPress={() => {
+                            void updateStatus(item.id, 'Cancelada');
+                          }}
+                        >
+                          <Text style={[styles.actionLabel, styles.rejectLabel]}>Cancelar</Text>
+                        </Pressable>
+                      ) : null}
+                    </View>
+                  ) : null}
+                </AppCard>
+              );
+            })}
+
             {visibleBookings.length === 0 ? <Text style={styles.emptyState}>No hay reservas en esta pestaña.</Text> : null}
           </ScrollView>
         </View>
@@ -248,13 +352,25 @@ const styles = StyleSheet.create({
     includeFontPadding: false,
     lineHeight: 24
   },
+  badgePending: {
+    color: '#B54708',
+    backgroundColor: '#FFFAEB'
+  },
   badgeOk: {
     color: '#067647',
     backgroundColor: '#ECFDF3'
   },
-  badgePending: {
-    color: '#B54708',
-    backgroundColor: '#FFFAEB'
+  badgeRoute: {
+    color: '#175CD3',
+    backgroundColor: '#EFF8FF'
+  },
+  badgeService: {
+    color: '#6E2A9C',
+    backgroundColor: '#F9F5FF'
+  },
+  badgeDone: {
+    color: '#027A48',
+    backgroundColor: '#ECFDF3'
   },
   badgeCancelled: {
     color: '#B42318',

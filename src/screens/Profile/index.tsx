@@ -11,6 +11,7 @@ import { AppChip } from '../../components/ui/AppChip';
 import { ReliableImage } from '../../components/ui/ReliableImage';
 import { ReliableImageBackground } from '../../components/ui/ReliableImageBackground';
 import { OFFLINE_DEMO_MODE } from '../../config/api';
+import { getFallbackChefPackages } from '../../data/chefPackages';
 import { getGrillerVideos, getYouTubeThumbnail } from '../../data/mediaLibrary';
 import { getLocalAvatarUriByChef, getLocalCoverUriByChef, getLocalGalleryUriByChef, getLocalVideoThumbUri } from '../../data/localMedia';
 import { RootStackParamList } from '../../navigation/screenConfig';
@@ -19,17 +20,31 @@ import { BottomNav } from '../../components/ui/BottomNav';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { useAppState } from '../../state/AppStateContext';
 import { colors } from '../../theme/colors';
-import { ChefReview, ChefVideo } from '../../types/domain';
+import { ChefPackage, ChefReview, ChefVideo } from '../../types/domain';
 import { getChefAvatarUrl, getChefCoverUrl } from '../../utils/chefMedia';
 import { getReliableMediaUrl } from '../../utils/reliableMedia';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
-type ChefPackage = {
-  id: string;
-  name: string;
-  details: string;
-  price: number;
-};
+
+function buildYouTubeEmbedHtml(videoId: string) {
+  return `<!doctype html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+    <style>
+      html, body { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; overflow: hidden; }
+      iframe { border: 0; width: 100%; height: 100%; }
+    </style>
+  </head>
+  <body>
+    <iframe
+      src="https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&playsinline=1&rel=0&modestbranding=1&controls=1"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+      allowfullscreen
+    ></iframe>
+  </body>
+</html>`;
+}
 
 const fallbackReviewsByChefId: Record<string, ChefReview[]> = {
   'erick-martinez': [
@@ -98,30 +113,6 @@ const fallbackReviewsByChefId: Record<string, ChefReview[]> = {
   ]
 };
 
-const packagesByChefId: Record<string, ChefPackage[]> = {
-  'erick-martinez': [
-    { id: 'basic', name: 'Paquete Basico', details: 'Hasta 5 personas', price: 2200 },
-    { id: 'family', name: 'Paquete Familiar', details: 'Hasta 10 personas', price: 4200 },
-    { id: 'event', name: 'Evento Privado', details: 'Hasta 20 personas', price: 7600 }
-  ],
-  'carlos-bbq': [
-    { id: 'basic', name: 'Parrilla Express', details: 'Hasta 6 personas', price: 2500 },
-    { id: 'family', name: 'Parrilla Familiar', details: 'Hasta 12 personas', price: 4800 }
-  ],
-  'martin-asador': [
-    { id: 'basic', name: 'Smoke Basico', details: 'Hasta 6 personas', price: 2800 },
-    { id: 'premium', name: 'Smoke Premium', details: 'Hasta 15 personas', price: 6200 }
-  ],
-  'luis-bbq': [
-    { id: 'basic', name: 'Asado Regio', details: 'Hasta 8 personas', price: 3000 },
-    { id: 'event', name: 'Asado para Evento', details: 'Hasta 18 personas', price: 6500 }
-  ],
-  'cories-bbq': [
-    { id: 'basic', name: 'Ribeye Basico', details: 'Hasta 5 personas', price: 2600 },
-    { id: 'family', name: 'Ribeye Familiar', details: 'Hasta 10 personas', price: 5000 }
-  ]
-};
-
 export function Profile({ navigation }: Props) {
   const { selectedChef } = useAppState();
   const coverUrl = getChefCoverUrl(selectedChef);
@@ -133,17 +124,29 @@ export function Profile({ navigation }: Props) {
         getReliableMediaUrl(item, getLocalGalleryUriByChef(selectedChef.id, index))
       )
     : [0, 1, 2].map((index) => getLocalGalleryUriByChef(selectedChef.id, index)));
-  const chefPackages = packagesByChefId[selectedChef.id] ?? packagesByChefId['erick-martinez'];
   const [grillerVideos, setGrillerVideos] = useState<ChefVideo[]>(getGrillerVideos(selectedChef.id));
+  const [chefPackages, setChefPackages] = useState<ChefPackage[]>(getFallbackChefPackages(selectedChef.id));
   const [reviews, setReviews] = useState<ChefReview[]>(fallbackReviewsByChefId[selectedChef.id] ?? []);
-  const [selectedPackageId, setSelectedPackageId] = useState(chefPackages[0].id);
+  const [selectedPackageId, setSelectedPackageId] = useState(chefPackages[0]?.id ?? '');
   const [selectedVideo, setSelectedVideo] = useState<ChefVideo | null>(null);
   const [showVideoModal, setShowVideoModal] = useState(false);
 
   useEffect(() => {
-    const fallbackPackage = (packagesByChefId[selectedChef.id] ?? packagesByChefId['erick-martinez'])[0];
-    setSelectedPackageId(fallbackPackage.id);
+    const nextPackages = getFallbackChefPackages(selectedChef.id);
+    setChefPackages(nextPackages);
+    setSelectedPackageId(nextPackages[0]?.id ?? '');
   }, [selectedChef.id]);
+
+  useEffect(() => {
+    if (chefPackages.length === 0) {
+      setSelectedPackageId('');
+      return;
+    }
+
+    if (!chefPackages.some((item) => item.id === selectedPackageId)) {
+      setSelectedPackageId(chefPackages[0].id);
+    }
+  }, [chefPackages, selectedPackageId]);
 
   function openVideoModal(video: ChefVideo) {
     setSelectedVideo(video);
@@ -205,6 +208,34 @@ export function Profile({ navigation }: Props) {
     }
 
     void loadVideos();
+
+    return () => {
+      active = false;
+    };
+  }, [selectedChef.id]);
+
+  useEffect(() => {
+    let active = true;
+    setChefPackages(getFallbackChefPackages(selectedChef.id));
+
+    if (OFFLINE_DEMO_MODE) {
+      return () => {
+        active = false;
+      };
+    }
+
+    async function loadPackages() {
+      try {
+        const remotePackages = await grillerzApi.getChefPackages(selectedChef.id);
+        if (active) {
+          setChefPackages(remotePackages);
+        }
+      } catch {
+        // keep local fallback
+      }
+    }
+
+    void loadPackages();
 
     return () => {
       active = false;
@@ -292,10 +323,10 @@ export function Profile({ navigation }: Props) {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Paquetes y precios</Text>
               <View style={styles.packagesList}>
-                {chefPackages.map((item) => {
+                {chefPackages.filter((item) => item.isActive).map((item) => {
                   const selected = item.id === selectedPackageId;
                   return (
-                    <Pressable key={`${selectedChef.id}-${item.id}`} onPress={() => setSelectedPackageId(item.id)}>
+                    <Pressable key={item.id} onPress={() => setSelectedPackageId(item.id)}>
                       <AppCard style={[styles.packageCard, selected ? styles.packageCardSelected : null]}>
                         <View style={styles.packageTopRow}>
                           <Text style={styles.packageName}>{item.name}</Text>
@@ -307,6 +338,9 @@ export function Profile({ navigation }: Props) {
                     </Pressable>
                   );
                 })}
+                {chefPackages.filter((item) => item.isActive).length === 0 ? (
+                  <Text style={styles.emptyReviews}>Este griller aun no publica paquetes.</Text>
+                ) : null}
               </View>
             </View>
 
@@ -382,19 +416,38 @@ export function Profile({ navigation }: Props) {
               </View>
               {selectedVideo ? (
                 <WebView
-                  source={{ uri: `https://www.youtube.com/embed/${selectedVideo.videoId}?autoplay=1&rel=0&modestbranding=1&playsinline=1` }}
+                  source={{ html: buildYouTubeEmbedHtml(selectedVideo.videoId) }}
+                  originWhitelist={['*']}
                   style={styles.videoWebview}
                   javaScriptEnabled
                   domStorageEnabled
                   allowsInlineMediaPlayback
+                  allowsFullscreenVideo
                   mediaPlaybackRequiresUserAction={false}
+                  setSupportMultipleWindows={false}
+                  onShouldStartLoadWithRequest={(request) => {
+                    const url = request.url;
+                    if (url.startsWith('about:blank')) {
+                      return true;
+                    }
+
+                    if (url.startsWith('https://www.youtube-nocookie.com/embed/')) {
+                      return true;
+                    }
+
+                    if (url.startsWith('https://www.youtube.com/embed/')) {
+                      return true;
+                    }
+
+                    return false;
+                  }}
                 />
               ) : null}
             </View>
           </View>
         </Modal>
 
-        <BottomNav activeTab="Profile" onNavigate={(route) => navigation.navigate(route)} />
+        <BottomNav onNavigate={(route) => navigation.navigate(route)} />
       </View>
     </SafeAreaView>
   );

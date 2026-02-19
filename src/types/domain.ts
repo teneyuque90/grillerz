@@ -1,10 +1,16 @@
 export type ServiceMode = 'A domicilio' | 'En terraza del griller';
 export type PaymentMethod = 'Tarjeta' | 'Transferencia' | 'Efectivo';
-export type BookingStatus = 'Pendiente' | 'Confirmada' | 'Cancelada';
+export type BookingStatus = 'Pendiente' | 'Confirmada' | 'En camino' | 'En servicio' | 'Completada' | 'Cancelada';
 export type UserRole = 'client' | 'griller' | 'admin';
+export type ChefSpecialDate = {
+  date: string;
+  times: string[];
+};
 export type ChefAvailability = {
   weekdays: number[];
   times: string[];
+  blockedDates?: string[];
+  specialDates?: ChefSpecialDate[];
 };
 
 export type User = {
@@ -55,6 +61,18 @@ export type ChefVideo = {
   subtitle: string;
   youtubeUrl: string;
   videoId: string;
+  displayOrder: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ChefPackage = {
+  id: string;
+  chefId: string;
+  name: string;
+  details: string;
+  price: number;
+  isActive: boolean;
   displayOrder: number;
   createdAt: string;
   updatedAt: string;

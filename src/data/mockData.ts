@@ -20,7 +20,12 @@ export const mockChefs: Chef[] = [
     bio: 'Especialista en eventos familiares y corporativos. Manejo cortes premium y menu personalizado.',
     availability: {
       weekdays: [3, 4, 5, 6, 0],
-      times: ['2:00 PM', '5:00 PM', '7:30 PM', '9:00 PM']
+      times: ['2:00 PM', '5:00 PM', '7:30 PM', '9:00 PM'],
+      blockedDates: ['2026-04-26', '2026-05-03'],
+      specialDates: [
+        { date: '2026-04-24', times: ['1:00 PM', '3:30 PM', '6:00 PM'] },
+        { date: '2026-05-01', times: ['12:00 PM', '2:00 PM'] }
+      ]
     },
     stats: { services: 85, clients: 240, years: 5 }
   },
@@ -43,7 +48,9 @@ export const mockChefs: Chef[] = [
     bio: 'Griller de parrilla para grupos grandes con enfoque en sabor ahumado y servicio premium.',
     availability: {
       weekdays: [2, 4, 5, 6, 0],
-      times: ['1:00 PM', '3:00 PM', '6:00 PM', '8:00 PM']
+      times: ['1:00 PM', '3:00 PM', '6:00 PM', '8:00 PM'],
+      blockedDates: [],
+      specialDates: []
     },
     stats: { services: 70, clients: 190, years: 6 }
   },
@@ -66,7 +73,9 @@ export const mockChefs: Chef[] = [
     bio: 'Especializado en cocciones lentas y parrilla de alto volumen para eventos sociales.',
     availability: {
       weekdays: [1, 3, 4, 5, 6],
-      times: ['2:00 PM', '5:00 PM', '7:30 PM']
+      times: ['2:00 PM', '5:00 PM', '7:30 PM'],
+      blockedDates: [],
+      specialDates: []
     },
     stats: { services: 65, clients: 168, years: 5 }
   },
@@ -89,7 +98,9 @@ export const mockChefs: Chef[] = [
     bio: 'Servicio rapido y menu flexible para reuniones de tamano medio.',
     availability: {
       weekdays: [2, 4, 5, 6, 0],
-      times: ['12:00 PM', '2:00 PM', '4:00 PM', '7:00 PM']
+      times: ['12:00 PM', '2:00 PM', '4:00 PM', '7:00 PM'],
+      blockedDates: [],
+      specialDates: []
     },
     stats: { services: 52, clients: 140, years: 4 }
   },
@@ -112,7 +123,9 @@ export const mockChefs: Chef[] = [
     bio: 'Enfoque en cortes jugosos y presentacion profesional para eventos en casa.',
     availability: {
       weekdays: [3, 5, 6, 0],
-      times: ['2:00 PM', '5:00 PM', '8:00 PM']
+      times: ['2:00 PM', '5:00 PM', '8:00 PM'],
+      blockedDates: [],
+      specialDates: []
     },
     stats: { services: 76, clients: 210, years: 5 }
   }

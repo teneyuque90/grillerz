@@ -61,7 +61,7 @@ export function Connect({ navigation }: Props) {
           </ScrollView>
         </View>
 
-        <BottomNav activeTab="Profile" onNavigate={(route) => navigation.navigate(route)} />
+        <BottomNav activeTab="Account" onNavigate={(route) => navigation.navigate(route)} />
       </View>
     </SafeAreaView>
   );

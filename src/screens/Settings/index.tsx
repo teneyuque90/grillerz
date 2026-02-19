@@ -41,7 +41,8 @@ export function Settings({ navigation }: Props) {
   const { authUser, signOut } = useAppState();
   const userName = authUser?.name ?? 'Usuario Grillerz';
   const userEmail = authUser?.email ?? 'guest@grillerz.app';
-  const userRoleLabel = roleLabel[authUser?.role ?? 'client'];
+  const userRole = authUser?.role ?? 'client';
+  const userRoleLabel = roleLabel[userRole];
 
   async function handleSignOut() {
     await signOut();
@@ -74,7 +75,9 @@ export function Settings({ navigation }: Props) {
               <Text style={styles.sectionTitle}>Cuenta</Text>
               <SectionRow label="Informacion personal" onPress={() => navigation.navigate('Account')} />
               <SectionRow label="Rol" value={userRoleLabel} onPress={() => navigation.navigate('Account')} />
-              <SectionRow label="Metodos de pago" value="1 tarjeta" onPress={() => navigation.navigate('Payment')} />
+              {userRole === 'client' ? (
+                <SectionRow label="Metodos de pago" value="1 tarjeta" onPress={() => navigation.navigate('Payment')} />
+              ) : null}
               <SectionRow label="Direcciones" value="Casa" onPress={() => navigation.navigate('ChooseLocation')} />
             </View>
 
@@ -98,7 +101,7 @@ export function Settings({ navigation }: Props) {
           </ScrollView>
         </View>
 
-        <BottomNav activeTab="Settings" onNavigate={(route) => navigation.navigate(route)} />
+        <BottomNav activeTab="Account" onNavigate={(route) => navigation.navigate(route)} />
       </View>
     </SafeAreaView>
   );

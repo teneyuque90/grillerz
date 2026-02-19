@@ -17,7 +17,10 @@ export function updateChefProfileById({
   city,
   basePrice,
   specialtiesJson,
-  bio
+  bio,
+  avatarUrl,
+  coverUrl,
+  galleryJson
 }) {
   db.prepare(`
     UPDATE chefs
@@ -26,7 +29,10 @@ export function updateChefProfileById({
         city = @city,
         base_price = @basePrice,
         specialties_json = @specialtiesJson,
-        bio = @bio
+        bio = @bio,
+        avatar_url = @avatarUrl,
+        cover_url = @coverUrl,
+        gallery_json = @galleryJson
     WHERE id = @chefId
   `).run({
     chefId,
@@ -35,23 +41,32 @@ export function updateChefProfileById({
     city,
     basePrice,
     specialtiesJson,
-    bio
+    bio,
+    avatarUrl,
+    coverUrl,
+    galleryJson
   });
 }
 
 export function updateChefAvailabilityById({
   chefId,
   weekdaysJson,
-  timesJson
+  timesJson,
+  blockedDatesJson,
+  specialDatesJson
 }) {
   db.prepare(`
     UPDATE chefs
     SET availability_weekdays_json = @weekdaysJson,
-        availability_times_json = @timesJson
+        availability_times_json = @timesJson,
+        availability_blocked_dates_json = @blockedDatesJson,
+        availability_special_dates_json = @specialDatesJson
     WHERE id = @chefId
   `).run({
     chefId,
     weekdaysJson,
-    timesJson
+    timesJson,
+    blockedDatesJson,
+    specialDatesJson
   });
 }

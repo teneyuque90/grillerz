@@ -1,5 +1,5 @@
 import { http } from './client';
-import { Booking, Chef, ChefReview, ChefVideo, User } from '../types/domain';
+import { Booking, BookingStatus, Chef, ChefPackage, ChefReview, ChefSpecialDate, ChefVideo, User } from '../types/domain';
 
 type LoginPayload = {
   email: string;
@@ -26,6 +26,9 @@ type CreateBookingPayload = Omit<Booking, 'id' | 'createdAt'>;
 type SaveChefVideosPayload = {
   videos: Array<Pick<ChefVideo, 'title' | 'subtitle' | 'youtubeUrl'>>;
 };
+type SaveChefPackagesPayload = {
+  packages: Array<Pick<ChefPackage, 'name' | 'details' | 'price' | 'isActive'>>;
+};
 type UpdateChefProfilePayload = {
   name?: string;
   title?: string;
@@ -33,10 +36,15 @@ type UpdateChefProfilePayload = {
   basePrice?: number;
   specialties?: string[];
   bio?: string;
+  avatarUrl?: string;
+  coverUrl?: string;
+  gallery?: string[];
 };
 type UpdateChefAvailabilityPayload = {
   weekdays: number[];
   times: string[];
+  blockedDates?: string[];
+  specialDates?: ChefSpecialDate[];
 };
 
 export const grillerzApi = {
@@ -76,9 +84,19 @@ export const grillerzApi = {
     return response.videos;
   },
 
+  async getChefPackages(chefId: string): Promise<ChefPackage[]> {
+    const response = await http.get<{ packages: ChefPackage[] }>(`/chefs/${encodeURIComponent(chefId)}/packages`);
+    return response.packages;
+  },
+
   async updateChefVideos(chefId: string, payload: SaveChefVideosPayload): Promise<ChefVideo[]> {
     const response = await http.put<{ videos: ChefVideo[] }>(`/chefs/${encodeURIComponent(chefId)}/videos`, payload);
     return response.videos;
+  },
+
+  async updateChefPackages(chefId: string, payload: SaveChefPackagesPayload): Promise<ChefPackage[]> {
+    const response = await http.put<{ packages: ChefPackage[] }>(`/chefs/${encodeURIComponent(chefId)}/packages`, payload);
+    return response.packages;
   },
 
   async updateChefProfile(chefId: string, payload: UpdateChefProfilePayload): Promise<Chef> {
@@ -102,13 +120,18 @@ export const grillerzApi = {
     return response.booking;
   },
 
+  async getBookingById(bookingId: string): Promise<Booking> {
+    const response = await http.get<{ booking: Booking }>(`/bookings/${encodeURIComponent(bookingId)}`);
+    return response.booking;
+  },
+
   async getGrillerBookings(chefId?: string): Promise<Booking[]> {
     const path = chefId ? `/bookings/griller/me?chefId=${encodeURIComponent(chefId)}` : '/bookings/griller/me';
     const response = await http.get<{ bookings: Booking[] }>(path);
     return response.bookings;
   },
 
-  async updateBookingStatus(bookingId: string, status: 'Confirmada' | 'Cancelada'): Promise<Booking> {
+  async updateBookingStatus(bookingId: string, status: BookingStatus): Promise<Booking> {
     const response = await http.put<{ booking: Booking }>(`/bookings/${encodeURIComponent(bookingId)}/status`, { status });
     return response.booking;
   }

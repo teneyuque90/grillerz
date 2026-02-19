@@ -2,10 +2,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors } from '../../theme/colors';
 
-type AppTab = 'Browse01' | 'Search' | 'Bookings' | 'Profile' | 'Settings';
+type AppTab = 'Browse01' | 'Search' | 'Bookings' | 'Favorites' | 'Account';
 
 type BottomNavProps = {
-  activeTab: AppTab;
+  activeTab?: AppTab;
   onNavigate: (route: AppTab) => void;
 };
 
@@ -13,8 +13,8 @@ const tabs: Array<{ route: AppTab; icon: React.ComponentProps<typeof Ionicons>['
   { route: 'Browse01', icon: 'flame-outline', iconActive: 'flame', label: 'Inicio' },
   { route: 'Search', icon: 'search-outline', iconActive: 'search', label: 'Buscar' },
   { route: 'Bookings', icon: 'calendar-outline', iconActive: 'calendar', label: 'Reservas' },
-  { route: 'Profile', icon: 'person-outline', iconActive: 'person', label: 'Perfil' },
-  { route: 'Settings', icon: 'settings-outline', iconActive: 'settings', label: 'Ajustes' }
+  { route: 'Favorites', icon: 'heart-outline', iconActive: 'heart', label: 'Favoritos' },
+  { route: 'Account', icon: 'person-outline', iconActive: 'person', label: 'Cuenta' },
 ];
 
 export function BottomNav({ activeTab, onNavigate }: BottomNavProps) {

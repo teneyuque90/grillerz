@@ -38,6 +38,7 @@ type AppStateContextValue = {
   signOut: () => Promise<void>;
   selectChef: (chefId: string) => void;
   replaceChef: (chef: Chef) => void;
+  replaceBookings: (items: Booking[]) => void;
   selectBooking: (bookingId: string) => void;
   updateBookingDraft: (patch: Partial<Omit<BookingDraft, 'chefId'>>) => void;
   confirmBooking: (paymentMethod: PaymentMethod) => Promise<Booking>;
@@ -424,6 +425,10 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const replaceBookings = useCallback((items: Booking[]) => {
+    setBookings(items);
+  }, []);
+
   const updateBookingDraft = useCallback((patch: Partial<Omit<BookingDraft, 'chefId'>>) => {
     setBookingDraft((prev) => ({
       ...prev,
@@ -499,6 +504,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       signOut,
       selectChef,
       replaceChef,
+      replaceBookings,
       selectBooking,
       updateBookingDraft,
       confirmBooking
@@ -516,6 +522,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       selectBooking,
       selectChef,
       replaceChef,
+      replaceBookings,
       selectedBooking,
       selectedChef,
       signIn,

@@ -21,6 +21,7 @@ type DateOption = {
   monthKey: string;
   monthLabel: string;
   weekday: number;
+  isSpecial: boolean;
 };
 
 const modes: ServiceMode[] = ['A domicilio', 'En terraza del griller'];
@@ -60,6 +61,21 @@ function buildMonthLabel(date: Date): string {
   return `${month} ${date.getFullYear()}`;
 }
 
+function isValidDateKey(value: string): boolean {
+  const trimmed = value.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    return false;
+  }
+
+  const [yearRaw, monthRaw, dayRaw] = trimmed.split('-');
+  const year = Number(yearRaw);
+  const month = Number(monthRaw);
+  const day = Number(dayRaw);
+  const candidate = new Date(Date.UTC(year, month - 1, day));
+
+  return candidate.getUTCFullYear() === year && candidate.getUTCMonth() === month - 1 && candidate.getUTCDate() === day;
+}
+
 export function Schedule({ navigation }: Props) {
   const { selectedChef, bookingDraft, bookingSummary, updateBookingDraft } = useAppState();
   const [showAllDates, setShowAllDates] = useState(false);
@@ -69,27 +85,58 @@ export function Schedule({ navigation }: Props) {
 
   const availability = selectedChef.availability ?? {
     weekdays: [1, 2, 3, 4, 5, 6, 0],
-    times: ['6:00 PM', '7:00 PM', '8:00 PM']
+    times: ['6:00 PM', '7:00 PM', '8:00 PM'],
+    blockedDates: [],
+    specialDates: []
   };
+
+  const blockedDatesSet = useMemo(() => {
+    const blocked = (availability.blockedDates ?? [])
+      .map((item) => String(item).trim())
+      .filter((item) => isValidDateKey(item));
+
+    return new Set(blocked);
+  }, [availability.blockedDates]);
+
+  const specialDateTimesMap = useMemo(() => {
+    const entries = (availability.specialDates ?? [])
+      .map((item) => ({
+        date: String(item?.date ?? '').trim(),
+        times: Array.isArray(item?.times)
+          ? item.times.map((time) => String(time).trim()).filter(Boolean).slice(0, 16)
+          : []
+      }))
+      .filter((item) => isValidDateKey(item.date) && item.times.length > 0);
+
+    const map = new Map<string, string[]>();
+    entries.forEach((item) => {
+      map.set(item.date, Array.from(new Set(item.times)));
+    });
+
+    return map;
+  }, [availability.specialDates]);
 
   const dateOptions = useMemo(() => {
     const options: DateOption[] = [];
     const start = new Date();
     let offset = 0;
 
-    while (options.length < 56 && offset < 120) {
+    while (options.length < 70 && offset < 160) {
       const candidate = new Date(start);
       candidate.setDate(start.getDate() + offset);
       const dateKey = buildDateKey(candidate);
+      const hasSpecialTimes = specialDateTimesMap.has(dateKey);
+      const isOpenByDefault = availability.weekdays.includes(candidate.getDay()) && !blockedDatesSet.has(dateKey);
 
-      if (availability.weekdays.includes(candidate.getDay())) {
+      if (isOpenByDefault || hasSpecialTimes) {
         options.push({
           key: dateKey,
           label: buildDateLabel(candidate),
           shortLabel: buildShortDateLabel(candidate),
           monthKey: buildMonthKey(candidate),
           monthLabel: buildMonthLabel(candidate),
-          weekday: candidate.getDay()
+          weekday: candidate.getDay(),
+          isSpecial: hasSpecialTimes
         });
       }
 
@@ -97,7 +144,7 @@ export function Schedule({ navigation }: Props) {
     }
 
     return options;
-  }, [availability.weekdays]);
+  }, [availability.weekdays, blockedDatesSet, specialDateTimesMap]);
 
   const monthOptions = useMemo(() => {
     const map = new Map<string, string>();
@@ -124,12 +171,12 @@ export function Schedule({ navigation }: Props) {
   }, [bookingDraft.dateLabel, dateOptions]);
 
   const timeOptions = useMemo(() => {
-    if (!selectedDateOption) {
+    if (!selectedDateOption || selectedDateOption.key === '') {
       return availability.times;
     }
 
-    return availability.times;
-  }, [availability.times, selectedDateOption]);
+    return specialDateTimesMap.get(selectedDateOption.key) ?? availability.times;
+  }, [availability.times, selectedDateOption, specialDateTimesMap]);
 
   const visibleDateOptions = showAllDates ? filteredDateOptions : filteredDateOptions.slice(0, 12);
 
@@ -179,6 +226,7 @@ export function Schedule({ navigation }: Props) {
             <View style={styles.block}>
               <Text style={styles.blockTitle}>Fecha</Text>
               <Text style={styles.helperText}>Disponibilidad real segun calendario del griller.</Text>
+              <Text style={styles.helperText}>Se excluyen fechas bloqueadas y se priorizan horarios especiales.</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.monthScrollRow}>
                 {monthOptions.map((month) => {
                   const active = selectedMonthKey === month.key;
@@ -204,15 +252,20 @@ export function Schedule({ navigation }: Props) {
                   return (
                     <Pressable
                       key={option.key}
-                      style={[styles.dateChip, active ? styles.chipActive : null]}
+                      style={[styles.dateChip, option.isSpecial ? styles.dateChipSpecial : null, active ? styles.chipActive : null]}
                       onPress={() => updateBookingDraft({ dateLabel: option.label })}
                     >
-                      <Text style={[styles.chipText, active ? styles.chipTextActive : null]}>{option.shortLabel}</Text>
+                      <Text style={[styles.chipText, active ? styles.chipTextActive : option.isSpecial ? styles.chipTextSpecial : null]}>
+                        {option.shortLabel}
+                      </Text>
                     </Pressable>
                   );
                 })}
               </ScrollView>
               {visibleDateOptions.length === 0 ? <Text style={styles.emptyState}>No hay fechas para este mes.</Text> : null}
+              {selectedDateOption?.isSpecial ? (
+                <Text style={styles.specialDateNotice}>Horario especial del griller para esta fecha.</Text>
+              ) : null}
               {filteredDateOptions.length > 12 ? (
                 <Pressable style={styles.moreDatesBtn} onPress={() => setShowAllDates((prev) => !prev)}>
                   <Text style={styles.moreDatesLabel}>{showAllDates ? 'Ver menos fechas' : 'Ver mas fechas'}</Text>
@@ -233,6 +286,7 @@ export function Schedule({ navigation }: Props) {
                   );
                 })}
               </View>
+              {timeOptions.length === 0 ? <Text style={styles.emptyState}>No hay horarios disponibles para la fecha seleccionada.</Text> : null}
             </View>
 
             <View style={styles.block}>
@@ -365,6 +419,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     justifyContent: 'center'
   },
+  dateChipSpecial: {
+    borderColor: '#FBBF24',
+    backgroundColor: '#FFFBEB'
+  },
   emptyState: {
     color: colors.textSoft,
     fontWeight: '600',
@@ -394,6 +452,14 @@ const styles = StyleSheet.create({
   },
   chipTextActive: {
     color: colors.primaryDark
+  },
+  chipTextSpecial: {
+    color: '#92400E'
+  },
+  specialDateNotice: {
+    color: '#92400E',
+    fontWeight: '700',
+    fontSize: 12
   },
   moreDatesBtn: {
     alignSelf: 'flex-start',
