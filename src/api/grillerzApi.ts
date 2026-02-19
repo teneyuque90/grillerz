@@ -26,6 +26,18 @@ type CreateBookingPayload = Omit<Booking, 'id' | 'createdAt'>;
 type SaveChefVideosPayload = {
   videos: Array<Pick<ChefVideo, 'title' | 'subtitle' | 'youtubeUrl'>>;
 };
+type UpdateChefProfilePayload = {
+  name?: string;
+  title?: string;
+  city?: string;
+  basePrice?: number;
+  specialties?: string[];
+  bio?: string;
+};
+type UpdateChefAvailabilityPayload = {
+  weekdays: number[];
+  times: string[];
+};
 
 export const grillerzApi = {
   async login(payload: LoginPayload): Promise<AuthResponse> {
@@ -69,6 +81,16 @@ export const grillerzApi = {
     return response.videos;
   },
 
+  async updateChefProfile(chefId: string, payload: UpdateChefProfilePayload): Promise<Chef> {
+    const response = await http.put<{ chef: Chef }>(`/chefs/${encodeURIComponent(chefId)}/profile`, payload);
+    return response.chef;
+  },
+
+  async updateChefAvailability(chefId: string, payload: UpdateChefAvailabilityPayload): Promise<Chef> {
+    const response = await http.put<{ chef: Chef }>(`/chefs/${encodeURIComponent(chefId)}/availability`, payload);
+    return response.chef;
+  },
+
   async getBookings(userId?: string): Promise<Booking[]> {
     const path = userId ? `/bookings?userId=${encodeURIComponent(userId)}` : '/bookings';
     const response = await http.get<{ bookings: Booking[] }>(path);
@@ -77,6 +99,17 @@ export const grillerzApi = {
 
   async createBooking(payload: CreateBookingPayload): Promise<Booking> {
     const response = await http.post<{ booking: Booking }>('/bookings', payload);
+    return response.booking;
+  },
+
+  async getGrillerBookings(chefId?: string): Promise<Booking[]> {
+    const path = chefId ? `/bookings/griller/me?chefId=${encodeURIComponent(chefId)}` : '/bookings/griller/me';
+    const response = await http.get<{ bookings: Booking[] }>(path);
+    return response.bookings;
+  },
+
+  async updateBookingStatus(bookingId: string, status: 'Confirmada' | 'Cancelada'): Promise<Booking> {
+    const response = await http.put<{ booking: Booking }>(`/bookings/${encodeURIComponent(bookingId)}/status`, { status });
     return response.booking;
   }
 };

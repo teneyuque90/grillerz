@@ -18,6 +18,10 @@ export const mockChefs: Chef[] = [
       'https://loremflickr.com/1200/800/meat,smoke?lock=204'
     ],
     bio: 'Especialista en eventos familiares y corporativos. Manejo cortes premium y menu personalizado.',
+    availability: {
+      weekdays: [3, 4, 5, 6, 0],
+      times: ['2:00 PM', '5:00 PM', '7:30 PM', '9:00 PM']
+    },
     stats: { services: 85, clients: 240, years: 5 }
   },
   {
@@ -37,6 +41,10 @@ export const mockChefs: Chef[] = [
       'https://loremflickr.com/1200/800/barbecue,table?lock=208'
     ],
     bio: 'Griller de parrilla para grupos grandes con enfoque en sabor ahumado y servicio premium.',
+    availability: {
+      weekdays: [2, 4, 5, 6, 0],
+      times: ['1:00 PM', '3:00 PM', '6:00 PM', '8:00 PM']
+    },
     stats: { services: 70, clients: 190, years: 6 }
   },
   {
@@ -56,6 +64,10 @@ export const mockChefs: Chef[] = [
       'https://loremflickr.com/1200/800/bbq,slowcook?lock=212'
     ],
     bio: 'Especializado en cocciones lentas y parrilla de alto volumen para eventos sociales.',
+    availability: {
+      weekdays: [1, 3, 4, 5, 6],
+      times: ['2:00 PM', '5:00 PM', '7:30 PM']
+    },
     stats: { services: 65, clients: 168, years: 5 }
   },
   {
@@ -75,6 +87,10 @@ export const mockChefs: Chef[] = [
       'https://loremflickr.com/1200/800/grilling,party?lock=216'
     ],
     bio: 'Servicio rapido y menu flexible para reuniones de tamano medio.',
+    availability: {
+      weekdays: [2, 4, 5, 6, 0],
+      times: ['12:00 PM', '2:00 PM', '4:00 PM', '7:00 PM']
+    },
     stats: { services: 52, clients: 140, years: 4 }
   },
   {
@@ -94,6 +110,10 @@ export const mockChefs: Chef[] = [
       'https://loremflickr.com/1200/800/flame,barbecue?lock=220'
     ],
     bio: 'Enfoque en cortes jugosos y presentacion profesional para eventos en casa.',
+    availability: {
+      weekdays: [3, 5, 6, 0],
+      times: ['2:00 PM', '5:00 PM', '8:00 PM']
+    },
     stats: { services: 76, clients: 210, years: 5 }
   }
 ];
@@ -139,5 +159,24 @@ export const seedBookings = (userId: string): Booking[] => [
     total: 3500,
     paymentMethod: 'Tarjeta',
     createdAt: '2026-02-11T10:00:00.000Z'
+  },
+  {
+    id: 'GRZ-4730',
+    userId,
+    chefId: 'erick-martinez',
+    chefName: 'Erick Martinez',
+    status: 'Pendiente',
+    dateLabel: '22 Abril 2026',
+    timeLabel: '7:30 PM',
+    mode: 'A domicilio',
+    address: 'Lago de Chapala 804, Nuevo Laredo',
+    packageName: 'Parrilla Mixta',
+    guests: 10,
+    durationHours: 4,
+    serviceFee: 2800,
+    transferFee: 300,
+    total: 3100,
+    paymentMethod: 'Transferencia',
+    createdAt: '2026-02-12T14:30:00.000Z'
   }
 ];

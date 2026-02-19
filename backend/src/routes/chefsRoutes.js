@@ -2,7 +2,7 @@ import { Router } from 'express';
 
 import { handleHttpError } from '../lib/http.js';
 import { requireAuth } from '../middleware/requireAuth.js';
-import { getChefById, getChefReviews, getChefVideos, getChefs, saveChefVideos } from '../services/chefsService.js';
+import { getChefById, getChefReviews, getChefVideos, getChefs, saveChefVideos, updateChefAvailability, updateChefProfile } from '../services/chefsService.js';
 
 export const chefsRoutes = Router();
 
@@ -51,6 +51,34 @@ chefsRoutes.put('/:chefId/videos', requireAuth, (req, res) => {
     });
 
     res.json({ videos });
+  } catch (error) {
+    handleHttpError(res, error);
+  }
+});
+
+chefsRoutes.put('/:chefId/profile', requireAuth, (req, res) => {
+  try {
+    const chef = updateChefProfile({
+      authUser: req.auth.user,
+      chefId: req.params.chefId,
+      payload: req.body ?? {}
+    });
+
+    res.json({ chef });
+  } catch (error) {
+    handleHttpError(res, error);
+  }
+});
+
+chefsRoutes.put('/:chefId/availability', requireAuth, (req, res) => {
+  try {
+    const chef = updateChefAvailability({
+      authUser: req.auth.user,
+      chefId: req.params.chefId,
+      payload: req.body ?? {}
+    });
+
+    res.json({ chef });
   } catch (error) {
     handleHttpError(res, error);
   }

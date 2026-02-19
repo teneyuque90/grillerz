@@ -41,6 +41,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export function AppNavigator() {
   const { authUser, isHydrated } = useAppState();
+  const signedInInitialRoute = authUser?.role === 'griller' ? 'Account' : 'Browse01';
 
   if (!isHydrated) {
     return (
@@ -58,10 +59,10 @@ export function AppNavigator() {
   }
 
   return (
-    <Stack.Navigator
-      key={authUser ? 'signed-in' : 'signed-out'}
-      initialRouteName={authUser ? 'Browse01' : 'SplashScreen'}
-      screenOptions={{
+      <Stack.Navigator
+        key={authUser ? 'signed-in' : 'signed-out'}
+        initialRouteName={authUser ? signedInInitialRoute : 'SplashScreen'}
+        screenOptions={{
         headerShown: false,
         animation: 'slide_from_right'
       }}

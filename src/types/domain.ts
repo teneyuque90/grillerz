@@ -2,6 +2,10 @@ export type ServiceMode = 'A domicilio' | 'En terraza del griller';
 export type PaymentMethod = 'Tarjeta' | 'Transferencia' | 'Efectivo';
 export type BookingStatus = 'Pendiente' | 'Confirmada' | 'Cancelada';
 export type UserRole = 'client' | 'griller' | 'admin';
+export type ChefAvailability = {
+  weekdays: number[];
+  times: string[];
+};
 
 export type User = {
   id: string;
@@ -26,6 +30,7 @@ export type Chef = {
   coverUrl: string;
   gallery: string[];
   bio: string;
+  availability?: ChefAvailability;
   stats: {
     services: number;
     clients: number;

@@ -578,6 +578,96 @@ const migrations = [
         });
       }
     }
+  },
+  {
+    id: '012_add_chef_availability',
+    up(db) {
+      if (!hasColumn(db, 'chefs', 'availability_weekdays_json')) {
+        db.exec(`ALTER TABLE chefs ADD COLUMN availability_weekdays_json TEXT NOT NULL DEFAULT '[1,2,3,4,5,6,0]';`);
+      }
+
+      if (!hasColumn(db, 'chefs', 'availability_times_json')) {
+        db.exec(`ALTER TABLE chefs ADD COLUMN availability_times_json TEXT NOT NULL DEFAULT '["6:00 PM","7:00 PM","8:00 PM"]';`);
+      }
+
+      const availabilitySeed = {
+        'erick-martinez': {
+          weekdays: '[3,4,5,6,0]',
+          times: '["2:00 PM","5:00 PM","7:30 PM","9:00 PM"]'
+        },
+        'carlos-bbq': {
+          weekdays: '[2,4,5,6,0]',
+          times: '["1:00 PM","3:00 PM","6:00 PM","8:00 PM"]'
+        },
+        'martin-asador': {
+          weekdays: '[1,3,4,5,6]',
+          times: '["2:00 PM","5:00 PM","7:30 PM"]'
+        },
+        'luis-bbq': {
+          weekdays: '[2,4,5,6,0]',
+          times: '["12:00 PM","2:00 PM","4:00 PM","7:00 PM"]'
+        },
+        'cories-bbq': {
+          weekdays: '[3,5,6,0]',
+          times: '["2:00 PM","5:00 PM","8:00 PM"]'
+        }
+      };
+
+      const update = db.prepare(`
+        UPDATE chefs
+        SET availability_weekdays_json = @weekdays,
+            availability_times_json = @times
+        WHERE id = @id
+      `);
+
+      for (const [id, item] of Object.entries(availabilitySeed)) {
+        update.run({
+          id,
+          weekdays: item.weekdays,
+          times: item.times
+        });
+      }
+    }
+  },
+  {
+    id: '013_seed_griller_pending_booking',
+    up(db) {
+      const hasBooking = db
+        .prepare('SELECT id FROM bookings WHERE id = ?')
+        .get('GRZ-4730');
+
+      if (hasBooking) {
+        return;
+      }
+
+      db.prepare(`
+        INSERT INTO bookings (
+          id, user_id, chef_id, chef_name, status, date_label, time_label, mode, address,
+          package_name, guests, duration_hours, service_fee, transfer_fee, total, payment_method, created_at
+        ) VALUES (
+          @id, @userId, @chefId, @chefName, @status, @dateLabel, @timeLabel, @mode, @address,
+          @packageName, @guests, @durationHours, @serviceFee, @transferFee, @total, @paymentMethod, @createdAt
+        )
+      `).run({
+        id: 'GRZ-4730',
+        userId: 'cliente@grillerz.app',
+        chefId: 'erick-martinez',
+        chefName: 'Erick Martinez',
+        status: 'Pendiente',
+        dateLabel: '22 Abril 2026',
+        timeLabel: '7:30 PM',
+        mode: 'A domicilio',
+        address: 'Lago de Chapala 804, Nuevo Laredo',
+        packageName: 'Parrilla Mixta',
+        guests: 10,
+        durationHours: 4,
+        serviceFee: 2800,
+        transferFee: 300,
+        total: 3100,
+        paymentMethod: 'Transferencia',
+        createdAt: new Date().toISOString()
+      });
+    }
   }
 ];
 

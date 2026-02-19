@@ -180,6 +180,24 @@ const seedBookings = [
     transferFee: 300,
     total: 3500,
     paymentMethod: 'Tarjeta'
+  },
+  {
+    id: 'GRZ-4730',
+    userId: 'cliente@grillerz.app',
+    chefId: 'erick-martinez',
+    chefName: 'Erick Martinez',
+    status: 'Pendiente',
+    dateLabel: '22 Abril 2026',
+    timeLabel: '7:30 PM',
+    mode: 'A domicilio',
+    address: 'Lago de Chapala 804, Nuevo Laredo',
+    packageName: 'Parrilla Mixta',
+    guests: 10,
+    durationHours: 4,
+    serviceFee: 2800,
+    transferFee: 300,
+    total: 3100,
+    paymentMethod: 'Transferencia'
   }
 ];
 
@@ -366,6 +384,10 @@ export function mapChefRow(row) {
     coverUrl: coverFromDisk ?? row.cover_url ?? '',
     gallery: galleryFromDisk.length > 0 ? galleryFromDisk : galleryFromDb,
     bio: row.bio,
+    availability: {
+      weekdays: safeJsonParse(row.availability_weekdays_json ?? '[1,2,3,4,5,6,0]', [1, 2, 3, 4, 5, 6, 0]),
+      times: safeJsonParse(row.availability_times_json ?? '["6:00 PM","7:00 PM","8:00 PM"]', ['6:00 PM', '7:00 PM', '8:00 PM'])
+    },
     stats: {
       services: row.services,
       clients: row.clients,

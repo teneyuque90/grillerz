@@ -1,30 +1,109 @@
-import { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
+import { grillerzApi } from '../../api/grillerzApi';
 import { AppCard } from '../../components/ui/AppCard';
 import { AppChip } from '../../components/ui/AppChip';
+import { OFFLINE_DEMO_MODE } from '../../config/api';
 import { RootStackParamList } from '../../navigation/screenConfig';
 import { BottomNav } from '../../components/ui/BottomNav';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import { useAppState } from '../../state/AppStateContext';
 import { colors } from '../../theme/colors';
+import { Booking } from '../../types/domain';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Bookings'>;
 type BookingTab = 'Proximas' | 'Pasadas';
 
 export function Bookings({ navigation }: Props) {
-  const { bookings, selectBooking, selectChef } = useAppState();
+  const { authUser, bookings, selectBooking, selectChef } = useAppState();
   const [activeTab, setActiveTab] = useState<BookingTab>('Proximas');
+  const [grillerBookings, setGrillerBookings] = useState<Booking[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [updatingBookingId, setUpdatingBookingId] = useState<string | null>(null);
+  const isGrillerView = authUser?.role === 'griller' || authUser?.role === 'admin';
+  const managedChefId = authUser?.managedChefId ?? undefined;
 
-  const visibleBookings = useMemo(() => {
-    if (activeTab === 'Pasadas') {
-      return bookings.filter((item) => item.status === 'Cancelada');
+  useEffect(() => {
+    let active = true;
+
+    if (!isGrillerView) {
+      setGrillerBookings([]);
+      return () => {
+        active = false;
+      };
     }
 
-    return bookings.filter((item) => item.status !== 'Cancelada');
-  }, [activeTab, bookings]);
+    if (OFFLINE_DEMO_MODE) {
+      const fallback = bookings.filter((item) => {
+        if (authUser?.role === 'admin') {
+          return true;
+        }
+        return item.chefId === managedChefId;
+      });
+      setGrillerBookings(fallback);
+      return () => {
+        active = false;
+      };
+    }
+
+    setIsLoading(true);
+    async function load() {
+      try {
+        const remote = await grillerzApi.getGrillerBookings(authUser?.role === 'admin' ? undefined : managedChefId);
+        if (active) {
+          setGrillerBookings(remote);
+        }
+      } catch {
+        if (active) {
+          setGrillerBookings([]);
+        }
+      } finally {
+        if (active) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void load();
+
+    return () => {
+      active = false;
+    };
+  }, [authUser?.role, bookings, isGrillerView, managedChefId]);
+
+  async function updateStatus(bookingId: string, status: 'Confirmada' | 'Cancelada') {
+    if (updatingBookingId) {
+      return;
+    }
+
+    setUpdatingBookingId(bookingId);
+    if (OFFLINE_DEMO_MODE) {
+      setGrillerBookings((prev) => prev.map((item) => (item.id === bookingId ? { ...item, status } : item)));
+      setUpdatingBookingId(null);
+      return;
+    }
+
+    try {
+      const updated = await grillerzApi.updateBookingStatus(bookingId, status);
+      setGrillerBookings((prev) => prev.map((item) => (item.id === bookingId ? updated : item)));
+    } catch {
+      // keep current list
+    } finally {
+      setUpdatingBookingId(null);
+    }
+  }
+
+  const visibleBookings = useMemo(() => {
+    const source = isGrillerView ? grillerBookings : bookings;
+    if (activeTab === 'Pasadas') {
+      return source.filter((item) => item.status === 'Cancelada');
+    }
+
+    return source.filter((item) => item.status !== 'Cancelada');
+  }, [activeTab, bookings, grillerBookings, isGrillerView]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -38,11 +117,20 @@ export function Bookings({ navigation }: Props) {
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.list}>
+            {isLoading ? (
+              <View style={styles.loadingRow}>
+                <ActivityIndicator color={colors.primary} />
+                <Text style={styles.loadingText}>Cargando solicitudes del griller...</Text>
+              </View>
+            ) : null}
             {visibleBookings.map((item) => (
               <AppCard
                 key={item.id}
                 style={styles.card}
                 onPress={() => {
+                  if (isGrillerView) {
+                    return;
+                  }
                   selectBooking(item.id);
                   selectChef(item.chefId);
                   navigation.navigate('BookingDetails');
@@ -50,14 +138,43 @@ export function Bookings({ navigation }: Props) {
               >
                 <View style={styles.cardTop}>
                   <Text style={styles.cardId}>#{item.id}</Text>
-                  <Text style={[styles.badge, item.status === 'Confirmada' ? styles.badgeOk : styles.badgePending]}>{item.status}</Text>
+                  <Text
+                    style={[
+                      styles.badge,
+                      item.status === 'Confirmada' ? styles.badgeOk : null,
+                      item.status === 'Pendiente' ? styles.badgePending : null,
+                      item.status === 'Cancelada' ? styles.badgeCancelled : null
+                    ]}
+                  >
+                    {item.status}
+                  </Text>
                 </View>
                 <Text style={styles.cardChef}>{item.chefName}</Text>
                 <Text style={styles.cardDate}>{item.dateLabel}  -  {item.timeLabel}</Text>
                 <View style={styles.cardBottom}>
                   <Text style={styles.cardPrice}>${item.total} MXN</Text>
-                  <Text style={styles.cardAction}>Ver detalle</Text>
+                  <Text style={styles.cardAction}>{isGrillerView ? 'Solicitud' : 'Ver detalle'}</Text>
                 </View>
+                {isGrillerView && item.status === 'Pendiente' ? (
+                  <View style={styles.actionsRow}>
+                    <Pressable
+                      style={[styles.actionButton, styles.acceptButton, updatingBookingId === item.id ? styles.disabledButton : null]}
+                      onPress={() => {
+                        void updateStatus(item.id, 'Confirmada');
+                      }}
+                    >
+                      <Text style={styles.actionLabel}>Aceptar</Text>
+                    </Pressable>
+                    <Pressable
+                      style={[styles.actionButton, styles.rejectButton, updatingBookingId === item.id ? styles.disabledButton : null]}
+                      onPress={() => {
+                        void updateStatus(item.id, 'Cancelada');
+                      }}
+                    >
+                      <Text style={[styles.actionLabel, styles.rejectLabel]}>Rechazar</Text>
+                    </Pressable>
+                  </View>
+                ) : null}
               </AppCard>
             ))}
             {visibleBookings.length === 0 ? <Text style={styles.emptyState}>No hay reservas en esta pestaña.</Text> : null}
@@ -95,6 +212,17 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingBottom: 12
   },
+  loadingRow: {
+    minHeight: 34,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8
+  },
+  loadingText: {
+    color: colors.textMuted,
+    fontWeight: '600',
+    fontSize: 13
+  },
   card: {
     padding: 14,
     gap: 8
@@ -128,6 +256,10 @@ const styles = StyleSheet.create({
     color: '#B54708',
     backgroundColor: '#FFFAEB'
   },
+  badgeCancelled: {
+    color: '#B42318',
+    backgroundColor: '#FEE4E2'
+  },
   cardChef: {
     color: colors.textStrong,
     fontWeight: '900',
@@ -151,6 +283,38 @@ const styles = StyleSheet.create({
   cardAction: {
     color: colors.primary,
     fontWeight: '800'
+  },
+  actionsRow: {
+    marginTop: 8,
+    flexDirection: 'row',
+    gap: 8
+  },
+  actionButton: {
+    flex: 1,
+    minHeight: 34,
+    borderRadius: 10,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  acceptButton: {
+    backgroundColor: '#ECFDF3',
+    borderColor: '#A6F4C5'
+  },
+  rejectButton: {
+    backgroundColor: '#FFF5F4',
+    borderColor: '#FBC4BE'
+  },
+  actionLabel: {
+    color: '#067647',
+    fontWeight: '800',
+    fontSize: 12
+  },
+  rejectLabel: {
+    color: '#B42318'
+  },
+  disabledButton: {
+    opacity: 0.6
   },
   emptyState: {
     color: colors.textMuted,

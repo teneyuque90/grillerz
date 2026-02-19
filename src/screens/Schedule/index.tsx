@@ -29,58 +29,6 @@ const monthLabels = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Jul
 const weekdayLabels = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'];
 const weekdayShort = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
 
-const availabilityByChefId: Record<
-  string,
-  {
-    weekdays: number[];
-    defaultTimes: string[];
-    timesByWeekday: Partial<Record<number, string[]>>;
-    blockedDates?: string[];
-  }
-> = {
-  'erick-martinez': {
-    weekdays: [3, 4, 5, 6, 0],
-    defaultTimes: ['6:00 PM', '7:00 PM', '8:00 PM', '9:00 PM'],
-    timesByWeekday: {
-      0: ['2:00 PM', '5:00 PM', '7:30 PM'],
-      5: ['6:00 PM', '7:00 PM', '8:00 PM', '9:30 PM'],
-      6: ['1:00 PM', '4:00 PM', '7:00 PM']
-    }
-  },
-  'carlos-bbq': {
-    weekdays: [2, 4, 5, 6, 0],
-    defaultTimes: ['2:00 PM', '5:00 PM', '8:00 PM'],
-    timesByWeekday: {
-      0: ['1:00 PM', '3:00 PM', '6:00 PM', '8:00 PM'],
-      6: ['1:00 PM', '4:00 PM', '7:00 PM']
-    }
-  },
-  'martin-asador': {
-    weekdays: [1, 3, 4, 5, 6],
-    defaultTimes: ['2:00 PM', '5:00 PM', '7:30 PM'],
-    timesByWeekday: {
-      4: ['2:00 PM', '5:00 PM', '7:30 PM', '9:30 PM'],
-      5: ['1:00 PM', '4:00 PM', '7:00 PM', '9:00 PM']
-    }
-  },
-  'luis-bbq': {
-    weekdays: [2, 4, 5, 6, 0],
-    defaultTimes: ['12:00 PM', '2:00 PM', '4:00 PM', '7:00 PM'],
-    timesByWeekday: {
-      0: ['11:00 AM', '1:00 PM', '4:00 PM', '7:00 PM'],
-      6: ['12:00 PM', '3:00 PM', '6:00 PM']
-    }
-  },
-  'cories-bbq': {
-    weekdays: [3, 5, 6, 0],
-    defaultTimes: ['2:00 PM', '5:00 PM', '8:00 PM'],
-    timesByWeekday: {
-      5: ['12:00 PM', '2:00 PM', '5:00 PM', '8:00 PM'],
-      6: ['1:00 PM', '3:30 PM', '6:30 PM']
-    }
-  }
-};
-
 function buildDateKey(date: Date): string {
   const year = date.getFullYear();
   const month = `${date.getMonth() + 1}`.padStart(2, '0');
@@ -119,10 +67,9 @@ export function Schedule({ navigation }: Props) {
   const avatarUrl = getChefAvatarUrl(selectedChef);
   const avatarFallbackUrl = getLocalAvatarUriByChef(selectedChef.id);
 
-  const availability = availabilityByChefId[selectedChef.id] ?? {
+  const availability = selectedChef.availability ?? {
     weekdays: [1, 2, 3, 4, 5, 6, 0],
-    defaultTimes: ['6:00 PM', '7:00 PM', '8:00 PM'],
-    timesByWeekday: {}
+    times: ['6:00 PM', '7:00 PM', '8:00 PM']
   };
 
   const dateOptions = useMemo(() => {
@@ -135,7 +82,7 @@ export function Schedule({ navigation }: Props) {
       candidate.setDate(start.getDate() + offset);
       const dateKey = buildDateKey(candidate);
 
-      if (availability.weekdays.includes(candidate.getDay()) && !availability.blockedDates?.includes(dateKey)) {
+      if (availability.weekdays.includes(candidate.getDay())) {
         options.push({
           key: dateKey,
           label: buildDateLabel(candidate),
@@ -150,7 +97,7 @@ export function Schedule({ navigation }: Props) {
     }
 
     return options;
-  }, [availability.blockedDates, availability.weekdays]);
+  }, [availability.weekdays]);
 
   const monthOptions = useMemo(() => {
     const map = new Map<string, string>();
@@ -178,11 +125,11 @@ export function Schedule({ navigation }: Props) {
 
   const timeOptions = useMemo(() => {
     if (!selectedDateOption) {
-      return availability.defaultTimes;
+      return availability.times;
     }
 
-    return availability.timesByWeekday[selectedDateOption.weekday] ?? availability.defaultTimes;
-  }, [availability.defaultTimes, availability.timesByWeekday, selectedDateOption]);
+    return availability.times;
+  }, [availability.times, selectedDateOption]);
 
   const visibleDateOptions = showAllDates ? filteredDateOptions : filteredDateOptions.slice(0, 12);
 

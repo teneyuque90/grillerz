@@ -37,6 +37,7 @@ type AppStateContextValue = {
   completeVerification: (code: string) => Promise<ActionResult>;
   signOut: () => Promise<void>;
   selectChef: (chefId: string) => void;
+  replaceChef: (chef: Chef) => void;
   selectBooking: (bookingId: string) => void;
   updateBookingDraft: (patch: Partial<Omit<BookingDraft, 'chefId'>>) => void;
   confirmBooking: (paymentMethod: PaymentMethod) => Promise<Booking>;
@@ -412,6 +413,17 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     setSelectedBookingId(bookingId);
   }, []);
 
+  const replaceChef = useCallback((chef: Chef) => {
+    setChefs((prev) => {
+      const exists = prev.some((item) => item.id === chef.id);
+      if (!exists) {
+        return [chef, ...prev];
+      }
+
+      return prev.map((item) => (item.id === chef.id ? chef : item));
+    });
+  }, []);
+
   const updateBookingDraft = useCallback((patch: Partial<Omit<BookingDraft, 'chefId'>>) => {
     setBookingDraft((prev) => ({
       ...prev,
@@ -429,7 +441,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         userId: user.id,
         chefId: selectedChef.id,
         chefName: selectedChef.name,
-        status: 'Confirmada' as const,
+        status: 'Pendiente' as const,
         dateLabel: bookingDraft.dateLabel,
         timeLabel: bookingDraft.timeLabel,
         mode: bookingDraft.mode,
@@ -486,6 +498,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       completeVerification,
       signOut,
       selectChef,
+      replaceChef,
       selectBooking,
       updateBookingDraft,
       confirmBooking
@@ -502,6 +515,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       isHydrated,
       selectBooking,
       selectChef,
+      replaceChef,
       selectedBooking,
       selectedChef,
       signIn,

@@ -6,6 +6,18 @@ export function listBookingsByUserId(userId) {
     .all(userId);
 }
 
+export function listBookingsByChefId(chefId) {
+  return db
+    .prepare('SELECT * FROM bookings WHERE chef_id = ? ORDER BY created_at DESC')
+    .all(chefId);
+}
+
+export function listAllBookings() {
+  return db
+    .prepare('SELECT * FROM bookings ORDER BY created_at DESC')
+    .all();
+}
+
 export function findBookingById(bookingId) {
   return db.prepare('SELECT * FROM bookings WHERE id = ?').get(bookingId);
 }
@@ -20,4 +32,18 @@ export function insertBooking(booking) {
       @packageName, @guests, @durationHours, @serviceFee, @transferFee, @total, @paymentMethod, @createdAt
     )
   `).run(booking);
+}
+
+export function updateBookingStatusById({
+  bookingId,
+  status
+}) {
+  db.prepare(`
+    UPDATE bookings
+    SET status = @status
+    WHERE id = @bookingId
+  `).run({
+    bookingId,
+    status
+  });
 }
