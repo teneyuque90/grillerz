@@ -103,8 +103,8 @@ export function Favorites({ navigation }: Props) {
                   <View style={styles.profileRow}>
                     <ReliableImage uri={avatarUrl} fallbackUri={avatarFallbackUrl} style={styles.avatar} />
                     <View style={styles.headline}>
-                      <Text style={styles.name}>{chef.name}</Text>
-                      <Text style={styles.subline}>{chef.title}</Text>
+                      <Text style={styles.name} numberOfLines={1}>{chef.name}</Text>
+                      <Text style={styles.subline} numberOfLines={1}>{chef.title}</Text>
                       <View style={styles.metaRow}>
                         <Text style={styles.meta}>{chef.city}</Text>
                         <View style={styles.ratingChip}>
@@ -226,12 +226,12 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: 12,
-    gap: 12,
+    padding: 14,
+    gap: 14,
     backgroundColor: '#FFFFFF'
   },
   cover: {
-    height: 116,
+    height: 124,
     borderRadius: 12,
     overflow: 'hidden'
   },
@@ -245,24 +245,26 @@ const styles = StyleSheet.create({
   profileRow: {
     flexDirection: 'row',
     gap: 10,
-    marginTop: -24,
-    alignItems: 'flex-end'
+    marginTop: -10,
+    alignItems: 'center'
   },
   avatar: {
-    width: 68,
-    height: 68,
-    borderRadius: 68,
+    width: 62,
+    height: 62,
+    borderRadius: 62,
     backgroundColor: '#FFE5E2',
     borderWidth: 3,
     borderColor: '#FFFFFF'
   },
   headline: {
     flex: 1,
-    gap: 2
+    gap: 3,
+    paddingRight: 2
   },
   name: {
     color: colors.textStrong,
-    fontSize: 18,
+    fontSize: 17,
+    lineHeight: 20,
     fontWeight: '900'
   },
   subline: {
@@ -274,7 +276,6 @@ const styles = StyleSheet.create({
     marginTop: 4,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     gap: 8
   },
   meta: {
@@ -331,10 +332,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 10
+    gap: 10,
+    flexWrap: 'wrap'
   },
   price: {
-    flex: 1,
+    flexShrink: 1,
     color: colors.primaryDark,
     fontSize: 16,
     fontWeight: '900'

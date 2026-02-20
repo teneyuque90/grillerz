@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -25,26 +25,6 @@ import { getChefAvatarUrl, getChefCoverUrl } from '../../utils/chefMedia';
 import { getReliableMediaUrl } from '../../utils/reliableMedia';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
-
-function buildYouTubeEmbedHtml(videoId: string) {
-  return `<!doctype html>
-<html>
-  <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-    <style>
-      html, body { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; overflow: hidden; }
-      iframe { border: 0; width: 100%; height: 100%; }
-    </style>
-  </head>
-  <body>
-    <iframe
-      src="https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&playsinline=1&rel=0&modestbranding=1&controls=1"
-      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-      allowfullscreen
-    ></iframe>
-  </body>
-</html>`;
-}
 
 const fallbackReviewsByChefId: Record<string, ChefReview[]> = {
   'erick-martinez': [
@@ -114,8 +94,7 @@ const fallbackReviewsByChefId: Record<string, ChefReview[]> = {
 };
 
 export function Profile({ navigation }: Props) {
-  const { authUser, selectedChef, isFavoriteChef, toggleFavoriteChef } = useAppState();
-  const isClientView = authUser?.role === 'client';
+  const { selectedChef, isFavoriteChef, toggleFavoriteChef } = useAppState();
   const isFavorite = isFavoriteChef(selectedChef.id);
   const coverUrl = getChefCoverUrl(selectedChef);
   const avatarUrl = getChefAvatarUrl(selectedChef);
@@ -132,6 +111,7 @@ export function Profile({ navigation }: Props) {
   const [selectedPackageId, setSelectedPackageId] = useState(chefPackages[0]?.id ?? '');
   const [selectedVideo, setSelectedVideo] = useState<ChefVideo | null>(null);
   const [showVideoModal, setShowVideoModal] = useState(false);
+  const [isVideoLoading, setIsVideoLoading] = useState(true);
 
   useEffect(() => {
     const nextPackages = getFallbackChefPackages(selectedChef.id);
@@ -153,6 +133,7 @@ export function Profile({ navigation }: Props) {
   function openVideoModal(video: ChefVideo) {
     setSelectedVideo(video);
     setShowVideoModal(true);
+    setIsVideoLoading(true);
   }
 
   function closeVideoModal() {
@@ -261,12 +242,10 @@ export function Profile({ navigation }: Props) {
                 <View style={styles.heroShade} />
               </ReliableImageBackground>
 
-              {isClientView ? (
-                <Pressable style={styles.favoriteHeroButton} onPress={() => toggleFavoriteChef(selectedChef.id)}>
-                  <MaterialCommunityIcons name={isFavorite ? 'heart' : 'heart-outline'} size={16} color={colors.primary} />
-                  <Text style={styles.favoriteHeroLabel}>{isFavorite ? 'Favorito' : 'Guardar'}</Text>
-                </Pressable>
-              ) : null}
+              <Pressable style={styles.favoriteHeroButton} onPress={() => toggleFavoriteChef(selectedChef.id)}>
+                <MaterialCommunityIcons name={isFavorite ? 'heart' : 'heart-outline'} size={16} color={colors.primary} />
+                <Text style={styles.favoriteHeroLabel}>{isFavorite ? 'Favorito' : 'Guardar'}</Text>
+              </Pressable>
 
               <ReliableImage uri={avatarUrl} fallbackUri={avatarFallbackUrl} style={styles.avatar} />
               <View style={styles.heroCopy}>
@@ -424,33 +403,55 @@ export function Profile({ navigation }: Props) {
                 </Pressable>
               </View>
               {selectedVideo ? (
-                <WebView
-                  source={{ html: buildYouTubeEmbedHtml(selectedVideo.videoId) }}
-                  originWhitelist={['*']}
-                  style={styles.videoWebview}
-                  javaScriptEnabled
-                  domStorageEnabled
-                  allowsInlineMediaPlayback
-                  allowsFullscreenVideo
-                  mediaPlaybackRequiresUserAction={false}
-                  setSupportMultipleWindows={false}
-                  onShouldStartLoadWithRequest={(request) => {
-                    const url = request.url;
-                    if (url.startsWith('about:blank')) {
-                      return true;
-                    }
+                <View style={styles.videoPlayerWrap}>
+                  <WebView
+                    source={{ uri: `https://m.youtube.com/watch?v=${selectedVideo.videoId}` }}
+                    originWhitelist={['*']}
+                    style={styles.videoWebview}
+                    javaScriptEnabled
+                    domStorageEnabled
+                    allowsInlineMediaPlayback
+                    allowsFullscreenVideo
+                    mediaPlaybackRequiresUserAction={false}
+                    setSupportMultipleWindows={false}
+                    onLoadStart={() => setIsVideoLoading(true)}
+                    onLoadEnd={() => setIsVideoLoading(false)}
+                    onShouldStartLoadWithRequest={(request) => {
+                      const url = request.url;
 
-                    if (url.startsWith('https://www.youtube-nocookie.com/embed/')) {
-                      return true;
-                    }
+                      if (url.startsWith('about:blank')) {
+                        return true;
+                      }
 
-                    if (url.startsWith('https://www.youtube.com/embed/')) {
-                      return true;
-                    }
+                      if (
+                        url.startsWith('https://m.youtube.com/') ||
+                        url.startsWith('https://www.youtube.com/') ||
+                        url.startsWith('https://youtube.com/')
+                      ) {
+                        return true;
+                      }
 
-                    return false;
-                  }}
-                />
+                      void Linking.openURL(url);
+                      return false;
+                    }}
+                  />
+                  {isVideoLoading ? (
+                    <View style={styles.videoLoadingOverlay}>
+                      <ActivityIndicator color="#FFFFFF" />
+                      <Text style={styles.videoLoadingText}>Cargando video...</Text>
+                    </View>
+                  ) : null}
+                  <Pressable
+                    style={styles.openYoutubeButton}
+                    onPress={() => {
+                      if (selectedVideo) {
+                        void Linking.openURL(selectedVideo.youtubeUrl);
+                      }
+                    }}
+                  >
+                    <Text style={styles.openYoutubeLabel}>Abrir en YouTube</Text>
+                  </Pressable>
+                </View>
               ) : null}
             </View>
           </View>
@@ -783,7 +784,35 @@ const styles = StyleSheet.create({
   },
   videoWebview: {
     width: '100%',
-    height: 260,
+    height: 300,
     backgroundColor: '#000000'
+  },
+  videoPlayerWrap: {
+    position: 'relative'
+  },
+  videoLoadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    gap: 8
+  },
+  videoLoadingText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700'
+  },
+  openYoutubeButton: {
+    minHeight: 40,
+    borderTopWidth: 1,
+    borderTopColor: '#1F242D',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#10141A'
+  },
+  openYoutubeLabel: {
+    color: colors.primary,
+    fontSize: 12,
+    fontWeight: '800'
   }
 });
