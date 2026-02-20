@@ -35,13 +35,24 @@ export function getChefReviews(chefId) {
 
 function parseYouTubeVideoId(youtubeUrl) {
   try {
-    const url = new URL(youtubeUrl);
-    if (url.hostname.includes('youtu.be')) {
-      return url.pathname.replace(/\//g, '').trim();
+    const withProtocol = /^https?:\/\//i.test(youtubeUrl) ? youtubeUrl : `https://${youtubeUrl}`;
+    const url = new URL(withProtocol);
+    const host = url.hostname.replace(/^www\./, '').toLowerCase();
+
+    if (host === 'youtu.be') {
+      return url.pathname.split('/').filter(Boolean)[0] ?? '';
     }
 
-    if (url.hostname.includes('youtube.com')) {
-      return url.searchParams.get('v')?.trim() ?? '';
+    if (host === 'youtube.com' || host === 'm.youtube.com' || host === 'youtube-nocookie.com') {
+      const directId = url.searchParams.get('v')?.trim();
+      if (directId) {
+        return directId;
+      }
+
+      const parts = url.pathname.split('/').filter(Boolean);
+      if (parts[0] === 'embed' || parts[0] === 'shorts' || parts[0] === 'live') {
+        return parts[1] ?? '';
+      }
     }
   } catch {
     return '';

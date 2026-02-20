@@ -119,17 +119,24 @@ function extractYouTubeVideoId(rawValue?: string) {
   }
 
   try {
-    const url = new URL(value);
-    if (url.hostname.includes('youtu.be')) {
-      return url.pathname.replace(/\//g, '').trim();
+    const withProtocol = /^https?:\/\//i.test(value) ? value : `https://${value}`;
+    const url = new URL(withProtocol);
+    const host = url.hostname.replace(/^www\./, '').toLowerCase();
+
+    if (host === 'youtu.be') {
+      return url.pathname.split('/').filter(Boolean)[0] ?? '';
     }
 
-    if (url.hostname.includes('youtube.com')) {
-      if (url.pathname.startsWith('/embed/')) {
-        return url.pathname.replace('/embed/', '').trim();
+    if (host === 'youtube.com' || host === 'm.youtube.com' || host === 'youtube-nocookie.com') {
+      const directId = url.searchParams.get('v')?.trim();
+      if (directId) {
+        return directId;
       }
 
-      return url.searchParams.get('v')?.trim() ?? '';
+      const parts = url.pathname.split('/').filter(Boolean);
+      if (parts[0] === 'embed' || parts[0] === 'shorts' || parts[0] === 'live') {
+        return parts[1] ?? '';
+      }
     }
   } catch {
     return '';
@@ -137,6 +144,54 @@ function extractYouTubeVideoId(rawValue?: string) {
 
   return '';
 }
+
+const YOUTUBE_ERROR_INJECTED_SCRIPT = `
+  (function () {
+    function send(type, detail) {
+      if (window.ReactNativeWebView) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: type, detail: detail }));
+      }
+    }
+
+    function checkForKnownError() {
+      try {
+        var text = (document.body && document.body.innerText ? document.body.innerText : '').toLowerCase();
+        if (!text) {
+          return;
+        }
+
+        var patterns = [
+          'error 153',
+          'error 152',
+          'error code',
+          'video unavailable',
+          'playback on other websites has been disabled',
+          'este video no esta disponible',
+          'mirar el video en youtube'
+        ];
+
+        for (var i = 0; i < patterns.length; i += 1) {
+          if (text.indexOf(patterns[i]) !== -1) {
+            send('yt-error', patterns[i]);
+            return;
+          }
+        }
+      } catch (e) {}
+    }
+
+    setTimeout(checkForKnownError, 1200);
+    setTimeout(checkForKnownError, 2600);
+    setTimeout(checkForKnownError, 4200);
+
+    try {
+      if (document.body) {
+        var observer = new MutationObserver(checkForKnownError);
+        observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+      }
+    } catch (e) {}
+  })();
+  true;
+`;
 
 export function Profile({ navigation }: Props) {
   const {
@@ -171,7 +226,11 @@ export function Profile({ navigation }: Props) {
   const [eventNotice, setEventNotice] = useState<string | null>(null);
   const [showVideoModal, setShowVideoModal] = useState(false);
   const [isVideoLoading, setIsVideoLoading] = useState(true);
+  const [videoPlaybackMode, setVideoPlaybackMode] = useState<'embed' | 'watch'>('embed');
+  const [videoPlaybackNotice, setVideoPlaybackNotice] = useState<string | null>(null);
   const activeVideoId = extractYouTubeVideoId(selectedVideo?.videoId) || extractYouTubeVideoId(selectedVideo?.youtubeUrl) || 'M7lc1UVf-VE';
+  const embedPlayerUrl = `https://www.youtube.com/embed/${activeVideoId}?autoplay=1&rel=0&modestbranding=1&playsinline=1&fs=1`;
+  const watchPlayerUrl = `https://m.youtube.com/watch?v=${activeVideoId}&autoplay=1&playsinline=1`;
 
   useEffect(() => {
     setChefMenuItems(getFallbackChefMenuItems(selectedChef.id));
@@ -195,11 +254,27 @@ export function Profile({ navigation }: Props) {
     setSelectedVideo(video);
     setShowVideoModal(true);
     setIsVideoLoading(true);
+    setVideoPlaybackMode('embed');
+    setVideoPlaybackNotice(null);
   }
 
   function closeVideoModal() {
     setShowVideoModal(false);
     setSelectedVideo(null);
+    setVideoPlaybackMode('embed');
+    setVideoPlaybackNotice(null);
+  }
+
+  function switchToCompatibleVideoMode(reason?: string) {
+    setVideoPlaybackMode((current) => {
+      if (current === 'watch') {
+        return current;
+      }
+
+      setIsVideoLoading(true);
+      setVideoPlaybackNotice(reason ?? 'Este video no permite embed directo. Activamos modo compatible dentro de la app.');
+      return 'watch';
+    });
   }
 
   function openEventModal(event: GrillerEvent) {
@@ -757,20 +832,24 @@ export function Profile({ navigation }: Props) {
           <View style={styles.videoModalBackdrop}>
             <View style={styles.videoModalCard}>
               <View style={styles.videoModalHeader}>
-                <Text style={styles.videoModalTitle}>Video del griller</Text>
+                <Text style={styles.videoModalTitle}>
+                  {videoPlaybackMode === 'embed' ? 'Video del griller' : 'Video del griller · Modo compatible'}
+                </Text>
+                {videoPlaybackMode === 'embed' ? (
+                  <Pressable onPress={() => switchToCompatibleVideoMode('Activaste modo compatible para mejorar compatibilidad.')}>
+                    <Text style={styles.videoModalCompat}>Compatible</Text>
+                  </Pressable>
+                ) : null}
                 <Pressable onPress={closeVideoModal}>
                   <Text style={styles.videoModalClose}>Cerrar</Text>
                 </Pressable>
               </View>
+              {videoPlaybackNotice ? <Text style={styles.videoNoticeText}>{videoPlaybackNotice}</Text> : null}
               {selectedVideo ? (
                 <View style={styles.videoPlayerWrap}>
                   <WebView
                     source={{
-                      uri: `https://www.youtube.com/embed/${activeVideoId}?autoplay=1&rel=0&modestbranding=1&playsinline=1&fs=1&origin=https://www.youtube.com`,
-                      headers: {
-                        Referer: 'https://www.youtube.com/',
-                        Origin: 'https://www.youtube.com'
-                      }
+                      uri: videoPlaybackMode === 'embed' ? embedPlayerUrl : watchPlayerUrl
                     }}
                     originWhitelist={['*']}
                     style={styles.videoWebview}
@@ -782,9 +861,33 @@ export function Profile({ navigation }: Props) {
                     setSupportMultipleWindows={false}
                     thirdPartyCookiesEnabled
                     sharedCookiesEnabled
-                    userAgent="Mozilla/5.0 (Linux; Android 13; Mobile; rv:124.0) Gecko/124.0 Firefox/124.0"
+                    injectedJavaScript={videoPlaybackMode === 'embed' ? YOUTUBE_ERROR_INJECTED_SCRIPT : undefined}
                     onLoadStart={() => setIsVideoLoading(true)}
                     onLoadEnd={() => setIsVideoLoading(false)}
+                    onError={() => {
+                      if (videoPlaybackMode === 'embed') {
+                        switchToCompatibleVideoMode('Detectamos bloqueo del reproductor embed (Error 152/153).');
+                      }
+                    }}
+                    onHttpError={() => {
+                      if (videoPlaybackMode === 'embed') {
+                        switchToCompatibleVideoMode('Detectamos bloqueo HTTP del embed. Cambiamos a modo compatible.');
+                      }
+                    }}
+                    onMessage={(event) => {
+                      if (videoPlaybackMode !== 'embed') {
+                        return;
+                      }
+
+                      try {
+                        const payload = JSON.parse(event.nativeEvent.data) as { type?: string };
+                        if (payload.type === 'yt-error') {
+                          switchToCompatibleVideoMode('Ese video no permite embed directo. Mostramos modo compatible.');
+                        }
+                      } catch {
+                        // ignore malformed postMessage
+                      }
+                    }}
                     onShouldStartLoadWithRequest={(request) => {
                       const url = request.url;
 
@@ -1465,9 +1568,23 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     fontSize: 13
   },
+  videoModalCompat: {
+    color: '#FDE68A',
+    fontWeight: '800',
+    fontSize: 12
+  },
   videoModalClose: {
     color: colors.primary,
     fontWeight: '800'
+  },
+  videoNoticeText: {
+    color: '#F3F4F6',
+    fontSize: 11,
+    lineHeight: 16,
+    fontWeight: '600',
+    paddingHorizontal: 14,
+    paddingTop: 6,
+    paddingBottom: 4
   },
   videoWebview: {
     flex: 1,
