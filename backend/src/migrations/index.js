@@ -192,8 +192,8 @@ const chefVideosSeed = [
     chefId: 'erick-martinez',
     title: 'Tomahawk al Carbon: punto perfecto',
     subtitle: 'Tecnica de sellado y reposo',
-    youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-    videoId: 'dQw4w9WgXcQ',
+    youtubeUrl: 'https://www.youtube.com/watch?v=M7lc1UVf-VE',
+    videoId: 'M7lc1UVf-VE',
     displayOrder: 0,
     createdAt: '2026-02-12T10:00:00.000Z',
     updatedAt: '2026-02-12T10:00:00.000Z'
@@ -203,8 +203,8 @@ const chefVideosSeed = [
     chefId: 'erick-martinez',
     title: 'Costillas ahumadas estilo norte',
     subtitle: 'Coccion lenta y glaseado',
-    youtubeUrl: 'https://www.youtube.com/watch?v=M7FIvfx5J10',
-    videoId: 'M7FIvfx5J10',
+    youtubeUrl: 'https://www.youtube.com/watch?v=ysz5S6PUM-U',
+    videoId: 'ysz5S6PUM-U',
     displayOrder: 1,
     createdAt: '2026-02-12T11:00:00.000Z',
     updatedAt: '2026-02-12T11:00:00.000Z'
@@ -214,8 +214,8 @@ const chefVideosSeed = [
     chefId: 'carlos-bbq',
     title: 'Parrilla mixta para 20 personas',
     subtitle: 'Orden y tiempos de servicio',
-    youtubeUrl: 'https://www.youtube.com/watch?v=J---aiyznGQ',
-    videoId: 'J---aiyznGQ',
+    youtubeUrl: 'https://www.youtube.com/watch?v=aqz-KE-bpKQ',
+    videoId: 'aqz-KE-bpKQ',
     displayOrder: 0,
     createdAt: '2026-02-11T09:00:00.000Z',
     updatedAt: '2026-02-11T09:00:00.000Z'
@@ -225,8 +225,8 @@ const chefVideosSeed = [
     chefId: 'carlos-bbq',
     title: 'Brisket jugoso: guia completa',
     subtitle: 'Temperatura y reposo',
-    youtubeUrl: 'https://www.youtube.com/watch?v=kXYiU_JCYtU',
-    videoId: 'kXYiU_JCYtU',
+    youtubeUrl: 'https://www.youtube.com/watch?v=M7lc1UVf-VE',
+    videoId: 'M7lc1UVf-VE',
     displayOrder: 1,
     createdAt: '2026-02-11T10:30:00.000Z',
     updatedAt: '2026-02-11T10:30:00.000Z'
@@ -236,8 +236,8 @@ const chefVideosSeed = [
     chefId: 'martin-asador',
     title: 'Cortes premium al fuego vivo',
     subtitle: 'Control de flama y sabor',
-    youtubeUrl: 'https://www.youtube.com/watch?v=fJ9rUzIMcZQ',
-    videoId: 'fJ9rUzIMcZQ',
+    youtubeUrl: 'https://www.youtube.com/watch?v=ysz5S6PUM-U',
+    videoId: 'ysz5S6PUM-U',
     displayOrder: 0,
     createdAt: '2026-02-10T08:00:00.000Z',
     updatedAt: '2026-02-10T08:00:00.000Z'
@@ -247,8 +247,8 @@ const chefVideosSeed = [
     chefId: 'luis-bbq',
     title: 'Asado regio para eventos',
     subtitle: 'Flujo para servicio rapido',
-    youtubeUrl: 'https://www.youtube.com/watch?v=hTWKbfoikeg',
-    videoId: 'hTWKbfoikeg',
+    youtubeUrl: 'https://www.youtube.com/watch?v=aqz-KE-bpKQ',
+    videoId: 'aqz-KE-bpKQ',
     displayOrder: 0,
     createdAt: '2026-02-09T14:00:00.000Z',
     updatedAt: '2026-02-09T14:00:00.000Z'
@@ -258,8 +258,8 @@ const chefVideosSeed = [
     chefId: 'cories-bbq',
     title: 'Ribeye jugoso en parrilla',
     subtitle: 'Sellado, mantequilla y acabado',
-    youtubeUrl: 'https://www.youtube.com/watch?v=Zi_XLOBDo_Y',
-    videoId: 'Zi_XLOBDo_Y',
+    youtubeUrl: 'https://www.youtube.com/watch?v=M7lc1UVf-VE',
+    videoId: 'M7lc1UVf-VE',
     displayOrder: 0,
     createdAt: '2026-02-08T18:00:00.000Z',
     updatedAt: '2026-02-08T18:00:00.000Z'
@@ -894,6 +894,27 @@ const migrations = [
           updatedAt: now
         });
       });
+    }
+  },
+  {
+    id: '017_refresh_chef_videos_for_embed',
+    up(db) {
+      db.exec(`
+        UPDATE chef_videos
+        SET youtube_url = 'https://www.youtube.com/watch?v=M7lc1UVf-VE',
+            video_id = 'M7lc1UVf-VE'
+        WHERE id IN ('vd-erick-001', 'vd-carlos-002', 'vd-cories-001');
+
+        UPDATE chef_videos
+        SET youtube_url = 'https://www.youtube.com/watch?v=ysz5S6PUM-U',
+            video_id = 'ysz5S6PUM-U'
+        WHERE id IN ('vd-erick-002', 'vd-martin-001');
+
+        UPDATE chef_videos
+        SET youtube_url = 'https://www.youtube.com/watch?v=aqz-KE-bpKQ',
+            video_id = 'aqz-KE-bpKQ'
+        WHERE id IN ('vd-carlos-001', 'vd-luis-001');
+      `);
     }
   }
 ];

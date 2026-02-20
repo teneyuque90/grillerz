@@ -276,7 +276,6 @@ export function Search({ navigation }: Props) {
                     <Text style={styles.itemType}>
                       {item.type === 'griller' ? 'Griller' : item.type === 'dish' ? 'Platillo' : item.type === 'event' ? 'Evento' : 'Ciudad'}
                     </Text>
-                    <Text style={styles.itemCta}>Ver</Text>
                   </View>
                 </Pressable>
               );
@@ -448,10 +447,6 @@ const styles = StyleSheet.create({
     color: colors.textSoft,
     fontSize: 10,
     fontWeight: '700'
-  },
-  itemCta: {
-    color: colors.primary,
-    fontWeight: '800'
   },
   emptyText: {
     color: colors.textSoft,

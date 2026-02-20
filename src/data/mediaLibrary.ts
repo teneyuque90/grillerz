@@ -39,54 +39,54 @@ const categoryMedia: MediaItem[] = [
 const grillerVideosByChefId: Record<string, GrillerVideoSeed[]> = {
   'erick-martinez': [
     {
-      videoId: 'dQw4w9WgXcQ',
+      videoId: 'M7lc1UVf-VE',
       title: 'Tomahawk al Carbon: punto perfecto',
       subtitle: 'Tecnica de sellado y reposo',
-      youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
+      youtubeUrl: 'https://www.youtube.com/watch?v=M7lc1UVf-VE'
     },
     {
-      videoId: 'M7FIvfx5J10',
+      videoId: 'ysz5S6PUM-U',
       title: 'Costillas ahumadas estilo norte',
       subtitle: 'Coccion lenta y glaseado',
-      youtubeUrl: 'https://www.youtube.com/watch?v=M7FIvfx5J10'
+      youtubeUrl: 'https://www.youtube.com/watch?v=ysz5S6PUM-U'
     }
   ],
   'carlos-bbq': [
     {
-      videoId: 'J---aiyznGQ',
+      videoId: 'aqz-KE-bpKQ',
       title: 'Parrilla mixta para 20 personas',
       subtitle: 'Orden y tiempos de servicio',
-      youtubeUrl: 'https://www.youtube.com/watch?v=J---aiyznGQ'
+      youtubeUrl: 'https://www.youtube.com/watch?v=aqz-KE-bpKQ'
     },
     {
-      videoId: 'kXYiU_JCYtU',
+      videoId: 'M7lc1UVf-VE',
       title: 'Brisket jugoso: guia completa',
       subtitle: 'Temperatura y reposo',
-      youtubeUrl: 'https://www.youtube.com/watch?v=kXYiU_JCYtU'
+      youtubeUrl: 'https://www.youtube.com/watch?v=M7lc1UVf-VE'
     }
   ],
   'martin-asador': [
     {
-      videoId: 'fJ9rUzIMcZQ',
+      videoId: 'ysz5S6PUM-U',
       title: 'Cortes premium al fuego vivo',
       subtitle: 'Control de flama y sabor',
-      youtubeUrl: 'https://www.youtube.com/watch?v=fJ9rUzIMcZQ'
+      youtubeUrl: 'https://www.youtube.com/watch?v=ysz5S6PUM-U'
     }
   ],
   'luis-bbq': [
     {
-      videoId: 'hTWKbfoikeg',
+      videoId: 'aqz-KE-bpKQ',
       title: 'Asado regio para eventos',
       subtitle: 'Flujo para servicio rapido',
-      youtubeUrl: 'https://www.youtube.com/watch?v=hTWKbfoikeg'
+      youtubeUrl: 'https://www.youtube.com/watch?v=aqz-KE-bpKQ'
     }
   ],
   'cories-bbq': [
     {
-      videoId: 'Zi_XLOBDo_Y',
+      videoId: 'M7lc1UVf-VE',
       title: 'Ribeye jugoso en parrilla',
       subtitle: 'Sellado, mantequilla y acabado',
-      youtubeUrl: 'https://www.youtube.com/watch?v=Zi_XLOBDo_Y'
+      youtubeUrl: 'https://www.youtube.com/watch?v=M7lc1UVf-VE'
     }
   ]
 };

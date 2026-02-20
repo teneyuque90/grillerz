@@ -12,6 +12,7 @@ import { ReliableImage } from '../../components/ui/ReliableImage';
 import { ReliableImageBackground } from '../../components/ui/ReliableImageBackground';
 import { OFFLINE_DEMO_MODE } from '../../config/api';
 import { getFallbackEventsByChef } from '../../data/grillerEvents';
+import { getFallbackChefMenuItems } from '../../data/chefMenuItems';
 import { getFallbackChefPackages } from '../../data/chefPackages';
 import { getDishImageByName, getGrillerVideos, getYouTubeThumbnail } from '../../data/mediaLibrary';
 import { getLocalAvatarUriByChef, getLocalCoverUriByChef, getLocalDishUriByName, getLocalGalleryUriByChef, getLocalVideoThumbUri } from '../../data/localMedia';
@@ -107,6 +108,36 @@ function formatEventDateLabel(dateKey: string) {
   });
 }
 
+function extractYouTubeVideoId(rawValue?: string) {
+  const value = String(rawValue ?? '').trim();
+  if (!value) {
+    return '';
+  }
+
+  if (/^[a-zA-Z0-9_-]{11}$/.test(value)) {
+    return value;
+  }
+
+  try {
+    const url = new URL(value);
+    if (url.hostname.includes('youtu.be')) {
+      return url.pathname.replace(/\//g, '').trim();
+    }
+
+    if (url.hostname.includes('youtube.com')) {
+      if (url.pathname.startsWith('/embed/')) {
+        return url.pathname.replace('/embed/', '').trim();
+      }
+
+      return url.searchParams.get('v')?.trim() ?? '';
+    }
+  } catch {
+    return '';
+  }
+
+  return '';
+}
+
 export function Profile({ navigation }: Props) {
   const {
     selectedChef,
@@ -128,6 +159,7 @@ export function Profile({ navigation }: Props) {
       )
     : [0, 1, 2].map((index) => getLocalGalleryUriByChef(selectedChef.id, index)));
   const [grillerVideos, setGrillerVideos] = useState<ChefVideo[]>(getGrillerVideos(selectedChef.id));
+  const [chefMenuItems, setChefMenuItems] = useState(getFallbackChefMenuItems(selectedChef.id));
   const [chefPackages, setChefPackages] = useState<ChefPackage[]>(getFallbackChefPackages(selectedChef.id));
   const [reviews, setReviews] = useState<ChefReview[]>(fallbackReviewsByChefId[selectedChef.id] ?? []);
   const [selectedPackageId, setSelectedPackageId] = useState(chefPackages[0]?.id ?? '');
@@ -139,8 +171,10 @@ export function Profile({ navigation }: Props) {
   const [eventNotice, setEventNotice] = useState<string | null>(null);
   const [showVideoModal, setShowVideoModal] = useState(false);
   const [isVideoLoading, setIsVideoLoading] = useState(true);
+  const activeVideoId = extractYouTubeVideoId(selectedVideo?.videoId) || extractYouTubeVideoId(selectedVideo?.youtubeUrl) || 'M7lc1UVf-VE';
 
   useEffect(() => {
+    setChefMenuItems(getFallbackChefMenuItems(selectedChef.id));
     const nextPackages = getFallbackChefPackages(selectedChef.id);
     setChefPackages(nextPackages);
     setSelectedPackageId(nextPackages[0]?.id ?? '');
@@ -429,6 +463,36 @@ export function Profile({ navigation }: Props) {
             </View>
 
             <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Cortes y platillos</Text>
+              <View style={styles.menuList}>
+                {chefMenuItems.map((item) => (
+                  <AppCard key={item.id} style={styles.menuCard}>
+                    <View style={styles.menuCardRow}>
+                      <ReliableImage
+                        uri={getDishImageByName(item.name)}
+                        fallbackUri={getLocalDishUriByName(item.name)}
+                        style={styles.menuCardThumb}
+                      />
+                      <View style={styles.menuCardBody}>
+                        <View style={styles.menuCardTop}>
+                          <Text style={styles.menuCardName}>{item.name}</Text>
+                          <Text style={styles.menuCardPrice}>${item.price.toLocaleString('es-MX')} MXN</Text>
+                        </View>
+                        <Text style={styles.menuCardDetails}>{item.details}</Text>
+                        <View style={styles.menuCardMeta}>
+                          <AppChip label={item.category} />
+                        </View>
+                      </View>
+                    </View>
+                  </AppCard>
+                ))}
+                {chefMenuItems.length === 0 ? (
+                  <Text style={styles.emptyReviews}>Este griller aun no publica cortes o platillos.</Text>
+                ) : null}
+              </View>
+            </View>
+
+            <View style={styles.section}>
               <Text style={styles.sectionTitle}>Paquetes y precios</Text>
               <View style={styles.packagesList}>
                 {chefPackages.filter((item) => item.isActive).map((item) => {
@@ -569,7 +633,14 @@ export function Profile({ navigation }: Props) {
               </View>
 
               {selectedEvent ? (
-                <ScrollView style={styles.eventModalContent} contentContainerStyle={styles.eventModalContentInner} showsVerticalScrollIndicator={false}>
+                <>
+                <ScrollView
+                  style={styles.eventModalContent}
+                  contentContainerStyle={styles.eventModalContentInner}
+                  showsVerticalScrollIndicator={false}
+                  nestedScrollEnabled
+                  keyboardShouldPersistTaps="handled"
+                >
                   <ReliableImageBackground
                     uri={getDishImageByName(selectedEvent.menu[0] ?? selectedEvent.title)}
                     fallbackUri={getLocalDishUriByName(selectedEvent.menu[0] ?? selectedEvent.title)}
@@ -664,13 +735,19 @@ export function Profile({ navigation }: Props) {
                       </Text>
                     </View>
                     {eventNotice ? <Text style={styles.eventNoticeText}>{eventNotice}</Text> : null}
-                    <PrimaryButton
-                      label="Continuar a pago"
-                      onPress={beginEventCheckout}
-                      compact
-                    />
                   </View>
                 </ScrollView>
+                <View style={styles.eventModalFooter}>
+                  <Text style={styles.eventModalFooterTotal}>
+                    Total: ${(eventSeats * selectedEvent.pricePerPerson).toLocaleString('es-MX')} MXN
+                  </Text>
+                  <PrimaryButton
+                    label="Continuar a pago"
+                    onPress={beginEventCheckout}
+                    compact
+                  />
+                </View>
+                </>
               ) : null}
             </View>
           </View>
@@ -688,7 +765,13 @@ export function Profile({ navigation }: Props) {
               {selectedVideo ? (
                 <View style={styles.videoPlayerWrap}>
                   <WebView
-                    source={{ uri: `https://www.youtube-nocookie.com/embed/${selectedVideo.videoId}?autoplay=1&rel=0&modestbranding=1&playsinline=1` }}
+                    source={{
+                      uri: `https://www.youtube.com/embed/${activeVideoId}?autoplay=1&rel=0&modestbranding=1&playsinline=1&fs=1&origin=https://www.youtube.com`,
+                      headers: {
+                        Referer: 'https://www.youtube.com/',
+                        Origin: 'https://www.youtube.com'
+                      }
+                    }}
                     originWhitelist={['*']}
                     style={styles.videoWebview}
                     javaScriptEnabled
@@ -697,20 +780,15 @@ export function Profile({ navigation }: Props) {
                     allowsFullscreenVideo
                     mediaPlaybackRequiresUserAction={false}
                     setSupportMultipleWindows={false}
+                    thirdPartyCookiesEnabled
+                    sharedCookiesEnabled
+                    userAgent="Mozilla/5.0 (Linux; Android 13; Mobile; rv:124.0) Gecko/124.0 Firefox/124.0"
                     onLoadStart={() => setIsVideoLoading(true)}
                     onLoadEnd={() => setIsVideoLoading(false)}
                     onShouldStartLoadWithRequest={(request) => {
                       const url = request.url;
 
-                      if (url.startsWith('about:blank')) {
-                        return true;
-                      }
-
-                      if (
-                        url.startsWith('https://www.youtube-nocookie.com/') ||
-                        url.startsWith('https://www.youtube.com/') ||
-                        url.startsWith('https://youtube.com/')
-                      ) {
+                      if (url.startsWith('about:blank') || url.startsWith('https://') || url.startsWith('http://')) {
                         return true;
                       }
 
@@ -724,16 +802,6 @@ export function Profile({ navigation }: Props) {
                       <Text style={styles.videoLoadingText}>Cargando video...</Text>
                     </View>
                   ) : null}
-                  <Pressable
-                    style={styles.openYoutubeButton}
-                    onPress={() => {
-                      if (selectedVideo) {
-                        void Linking.openURL(selectedVideo.youtubeUrl);
-                      }
-                    }}
-                  >
-                    <Text style={styles.openYoutubeLabel}>Abrir en YouTube</Text>
-                  </Pressable>
                 </View>
               ) : null}
             </View>
@@ -901,6 +969,54 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '700',
     fontSize: 12
+  },
+  menuList: {
+    gap: 10
+  },
+  menuCard: {
+    backgroundColor: colors.backgroundMuted
+  },
+  menuCardRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10
+  },
+  menuCardThumb: {
+    width: 78,
+    height: 78,
+    borderRadius: 12,
+    backgroundColor: '#F3F4F6'
+  },
+  menuCardBody: {
+    flex: 1,
+    gap: 4
+  },
+  menuCardTop: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 8
+  },
+  menuCardName: {
+    flex: 1,
+    color: colors.textStrong,
+    fontWeight: '900',
+    fontSize: 15
+  },
+  menuCardPrice: {
+    color: colors.primaryDark,
+    fontWeight: '900',
+    fontSize: 14
+  },
+  menuCardDetails: {
+    color: colors.textMuted,
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: '600'
+  },
+  menuCardMeta: {
+    marginTop: 2,
+    flexDirection: 'row'
   },
   videosList: {
     gap: 10
@@ -1118,8 +1234,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end'
   },
   eventModalCard: {
-    minHeight: '82%',
-    maxHeight: '92%',
+    height: '92%',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     backgroundColor: '#FFFFFF',
@@ -1148,9 +1263,10 @@ const styles = StyleSheet.create({
     flex: 1
   },
   eventModalContentInner: {
+    flexGrow: 1,
     padding: 14,
     gap: 12,
-    paddingBottom: 30
+    paddingBottom: 24
   },
   eventModalMedia: {
     minHeight: 190,
@@ -1312,6 +1428,20 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700'
   },
+  eventModalFooter: {
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 14,
+    paddingTop: 10,
+    paddingBottom: 14,
+    gap: 8
+  },
+  eventModalFooterTotal: {
+    color: colors.primaryDark,
+    fontSize: 15,
+    fontWeight: '900'
+  },
   videoModalBackdrop: {
     flex: 1,
     backgroundColor: '#000000'
@@ -1321,7 +1451,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#000000'
   },
   videoModalHeader: {
-    minHeight: 54,
+    minHeight: 46,
     backgroundColor: 'rgba(0, 0, 0, 0.55)',
     paddingHorizontal: 14,
     flexDirection: 'row',
@@ -1333,7 +1463,7 @@ const styles = StyleSheet.create({
     flex: 1,
     color: '#FFFFFF',
     fontWeight: '800',
-    fontSize: 14
+    fontSize: 13
   },
   videoModalClose: {
     color: colors.primary,
@@ -1358,18 +1488,5 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '700'
-  },
-  openYoutubeButton: {
-    minHeight: 40,
-    borderTopWidth: 1,
-    borderTopColor: '#1F242D',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#10141A'
-  },
-  openYoutubeLabel: {
-    color: colors.primary,
-    fontSize: 12,
-    fontWeight: '800'
   }
 });

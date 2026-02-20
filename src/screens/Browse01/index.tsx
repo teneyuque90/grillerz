@@ -32,11 +32,26 @@ const featured = [
   { dishName: 'Asado Regio', chefId: 'luis-bbq', price: '$3,200' },
   { dishName: 'Costillas Ahumadas', chefId: 'martin-asador', price: '$3,600' }
 ];
-const categories = ['Top', 'Costillas', 'Tomahawk', 'Parrilla', 'Ahumados', 'Brisket', 'Cabrito', 'Mariscos', 'Rib Eyes', 'Arrachera', 'Picana', 'T-Bone'];
+const categories = [
+  { key: 'Top', icon: 'fire' },
+  { key: 'Costillas', icon: 'food-drumstick' },
+  { key: 'Tomahawk', icon: 'knife' },
+  { key: 'Parrilla', icon: 'silverware-fork-knife' },
+  { key: 'Ahumados', icon: 'smoke' },
+  { key: 'Brisket', icon: 'chef-hat' },
+  { key: 'Cabrito', icon: 'cow' },
+  { key: 'Mariscos', icon: 'fish' },
+  { key: 'Rib Eyes', icon: 'food-steak' },
+  { key: 'Arrachera', icon: 'chef-hat' },
+  { key: 'Picana', icon: 'food-steak' },
+  { key: 'T-Bone', icon: 'bone' }
+] as const;
+type AvailabilityFilter = 'all' | 'today' | 'tomorrow';
 
 export function Browse01({ navigation }: Props) {
   const { chefs, selectChef, authUser, setFocusedEventId } = useAppState();
-  const [activeCategory, setActiveCategory] = useState(categories[0]);
+  const [activeCategory, setActiveCategory] = useState<(typeof categories)[number]['key']>(categories[0].key);
+  const [availabilityFilter, setAvailabilityFilter] = useState<AvailabilityFilter>('all');
   const [showGrillersModal, setShowGrillersModal] = useState(false);
   const [grillerEvents, setGrillerEvents] = useState<GrillerEvent[]>([]);
   const [isLoadingEvents, setIsLoadingEvents] = useState(false);
@@ -72,6 +87,13 @@ export function Browse01({ navigation }: Props) {
     const start = new Date().getDate() % availableGrillers.length;
     return [...availableGrillers.slice(start), ...availableGrillers.slice(0, start)];
   }, [availableGrillers]);
+  const filteredAvailableGrillers = useMemo(() => {
+    if (availabilityFilter === 'all') {
+      return availableGrillers;
+    }
+
+    return availableGrillers.filter((chef) => getAvailabilityStatus(chef.id).kind === availabilityFilter);
+  }, [availabilityFilter, availableGrillers]);
   const visibleFeatured = useMemo(() => {
     if (activeCategory === 'Top') {
       return featured;
@@ -82,16 +104,16 @@ export function Browse01({ navigation }: Props) {
     return filtered.length > 0 ? filtered : featured;
   }, [activeCategory]);
 
-  function getAvailabilityLabel(chefId: string) {
+  function getAvailabilityStatus(chefId: string) {
     const chef = chefs.find((item) => item.id === chefId);
     const weekdays = chef?.availability?.weekdays ?? [];
     if (weekdays.includes(todayWeekday)) {
-      return 'Disponible hoy';
+      return { label: 'Hoy', kind: 'today' as const, color: colors.success };
     }
     if (weekdays.includes(tomorrowWeekday)) {
-      return 'Disponible mañana';
+      return { label: 'Mañana', kind: 'tomorrow' as const, color: '#D97706' };
     }
-    return 'Próximo cupo';
+    return { label: 'Próximo', kind: 'next' as const, color: colors.textSoft };
   }
 
   function openEventInMaps(address: string, city: string) {
@@ -151,21 +173,40 @@ export function Browse01({ navigation }: Props) {
         </View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoriesRow}>
-          {categories.map((item) => (
-            <AppChip
-              key={item}
-              label={item}
-              selected={item === activeCategory}
-              onPress={() => setActiveCategory(item)}
-            />
-          ))}
+          {categories.map((item) => {
+            const selected = item.key === activeCategory;
+            return (
+              <Pressable
+                key={item.key}
+                style={styles.categoryPill}
+                onPress={() => setActiveCategory(item.key)}
+              >
+                <View style={[styles.categoryIconWrap, selected ? styles.categoryIconWrapActive : null]}>
+                  <MaterialCommunityIcons
+                    name={item.icon}
+                    size={16}
+                    color={selected ? '#FFFFFF' : colors.primary}
+                  />
+                </View>
+                <AppText variant="caption" style={[styles.categoryLabel, selected ? styles.categoryLabelActive : null]}>
+                  {item.key}
+                </AppText>
+              </Pressable>
+            );
+          })}
         </ScrollView>
 
         <SectionHeader title="Grillers disponibles" actionText="Ver todos" onActionPress={() => setShowGrillersModal(true)} />
+        <View style={styles.availabilityFilterRow}>
+          <AppChip label="Todos" selected={availabilityFilter === 'all'} onPress={() => setAvailabilityFilter('all')} />
+          <AppChip label="Hoy" selected={availabilityFilter === 'today'} onPress={() => setAvailabilityFilter('today')} />
+          <AppChip label="Mañana" selected={availabilityFilter === 'tomorrow'} onPress={() => setAvailabilityFilter('tomorrow')} />
+        </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickGrillersRow}>
-          {spotlightGrillers.map((griller) => {
+          {(availabilityFilter === 'all' ? spotlightGrillers : filteredAvailableGrillers).map((griller) => {
             const avatarUrl = getChefAvatarUrl(griller);
             const avatarFallbackUrl = getLocalAvatarUriByChef(griller.id);
+            const availability = getAvailabilityStatus(griller.id);
             return (
               <Pressable
                 key={`quick-${griller.id}`}
@@ -177,10 +218,17 @@ export function Browse01({ navigation }: Props) {
               >
                 <ReliableImage uri={avatarUrl} fallbackUri={avatarFallbackUrl} style={styles.quickGrillerAvatar} />
                 <AppText variant="caption" style={styles.quickGrillerName}>{griller.name}</AppText>
-                <AppText variant="caption" style={styles.quickGrillerAvailability}>{getAvailabilityLabel(griller.id)}</AppText>
+                <AppText variant="caption" style={[styles.quickGrillerAvailability, { color: availability.color }]}>
+                  {availability.label}
+                </AppText>
               </Pressable>
             );
           })}
+          {availabilityFilter !== 'all' && filteredAvailableGrillers.length === 0 ? (
+            <AppCard style={styles.emptyAvailabilityCard}>
+              <AppText variant="caption">No hay grillers con ese filtro.</AppText>
+            </AppCard>
+          ) : null}
         </ScrollView>
 
         <AppCard
@@ -361,11 +409,17 @@ export function Browse01({ navigation }: Props) {
               </Pressable>
             </View>
             <AppText variant="caption" style={styles.modalHint}>Mostrando primero los cercanos/populares en {nearestCity}.</AppText>
+            <View style={styles.availabilityFilterRow}>
+              <AppChip label="Todos" selected={availabilityFilter === 'all'} onPress={() => setAvailabilityFilter('all')} />
+              <AppChip label="Hoy" selected={availabilityFilter === 'today'} onPress={() => setAvailabilityFilter('today')} />
+              <AppChip label="Mañana" selected={availabilityFilter === 'tomorrow'} onPress={() => setAvailabilityFilter('tomorrow')} />
+            </View>
 
             <ScrollView style={styles.modalList} contentContainerStyle={styles.modalListContent}>
-              {availableGrillers.map((griller) => {
+              {(availabilityFilter === 'all' ? availableGrillers : filteredAvailableGrillers).map((griller) => {
                 const avatarUrl = getChefAvatarUrl(griller);
                 const avatarFallbackUrl = getLocalAvatarUriByChef(griller.id);
+                const availability = getAvailabilityStatus(griller.id);
                 return (
                   <AppCard key={griller.id} style={styles.grillerCard}>
                     <View style={styles.grillerRow}>
@@ -373,6 +427,7 @@ export function Browse01({ navigation }: Props) {
                       <View style={styles.grillerBody}>
                         <AppText variant="section" style={styles.grillerName}>{griller.name}</AppText>
                         <AppText variant="caption">{griller.city} · {griller.rating.toFixed(1)} 🔥</AppText>
+                        <AppText variant="caption" style={[styles.grillerAvailability, { color: availability.color }]}>{availability.label}</AppText>
                         <AppText variant="caption">Desde ${griller.basePrice.toLocaleString('es-MX')} MXN</AppText>
                       </View>
                       <Pressable
@@ -389,6 +444,11 @@ export function Browse01({ navigation }: Props) {
                   </AppCard>
                 );
               })}
+              {availabilityFilter !== 'all' && filteredAvailableGrillers.length === 0 ? (
+                <AppCard style={styles.emptyAvailabilityCard}>
+                  <AppText variant="caption">No hay grillers disponibles para ese filtro.</AppText>
+                </AppCard>
+              ) : null}
             </ScrollView>
           </View>
         </View>
@@ -428,8 +488,42 @@ const styles = StyleSheet.create({
   categoriesRow: {
     marginTop: 8,
     flexDirection: 'row',
-    gap: AppSpacing.s8,
+    gap: 12,
     paddingRight: 24
+  },
+  categoryPill: {
+    width: 82,
+    alignItems: 'center',
+    gap: 6
+  },
+  categoryIconWrap: {
+    width: 42,
+    height: 42,
+    borderRadius: 42,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  categoryIconWrapActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary
+  },
+  categoryLabel: {
+    textAlign: 'center',
+    color: colors.textMuted,
+    fontWeight: '700'
+  },
+  categoryLabelActive: {
+    color: colors.primaryDark,
+    fontWeight: '800'
+  },
+  availabilityFilterRow: {
+    marginTop: -4,
+    marginBottom: 6,
+    flexDirection: 'row',
+    gap: 8
   },
   quickGrillersRow: {
     paddingVertical: 2,
@@ -440,6 +534,9 @@ const styles = StyleSheet.create({
     width: 90,
     alignItems: 'center',
     gap: 3
+  },
+  emptyAvailabilityCard: {
+    minWidth: 180
   },
   quickGrillerAvatar: {
     width: 58,
@@ -456,7 +553,6 @@ const styles = StyleSheet.create({
   },
   quickGrillerAvailability: {
     textAlign: 'center',
-    color: colors.primary,
     fontWeight: '700'
   },
   heroCard: {
@@ -704,6 +800,9 @@ const styles = StyleSheet.create({
   },
   grillerName: {
     fontSize: 16
+  },
+  grillerAvailability: {
+    fontWeight: '800'
   },
   grillerAction: {
     minHeight: 32,
