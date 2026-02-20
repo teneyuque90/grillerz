@@ -1,43 +1,199 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
+import { grillerzApi } from '../../api/grillerzApi';
 import { RootStackParamList } from '../../navigation/screenConfig';
 import { BottomNav } from '../../components/ui/BottomNav';
 import { ReliableImage } from '../../components/ui/ReliableImage';
-import { getLocalCoverUriByChef } from '../../data/localMedia';
+import { OFFLINE_DEMO_MODE } from '../../config/api';
+import { getFallbackEvents } from '../../data/grillerEvents';
+import { getDishImageByName } from '../../data/mediaLibrary';
+import { getLocalAvatarUriByChef, getLocalDishUriByName } from '../../data/localMedia';
 import { useAppState } from '../../state/AppStateContext';
 import { colors } from '../../theme/colors';
-import { getChefCoverUrl } from '../../utils/chefMedia';
+import { GrillerEvent } from '../../types/domain';
+import { getChefAvatarUrl } from '../../utils/chefMedia';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Search'>;
 
-const recent = ['Costillas en Nuevo Laredo', 'Asador para 25 personas', 'Tomahawk premium'];
-const results = [
-  { name: 'Martin Asador', chefId: 'martin-asador', speciality: 'Costillas a la Parrilla', city: 'Nuevo Laredo' },
-  { name: 'Erick Martinez', chefId: 'erick-martinez', speciality: 'Tomahawk al Carbon', city: 'Monterrey' },
-  { name: 'Carlos BBQ', chefId: 'carlos-bbq', speciality: 'Parrilla Mixta', city: 'Saltillo' }
-];
+type SearchType = 'all' | 'griller' | 'dish' | 'event' | 'city';
+
+type SearchItem = {
+  id: string;
+  type: Exclude<SearchType, 'all'>;
+  chefId: string;
+  title: string;
+  subtitle: string;
+  city: string;
+  imageUrl: string;
+  fallbackUrl: string;
+  eventId?: string;
+};
+
+const initialRecent = ['Costillas en Nuevo Laredo', 'Asador para 25 personas', 'Tomahawk premium'];
 
 export function Search({ navigation }: Props) {
-  const { chefs, selectChef } = useAppState();
+  const { chefs, selectChef, setFocusedEventId } = useAppState();
   const [query, setQuery] = useState('');
+  const [activeType, setActiveType] = useState<SearchType>('all');
+  const [recent, setRecent] = useState(initialRecent);
+  const [events, setEvents] = useState<GrillerEvent[]>(getFallbackEvents('Publicado'));
+
+  useEffect(() => {
+    let active = true;
+
+    if (OFFLINE_DEMO_MODE) {
+      return () => {
+        active = false;
+      };
+    }
+
+    async function loadEvents() {
+      try {
+        const remoteEvents = await grillerzApi.getEvents({ status: 'Publicado' });
+        if (active) {
+          setEvents(remoteEvents);
+        }
+      } catch {
+        // fallback local events already loaded
+      }
+    }
+
+    void loadEvents();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const allItems = useMemo<SearchItem[]>(() => {
+    const items: SearchItem[] = [];
+
+    chefs.forEach((chef) => {
+      const avatarUrl = getChefAvatarUrl(chef);
+      const avatarFallbackUrl = getLocalAvatarUriByChef(chef.id);
+
+      items.push({
+        id: `griller-${chef.id}`,
+        type: 'griller',
+        chefId: chef.id,
+        title: chef.name,
+        subtitle: `${chef.title} · ${chef.rating.toFixed(1)} 🔥`,
+        city: chef.city,
+        imageUrl: avatarUrl,
+        fallbackUrl: avatarFallbackUrl
+      });
+
+      chef.specialties.forEach((specialty, index) => {
+        items.push({
+          id: `dish-${chef.id}-${index}`,
+          type: 'dish',
+          chefId: chef.id,
+          title: chef.name,
+          subtitle: specialty,
+          city: chef.city,
+          imageUrl: getDishImageByName(specialty),
+          fallbackUrl: getLocalDishUriByName(specialty)
+        });
+      });
+
+      items.push({
+        id: `city-${chef.id}`,
+        type: 'city',
+        chefId: chef.id,
+        title: chef.city,
+        subtitle: `${chef.name} · Desde $${chef.basePrice.toLocaleString('es-MX')} MXN`,
+        city: chef.city,
+        imageUrl: avatarUrl,
+        fallbackUrl: avatarFallbackUrl
+      });
+    });
+
+    events.forEach((event) => {
+      const chef = chefs.find((item) => item.id === event.chefId);
+      const mediaSeed = event.menu[0] ?? event.title;
+      items.push({
+        id: `event-${event.id}`,
+        type: 'event',
+        chefId: event.chefId,
+        title: event.chefName,
+        subtitle: `Evento: ${event.title} · ${event.dateKey} · ${event.timeLabel}`,
+        city: event.city,
+        imageUrl: getDishImageByName(mediaSeed),
+        fallbackUrl: getLocalDishUriByName(mediaSeed),
+        eventId: event.id
+      });
+
+      if (!chef) {
+        return;
+      }
+    });
+
+    return items;
+  }, [chefs, events]);
 
   const visibleResults = useMemo(() => {
     const normalized = query.trim().toLowerCase();
+
+    const filteredByType =
+      activeType === 'all'
+        ? allItems
+        : allItems.filter((item) => {
+            if (activeType === 'griller') {
+              return item.type === 'griller';
+            }
+            if (activeType === 'dish') {
+              return item.type === 'dish';
+            }
+            if (activeType === 'event') {
+              return item.type === 'event';
+            }
+            return item.type === 'city';
+          });
+
     if (!normalized) {
-      return results;
+      return filteredByType.slice(0, 14);
     }
 
-    return results.filter((item) => {
-      return (
-        item.name.toLowerCase().includes(normalized) ||
-        item.speciality.toLowerCase().includes(normalized) ||
-        item.city.toLowerCase().includes(normalized)
-      );
+    return filteredByType
+      .filter((item) => {
+        return (
+          item.title.toLowerCase().includes(normalized) ||
+          item.subtitle.toLowerCase().includes(normalized) ||
+          item.city.toLowerCase().includes(normalized)
+        );
+      })
+      .sort((a, b) => {
+        const aStarts = a.title.toLowerCase().startsWith(normalized) ? 1 : 0;
+        const bStarts = b.title.toLowerCase().startsWith(normalized) ? 1 : 0;
+        if (aStarts !== bStarts) {
+          return bStarts - aStarts;
+        }
+        return a.title.localeCompare(b.title);
+      });
+  }, [activeType, allItems, query]);
+
+  function submitRecent(value: string) {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return;
+    }
+
+    setQuery(trimmed);
+    setRecent((prev) => {
+      const next = [trimmed, ...prev.filter((item) => item.toLowerCase() !== trimmed.toLowerCase())];
+      return next.slice(0, 8);
     });
-  }, [query]);
+  }
+
+  function openResult(item: SearchItem) {
+    selectChef(item.chefId);
+    setFocusedEventId(item.eventId ?? null);
+    navigation.navigate('Profile');
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -54,23 +210,41 @@ export function Search({ navigation }: Props) {
             <TextInput
               value={query}
               onChangeText={setQuery}
-              placeholder="Griller, platillo, ciudad..."
+              placeholder="Griller, platillo, ciudad, evento..."
               placeholderTextColor={colors.textSoft}
               style={styles.searchInput}
               returnKeyType="search"
+              onSubmitEditing={() => submitRecent(query)}
             />
           </View>
 
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.typesRow}>
+            {[
+              { key: 'all', label: 'Todo' },
+              { key: 'griller', label: 'Grillers' },
+              { key: 'dish', label: 'Platillos' },
+              { key: 'event', label: 'Eventos' },
+              { key: 'city', label: 'Ciudades' }
+            ].map((item) => {
+              const active = activeType === item.key;
+              return (
+                <Pressable key={item.key} style={[styles.typeChip, active ? styles.typeChipActive : null]} onPress={() => setActiveType(item.key as SearchType)}>
+                  <Text style={[styles.typeChipLabel, active ? styles.typeChipLabelActive : null]}>{item.label}</Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Recientes</Text>
-            <Pressable>
+            <Pressable onPress={() => setRecent([])}>
               <Text style={styles.link}>Limpiar</Text>
             </Pressable>
           </View>
 
           <View style={styles.chipsRow}>
             {recent.map((item) => (
-              <Pressable key={item} style={styles.chip} onPress={() => setQuery(item)}>
+              <Pressable key={item} style={styles.chip} onPress={() => submitRecent(item)}>
                 <Text style={styles.chipText}>{item}</Text>
               </Pressable>
             ))}
@@ -85,28 +259,25 @@ export function Search({ navigation }: Props) {
 
           <View style={styles.list}>
             {visibleResults.map((item) => {
-              const chef = chefs.find((candidate) => candidate.id === item.chefId);
-              const imageUrl = getChefCoverUrl(chef);
-              const imageFallbackUrl = getLocalCoverUriByChef(chef?.id ?? item.chefId);
+              const iconName = item.type === 'event' ? 'calendar-star' : item.type === 'dish' ? 'silverware-fork-knife' : item.type === 'city' ? 'map-marker' : 'fire';
 
               return (
-                <Pressable
-                  key={item.name}
-                  style={styles.item}
-                  onPress={() => {
-                    selectChef(item.chefId);
-                    navigation.navigate('Profile');
-                  }}
-                >
+                <Pressable key={item.id} style={styles.item} onPress={() => openResult(item)}>
                   <View style={styles.thumb}>
-                    <ReliableImage uri={imageUrl} fallbackUri={imageFallbackUrl} style={styles.thumbImage} />
+                    <ReliableImage uri={item.imageUrl} fallbackUri={item.fallbackUrl} style={styles.thumbImage} />
                   </View>
                   <View style={styles.itemBody}>
-                    <Text style={styles.itemName}>{item.name}</Text>
-                    <Text style={styles.itemSpec}>{item.speciality}</Text>
+                    <Text style={styles.itemName}>{item.title}</Text>
+                    <Text style={styles.itemSpec}>{item.subtitle}</Text>
                     <Text style={styles.itemCity}>{item.city}</Text>
                   </View>
-                  <Text style={styles.itemCta}>Ver</Text>
+                  <View style={styles.itemMeta}>
+                    <MaterialCommunityIcons name={iconName} size={16} color={colors.primary} />
+                    <Text style={styles.itemType}>
+                      {item.type === 'griller' ? 'Griller' : item.type === 'dish' ? 'Platillo' : item.type === 'event' ? 'Evento' : 'Ciudad'}
+                    </Text>
+                    <Text style={styles.itemCta}>Ver</Text>
+                  </View>
                 </Pressable>
               );
             })}
@@ -164,6 +335,32 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     paddingVertical: 0
+  },
+  typesRow: {
+    marginTop: 12,
+    gap: 8,
+    paddingRight: 12
+  },
+  typeChip: {
+    minHeight: 34,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 12,
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF'
+  },
+  typeChipActive: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primarySoft
+  },
+  typeChipLabel: {
+    color: colors.textMuted,
+    fontWeight: '700',
+    fontSize: 12
+  },
+  typeChipLabelActive: {
+    color: colors.primaryDark
   },
   sectionHeader: {
     marginTop: 20,
@@ -242,6 +439,15 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 13,
     fontWeight: '600'
+  },
+  itemMeta: {
+    alignItems: 'center',
+    gap: 2
+  },
+  itemType: {
+    color: colors.textSoft,
+    fontSize: 10,
+    fontWeight: '700'
   },
   itemCta: {
     color: colors.primary,

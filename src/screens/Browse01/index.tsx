@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Linking, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { grillerzApi } from '../../api/grillerzApi';
 import { RootStackParamList } from '../../navigation/screenConfig';
@@ -34,19 +35,19 @@ const featured = [
 const categories = ['Top', 'Costillas', 'Tomahawk', 'Parrilla', 'Ahumados', 'Brisket', 'Cabrito', 'Mariscos', 'Rib Eyes', 'Arrachera', 'Picana', 'T-Bone'];
 
 export function Browse01({ navigation }: Props) {
-  const { chefs, selectChef, authUser } = useAppState();
+  const { chefs, selectChef, authUser, setFocusedEventId } = useAppState();
   const [activeCategory, setActiveCategory] = useState(categories[0]);
   const [showGrillersModal, setShowGrillersModal] = useState(false);
   const [grillerEvents, setGrillerEvents] = useState<GrillerEvent[]>([]);
-  const [eventSeatsById, setEventSeatsById] = useState<Record<string, number>>({});
   const [isLoadingEvents, setIsLoadingEvents] = useState(false);
   const [eventNotice, setEventNotice] = useState<string | null>(null);
-  const [reservingEventId, setReservingEventId] = useState<string | null>(null);
   const heroItem = featured[0];
   const heroChef = chefs.find((chef) => chef.id === heroItem.chefId);
   const heroCoverUrl = getChefCoverUrl(heroChef);
   const heroFallbackUrl = getLocalCoverUriByChef(heroChef?.id ?? heroItem.chefId);
   const nearestCity = authUser?.city ?? 'Nuevo Laredo';
+  const todayWeekday = new Date().getDay();
+  const tomorrowWeekday = (todayWeekday + 1) % 7;
 
   const availableGrillers = useMemo(() => {
     return [...chefs].sort((a, b) => {
@@ -64,6 +65,13 @@ export function Browse01({ navigation }: Props) {
       return a.basePrice - b.basePrice;
     });
   }, [chefs, nearestCity]);
+  const spotlightGrillers = useMemo(() => {
+    if (availableGrillers.length === 0) {
+      return [];
+    }
+    const start = new Date().getDate() % availableGrillers.length;
+    return [...availableGrillers.slice(start), ...availableGrillers.slice(0, start)];
+  }, [availableGrillers]);
   const visibleFeatured = useMemo(() => {
     if (activeCategory === 'Top') {
       return featured;
@@ -73,6 +81,23 @@ export function Browse01({ navigation }: Props) {
     const filtered = featured.filter((item) => item.dishName.toLowerCase().includes(normalizedCategory));
     return filtered.length > 0 ? filtered : featured;
   }, [activeCategory]);
+
+  function getAvailabilityLabel(chefId: string) {
+    const chef = chefs.find((item) => item.id === chefId);
+    const weekdays = chef?.availability?.weekdays ?? [];
+    if (weekdays.includes(todayWeekday)) {
+      return 'Disponible hoy';
+    }
+    if (weekdays.includes(tomorrowWeekday)) {
+      return 'Disponible mañana';
+    }
+    return 'Próximo cupo';
+  }
+
+  function openEventInMaps(address: string, city: string) {
+    const query = encodeURIComponent(`${address}, ${city}`);
+    void Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${query}`);
+  }
 
   useEffect(() => {
     let active = true;
@@ -85,7 +110,6 @@ export function Browse01({ navigation }: Props) {
         const localEvents = getFallbackEvents('Publicado');
         if (active) {
           setGrillerEvents(localEvents);
-          setEventSeatsById(Object.fromEntries(localEvents.map((item) => [item.id, item.minSeatsPerReservation])));
           setIsLoadingEvents(false);
         }
         return;
@@ -95,13 +119,11 @@ export function Browse01({ navigation }: Props) {
         const remoteEvents = await grillerzApi.getEvents({ status: 'Publicado' });
         if (active) {
           setGrillerEvents(remoteEvents);
-          setEventSeatsById(Object.fromEntries(remoteEvents.map((item) => [item.id, item.minSeatsPerReservation])));
         }
       } catch {
         const localEvents = getFallbackEvents('Publicado');
         if (active) {
           setGrillerEvents(localEvents);
-          setEventSeatsById(Object.fromEntries(localEvents.map((item) => [item.id, item.minSeatsPerReservation])));
           setEventNotice('Mostrando eventos demo por conexion.');
         }
       } finally {
@@ -117,59 +139,6 @@ export function Browse01({ navigation }: Props) {
       active = false;
     };
   }, []);
-
-  function updateEventSeats(event: GrillerEvent, delta: number) {
-    setEventSeatsById((prev) => {
-      const current = prev[event.id] ?? event.minSeatsPerReservation;
-      const next = Math.min(event.maxSeatsPerReservation, Math.max(event.minSeatsPerReservation, current + delta));
-      return {
-        ...prev,
-        [event.id]: next
-      };
-    });
-  }
-
-  async function reserveEvent(event: GrillerEvent) {
-    if (authUser?.role === 'griller') {
-      setEventNotice('Los eventos se apartan desde cuenta Cliente.');
-      return;
-    }
-
-    const seats = eventSeatsById[event.id] ?? event.minSeatsPerReservation;
-    if (seats > event.seatsAvailable) {
-      setEventNotice('No hay suficientes lugares disponibles para ese evento.');
-      return;
-    }
-
-    setReservingEventId(event.id);
-    setEventNotice(null);
-
-    try {
-      if (OFFLINE_DEMO_MODE) {
-        setGrillerEvents((prev) =>
-          prev.map((item) => {
-            if (item.id !== event.id) {
-              return item;
-            }
-
-            return {
-              ...item,
-              seatsAvailable: Math.max(0, item.seatsAvailable - seats)
-            };
-          })
-        );
-      } else {
-        const result = await grillerzApi.reserveEventSeats(event.id, { seats });
-        setGrillerEvents((prev) => prev.map((item) => (item.id === event.id ? result.event : item)));
-      }
-
-      setEventNotice(`Reserva confirmada: ${seats} lugar(es) en ${event.title}.`);
-    } catch (error) {
-      setEventNotice(error instanceof Error ? error.message : 'No se pudo completar la reserva del evento.');
-    } finally {
-      setReservingEventId(null);
-    }
-  }
 
   return (
     <View style={styles.screen}>
@@ -190,6 +159,28 @@ export function Browse01({ navigation }: Props) {
               onPress={() => setActiveCategory(item)}
             />
           ))}
+        </ScrollView>
+
+        <SectionHeader title="Grillers disponibles" actionText="Ver todos" onActionPress={() => setShowGrillersModal(true)} />
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickGrillersRow}>
+          {spotlightGrillers.map((griller) => {
+            const avatarUrl = getChefAvatarUrl(griller);
+            const avatarFallbackUrl = getLocalAvatarUriByChef(griller.id);
+            return (
+              <Pressable
+                key={`quick-${griller.id}`}
+                style={styles.quickGrillerCard}
+                onPress={() => {
+                  selectChef(griller.id);
+                  navigation.navigate('Profile');
+                }}
+              >
+                <ReliableImage uri={avatarUrl} fallbackUri={avatarFallbackUrl} style={styles.quickGrillerAvatar} />
+                <AppText variant="caption" style={styles.quickGrillerName}>{griller.name}</AppText>
+                <AppText variant="caption" style={styles.quickGrillerAvailability}>{getAvailabilityLabel(griller.id)}</AppText>
+              </Pressable>
+            );
+          })}
         </ScrollView>
 
         <AppCard
@@ -261,7 +252,7 @@ export function Browse01({ navigation }: Props) {
           })}
         </View>
 
-        <SectionHeader title="Eventos del griller" actionText="Ver mapa" onActionPress={() => navigation.navigate('Map')} />
+        <SectionHeader title="Eventos Grillerz" actionText="Ver mapa" onActionPress={() => navigation.navigate('Map')} />
         {eventNotice ? <AppText variant="caption" style={styles.eventNotice}>{eventNotice}</AppText> : null}
         {isLoadingEvents ? (
           <AppCard style={styles.eventSkeleton}>
@@ -277,22 +268,34 @@ export function Browse01({ navigation }: Props) {
           <View style={styles.eventsList}>
             {grillerEvents.map((event) => {
               const chef = chefs.find((item) => item.id === event.chefId);
-              const seats = eventSeatsById[event.id] ?? event.minSeatsPerReservation;
-              const amount = seats * event.pricePerPerson;
+              const eventImage = getDishImageByName(event.menu[0] ?? event.title);
+              const eventImageFallback = getLocalDishUriByName(event.menu[0] ?? event.title);
 
               return (
                 <AppCard key={event.id} style={styles.eventCard}>
+                  <ReliableImageBackground uri={eventImage} fallbackUri={eventImageFallback} style={styles.eventMedia} imageStyle={styles.eventMediaImage}>
+                    <View style={styles.eventMediaShade} />
+                    <View style={styles.eventMediaTopRow}>
+                      <AppChip label={event.dateKey} selected />
+                      <AppChip label={`${event.seatsAvailable}/${event.capacityTotal} cupos`} selected />
+                    </View>
+                    <View>
+                      <AppText variant="section" style={styles.eventMediaTitle}>{event.title}</AppText>
+                      <View style={styles.eventChefRow}>
+                        <AppText variant="caption" style={styles.eventChefName}>{event.chefName}</AppText>
+                        <AppText variant="caption" style={styles.eventChefCity}> · {event.city}</AppText>
+                      </View>
+                    </View>
+                  </ReliableImageBackground>
+
                   <View style={styles.eventHeader}>
                     <View style={styles.eventHeaderCopy}>
-                      <AppText variant="section">{event.title}</AppText>
                       <AppText variant="caption" style={styles.eventSub}>
-                        {event.dateKey} · {event.timeLabel} · {event.city}
+                        {event.timeLabel} · {event.venueName}
                       </AppText>
-                      <AppText variant="caption" style={styles.eventSub}>
-                        {event.venueName} · {event.address}
-                      </AppText>
+                      <AppText variant="caption" style={styles.eventSub}>{event.address}</AppText>
+                      <AppText variant="caption" style={styles.eventSub}>{event.description}</AppText>
                     </View>
-                    <AppChip label={`${event.seatsAvailable}/${event.capacityTotal} cupos`} selected />
                   </View>
 
                   <View style={styles.eventMenuWrap}>
@@ -307,31 +310,30 @@ export function Browse01({ navigation }: Props) {
                       <AppText variant="section" style={styles.eventPrice}>
                         ${event.pricePerPerson.toLocaleString('es-MX')} MXN
                       </AppText>
-                      <AppText variant="caption">Total: ${amount.toLocaleString('es-MX')} MXN</AppText>
+                      <AppText variant="caption">Apartado mínimo: {event.minSeatsPerReservation} persona(s)</AppText>
                     </View>
-                    <View style={styles.eventActions}>
-                      <View style={styles.seatStepper}>
-                        <Pressable style={styles.seatButton} onPress={() => updateEventSeats(event, -1)}>
-                          <AppText variant="body">-</AppText>
-                        </Pressable>
-                        <AppText variant="body" style={styles.seatValue}>{seats}</AppText>
-                        <Pressable style={styles.seatButton} onPress={() => updateEventSeats(event, 1)}>
-                          <AppText variant="body">+</AppText>
-                        </Pressable>
-                      </View>
-                      <AppButton
-                        label={reservingEventId === event.id ? 'Apartando...' : 'Apartar lugar'}
-                        variant="primary"
-                        style={styles.eventReserveButton}
-                        labelStyle={styles.eventReserveButtonLabel}
-                        disabled={event.seatsAvailable <= 0 || reservingEventId === event.id}
-                        onPress={() => {
-                          if (chef) {
-                            selectChef(chef.id);
-                          }
-                          void reserveEvent(event);
-                        }}
-                      />
+                    <AppButton
+                      label="Ver evento"
+                      variant="primary"
+                      style={styles.eventReserveButton}
+                      labelStyle={styles.eventReserveButtonLabel}
+                      onPress={() => {
+                        if (chef) {
+                          selectChef(chef.id);
+                          setFocusedEventId(event.id);
+                          navigation.navigate('Profile');
+                        }
+                      }}
+                    />
+                  </View>
+                  <View style={styles.eventMetaActions}>
+                    <Pressable style={styles.eventMetaButton} onPress={() => openEventInMaps(event.address, event.city)}>
+                      <MaterialCommunityIcons name="map-marker-outline" size={14} color={colors.primary} />
+                      <AppText variant="caption" style={styles.eventMetaLabel}>Mapa</AppText>
+                    </Pressable>
+                    <View style={styles.eventMetaInfo}>
+                      <MaterialCommunityIcons name="clock-time-four-outline" size={14} color={colors.textMuted} />
+                      <AppText variant="caption" style={styles.eventMetaInfoLabel}>{event.timeLabel}</AppText>
                     </View>
                   </View>
                 </AppCard>
@@ -378,7 +380,7 @@ export function Browse01({ navigation }: Props) {
                         onPress={() => {
                           selectChef(griller.id);
                           setShowGrillersModal(false);
-                          navigation.navigate('Schedule');
+                          navigation.navigate('Profile');
                         }}
                       >
                         <AppText variant="caption" style={styles.grillerActionLabel}>Reservar</AppText>
@@ -429,6 +431,34 @@ const styles = StyleSheet.create({
     gap: AppSpacing.s8,
     paddingRight: 24
   },
+  quickGrillersRow: {
+    paddingVertical: 2,
+    paddingRight: 24,
+    gap: 12
+  },
+  quickGrillerCard: {
+    width: 90,
+    alignItems: 'center',
+    gap: 3
+  },
+  quickGrillerAvatar: {
+    width: 58,
+    height: 58,
+    borderRadius: 58,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: '#F7F7F7'
+  },
+  quickGrillerName: {
+    textAlign: 'center',
+    fontWeight: '800',
+    color: colors.textStrong
+  },
+  quickGrillerAvailability: {
+    textAlign: 'center',
+    color: colors.primary,
+    fontWeight: '700'
+  },
   heroCard: {
     marginTop: 4,
     minHeight: 206,
@@ -475,12 +505,55 @@ const styles = StyleSheet.create({
     minHeight: 62
   },
   eventCard: {
-    gap: 10
+    gap: 10,
+    overflow: 'hidden'
+  },
+  eventMedia: {
+    minHeight: 168,
+    borderRadius: 12,
+    overflow: 'hidden',
+    justifyContent: 'space-between',
+    padding: 10
+  },
+  eventMediaImage: {
+    borderRadius: 12
+  },
+  eventMediaShade: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(15, 10, 8, 0.4)'
+  },
+  eventMediaTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 8
+  },
+  eventMediaTitle: {
+    color: '#FFFFFF',
+    fontSize: 22,
+    lineHeight: 26
+  },
+  eventMediaSub: {
+    marginTop: 4,
+    color: '#FFD9D3',
+    fontWeight: '700'
+  },
+  eventChefRow: {
+    marginTop: 4,
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
+  eventChefName: {
+    color: '#FFFFFF',
+    fontWeight: '900'
+  },
+  eventChefCity: {
+    color: '#FFD9D3',
+    fontWeight: '700'
   },
   eventHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    justifyContent: 'space-between',
     gap: 10
   },
   eventHeaderCopy: {
@@ -507,10 +580,6 @@ const styles = StyleSheet.create({
   eventPrice: {
     color: colors.primaryDark
   },
-  eventActions: {
-    alignItems: 'flex-end',
-    gap: 8
-  },
   eventReserveButton: {
     minHeight: 40,
     paddingHorizontal: 14
@@ -519,30 +588,34 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 18
   },
-  seatStepper: {
-    minHeight: 34,
+  eventMetaActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10
+  },
+  eventMetaButton: {
+    minHeight: 30,
     borderRadius: 999,
     borderWidth: 1,
     borderColor: colors.border,
+    paddingHorizontal: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 8,
-    gap: 10
-  },
-  seatButton: {
-    width: 22,
-    height: 22,
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
+    gap: 5,
     backgroundColor: '#FFFFFF'
   },
-  seatValue: {
-    minWidth: 12,
-    textAlign: 'center',
-    fontWeight: '800'
+  eventMetaLabel: {
+    color: colors.primaryDark,
+    fontWeight: '700'
+  },
+  eventMetaInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4
+  },
+  eventMetaInfoLabel: {
+    color: colors.textMuted
   },
   item: {
     minHeight: 96

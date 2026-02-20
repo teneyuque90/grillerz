@@ -5,7 +5,7 @@ import { grillerzApi } from '../api/grillerzApi';
 import { setAuthToken } from '../api/client';
 import { OFFLINE_DEMO_MODE } from '../config/api';
 import { createInitialDraft, defaultUser, mockChefs, seedBookings } from '../data/mockData';
-import { Booking, BookingDraft, BookingSummary, Chef, PaymentMethod, User } from '../types/domain';
+import { Booking, BookingDraft, BookingSummary, Chef, GrillerEvent, PaymentMethod, User } from '../types/domain';
 
 type SignInPayload = {
   email: string;
@@ -23,6 +23,12 @@ type ActionResult = {
   message?: string;
 };
 
+type EventCheckout = {
+  event: GrillerEvent;
+  seats: number;
+  total: number;
+};
+
 type AppStateContextValue = {
   isHydrated: boolean;
   authUser: User | null;
@@ -33,11 +39,17 @@ type AppStateContextValue = {
   bookingSummary: BookingSummary;
   bookings: Booking[];
   selectedBooking: Booking | null;
+  eventCheckout: EventCheckout | null;
+  focusedEventId: string | null;
   signIn: (payload: SignInPayload) => Promise<ActionResult>;
   beginSignUp: (payload: SignUpPayload) => Promise<ActionResult>;
   completeVerification: (code: string) => Promise<ActionResult>;
   signOut: () => Promise<void>;
   selectChef: (chefId: string) => void;
+  startEventCheckout: (event: GrillerEvent, seats: number) => void;
+  completeEventCheckout: (paymentMethod: PaymentMethod) => Promise<Booking>;
+  clearEventCheckout: () => void;
+  setFocusedEventId: (eventId: string | null) => void;
   toggleFavoriteChef: (chefId: string) => void;
   isFavoriteChef: (chefId: string) => boolean;
   replaceChef: (chef: Chef) => void;
@@ -55,6 +67,7 @@ type PersistedState = {
   selectedChefId: string;
   bookings: Booking[];
   selectedBookingId: string | null;
+  eventCheckout: EventCheckout | null;
 };
 
 type PendingRegistration = {
@@ -182,6 +195,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [bookingDraft, setBookingDraft] = useState<BookingDraft>(createInitialDraft(DEFAULT_CHEF_ID));
   const [bookings, setBookings] = useState<Booking[]>(seedBookings(defaultUser.id));
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
+  const [eventCheckout, setEventCheckout] = useState<EventCheckout | null>(null);
+  const [focusedEventId, setFocusedEventId] = useState<string | null>(null);
   const [pendingRegistration, setPendingRegistration] = useState<PendingRegistration | null>(null);
 
   useEffect(() => {
@@ -205,6 +220,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         setBookingDraft(parsed.bookingDraft);
         setBookings(parsed.bookings);
         setSelectedBookingId(parsed.selectedBookingId);
+        setEventCheckout(parsed.eventCheckout ?? null);
       }
 
       if (!OFFLINE_DEMO_MODE) {
@@ -276,11 +292,12 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       selectedChefId,
       bookingDraft,
       bookings,
-      selectedBookingId
+      selectedBookingId,
+      eventCheckout
     };
 
     void AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-  }, [authToken, authUser, bookingDraft, bookings, favoriteChefIds, isHydrated, selectedBookingId, selectedChefId]);
+  }, [authToken, authUser, bookingDraft, bookings, eventCheckout, favoriteChefIds, isHydrated, selectedBookingId, selectedChefId]);
 
   const signIn = useCallback(async ({ email, password }: SignInPayload): Promise<ActionResult> => {
     if (!email.trim() || !password.trim()) {
@@ -401,6 +418,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     setBookingDraft(createInitialDraft(DEFAULT_CHEF_ID));
     setBookings(seedBookings(defaultUser.id));
     setSelectedBookingId(null);
+    setEventCheckout(null);
+    setFocusedEventId(null);
 
     await AsyncStorage.removeItem(STORAGE_KEY);
   }, [authToken]);
@@ -462,6 +481,19 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
+  const startEventCheckout = useCallback((event: GrillerEvent, seats: number) => {
+    const safeSeats = Math.max(event.minSeatsPerReservation, Math.min(event.maxSeatsPerReservation, Math.round(seats)));
+    setEventCheckout({
+      event,
+      seats: safeSeats,
+      total: safeSeats * event.pricePerPerson
+    });
+  }, []);
+
+  const clearEventCheckout = useCallback(() => {
+    setEventCheckout(null);
+  }, []);
+
   const confirmBooking = useCallback(
     async (paymentMethod: PaymentMethod): Promise<Booking> => {
       await wait(WAIT_MS);
@@ -514,6 +546,56 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     [authUser, bookingDraft.address, bookingDraft.dateLabel, bookingDraft.durationHours, bookingDraft.guests, bookingDraft.mode, bookingDraft.packageName, bookingDraft.timeLabel, bookingSummary.serviceFee, bookingSummary.total, bookingSummary.transferFee, bookings, selectedChef.id, selectedChef.name]
   );
 
+  const completeEventCheckout = useCallback(
+    async (paymentMethod: PaymentMethod): Promise<Booking> => {
+      if (!eventCheckout) {
+        throw new Error('No hay evento seleccionado para pago.');
+      }
+
+      await wait(WAIT_MS);
+
+      const user = authUser ?? defaultUser;
+      let reservationCode = '';
+
+      if (!OFFLINE_DEMO_MODE) {
+        const result = await grillerzApi.reserveEventSeats(eventCheckout.event.id, {
+          seats: eventCheckout.seats,
+          paymentStatus: 'Pagado'
+        });
+        reservationCode = result.reservation.id.replace(/-/g, '').slice(0, 8).toUpperCase();
+      } else {
+        reservationCode = Math.random().toString(16).slice(2, 10).toUpperCase();
+      }
+
+      const createdBooking: Booking = {
+        id: `EVT-${reservationCode || buildBookingId(bookings).replace('GRZ-', '')}`,
+        userId: user.id,
+        chefId: eventCheckout.event.chefId,
+        chefName: eventCheckout.event.chefName,
+        status: 'Confirmada',
+        dateLabel: eventCheckout.event.dateKey,
+        timeLabel: eventCheckout.event.timeLabel,
+        mode: 'En terraza del griller',
+        address: eventCheckout.event.address,
+        packageName: `Evento: ${eventCheckout.event.title}`,
+        guests: eventCheckout.seats,
+        durationHours: 4,
+        serviceFee: eventCheckout.total,
+        transferFee: 0,
+        total: eventCheckout.total,
+        paymentMethod,
+        createdAt: new Date().toISOString()
+      };
+
+      setBookings((prev) => [createdBooking, ...prev]);
+      setSelectedBookingId(createdBooking.id);
+      setEventCheckout(null);
+
+      return createdBooking;
+    },
+    [authUser, bookings, eventCheckout]
+  );
+
   const value = useMemo<AppStateContextValue>(
     () => ({
       isHydrated,
@@ -525,11 +607,17 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       bookingSummary,
       bookings,
       selectedBooking,
+      eventCheckout,
+      focusedEventId,
       signIn,
       beginSignUp,
       completeVerification,
       signOut,
       selectChef,
+      startEventCheckout,
+      completeEventCheckout,
+      clearEventCheckout,
+      setFocusedEventId,
       toggleFavoriteChef,
       isFavoriteChef,
       replaceChef,
@@ -544,14 +632,20 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       bookingDraft,
       bookingSummary,
       bookings,
+      eventCheckout,
+      focusedEventId,
       favoriteChefIds,
       chefs,
       completeVerification,
+      completeEventCheckout,
       confirmBooking,
+      clearEventCheckout,
       isHydrated,
       isFavoriteChef,
       selectBooking,
       selectChef,
+      startEventCheckout,
+      setFocusedEventId,
       toggleFavoriteChef,
       replaceChef,
       replaceBookings,

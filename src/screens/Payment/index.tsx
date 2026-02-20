@@ -15,9 +15,14 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Payment'>;
 const methods: PaymentMethod[] = ['Tarjeta', 'Transferencia', 'Efectivo'];
 
 export function Payment({ navigation }: Props) {
-  const { selectedChef, bookingSummary, confirmBooking } = useAppState();
+  const { selectedChef, bookingSummary, confirmBooking, eventCheckout, completeEventCheckout, clearEventCheckout } = useAppState();
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('Tarjeta');
   const [isPaying, setIsPaying] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+  const isEventPayment = Boolean(eventCheckout);
+  const payableService = isEventPayment ? eventCheckout?.total ?? 0 : bookingSummary.serviceFee;
+  const payableTransfer = isEventPayment ? 0 : bookingSummary.transferFee;
+  const payableTotal = isEventPayment ? eventCheckout?.total ?? 0 : bookingSummary.total;
 
   async function handlePay() {
     if (isPaying) {
@@ -25,9 +30,18 @@ export function Payment({ navigation }: Props) {
     }
 
     setIsPaying(true);
-    await confirmBooking(paymentMethod);
+    setPaymentError(null);
+    try {
+      if (eventCheckout) {
+        await completeEventCheckout(paymentMethod);
+      } else {
+        await confirmBooking(paymentMethod);
+      }
+      navigation.navigate('Success');
+    } catch (error) {
+      setPaymentError(error instanceof Error ? error.message : 'No se pudo procesar el pago.');
+    }
     setIsPaying(false);
-    navigation.navigate('Success');
   }
 
   return (
@@ -56,21 +70,26 @@ export function Payment({ navigation }: Props) {
               <Text style={styles.cardBrand}>{paymentMethod === 'Tarjeta' ? 'VISA' : paymentMethod.toUpperCase()}</Text>
               <Text style={styles.cardNumber}>{paymentMethod === 'Tarjeta' ? '**** **** **** 3902' : 'Pago directo en proceso'}</Text>
               <View style={styles.cardMetaRow}>
-                <Text style={styles.cardMeta}>Griller: {selectedChef.name}</Text>
-                <Text style={styles.cardMeta}>Total: ${bookingSummary.total}</Text>
+                <Text style={styles.cardMeta}>Griller: {isEventPayment ? eventCheckout?.event.chefName : selectedChef.name}</Text>
+                <Text style={styles.cardMeta}>Total: ${payableTotal}</Text>
               </View>
+              {isEventPayment ? (
+                <Text style={styles.cardMeta}>
+                  Evento: {eventCheckout?.event.title} · {eventCheckout?.seats} lugar(es)
+                </Text>
+              ) : null}
             </View>
 
             <View style={styles.block}>
               <Text style={styles.blockTitle}>Resumen de cobro</Text>
               <View style={styles.summaryCard}>
                 <View style={styles.summaryRow}>
-                  <Text style={styles.summaryLabel}>Servicio</Text>
-                  <Text style={styles.summaryValue}>${bookingSummary.serviceFee}</Text>
+                  <Text style={styles.summaryLabel}>{isEventPayment ? 'Evento' : 'Servicio'}</Text>
+                  <Text style={styles.summaryValue}>${payableService}</Text>
                 </View>
                 <View style={styles.summaryRow}>
                   <Text style={styles.summaryLabel}>Traslado</Text>
-                  <Text style={styles.summaryValue}>${bookingSummary.transferFee}</Text>
+                  <Text style={styles.summaryValue}>${payableTransfer}</Text>
                 </View>
                 <View style={styles.summaryRow}>
                   <Text style={styles.summaryLabel}>Descuento</Text>
@@ -79,9 +98,15 @@ export function Payment({ navigation }: Props) {
                 <View style={styles.line} />
                 <View style={styles.summaryRow}>
                   <Text style={styles.summaryLabelStrong}>Total</Text>
-                  <Text style={styles.summaryValueStrong}>${bookingSummary.total} MXN</Text>
+                  <Text style={styles.summaryValueStrong}>${payableTotal} MXN</Text>
                 </View>
               </View>
+              {isEventPayment ? (
+                <Pressable onPress={clearEventCheckout}>
+                  <Text style={styles.eventCancelLink}>Cancelar checkout de evento</Text>
+                </Pressable>
+              ) : null}
+              {paymentError ? <Text style={styles.paymentError}>{paymentError}</Text> : null}
             </View>
           </ScrollView>
         </View>
@@ -207,6 +232,18 @@ const styles = StyleSheet.create({
   summaryValueStrong: {
     color: colors.primaryDark,
     fontWeight: '900'
+  },
+  eventCancelLink: {
+    marginTop: 10,
+    color: colors.primary,
+    fontSize: 12,
+    fontWeight: '800'
+  },
+  paymentError: {
+    marginTop: 10,
+    color: colors.primaryDark,
+    fontSize: 12,
+    fontWeight: '700'
   },
   footer: {
     paddingHorizontal: 20,
