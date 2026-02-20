@@ -460,6 +460,44 @@ export function mapChefPackageRow(row) {
   };
 }
 
+export function mapGrillerEventRow(row) {
+  return {
+    id: row.id,
+    chefId: row.chef_id,
+    chefName: row.chef_name,
+    createdByUserId: row.created_by_user_id,
+    title: row.title,
+    description: row.description,
+    city: row.city,
+    venueName: row.venue_name,
+    address: row.address,
+    dateKey: row.date_key,
+    timeLabel: row.time_label,
+    capacityTotal: row.capacity_total,
+    seatsAvailable: row.seats_available,
+    pricePerPerson: row.price_per_person,
+    minSeatsPerReservation: row.min_seats_per_reservation,
+    maxSeatsPerReservation: row.max_seats_per_reservation,
+    menu: safeJsonParse(row.menu_json ?? '[]', []),
+    status: row.status,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
+
+export function mapGrillerEventReservationRow(row) {
+  return {
+    id: row.id,
+    eventId: row.event_id,
+    userId: row.user_id,
+    seats: row.seats,
+    amountTotal: row.amount_total,
+    paymentStatus: row.payment_status,
+    status: row.status,
+    createdAt: row.created_at
+  };
+}
+
 export function nextBookingId() {
   const rows = db.prepare('SELECT id FROM bookings').all();
   let max = 4829;

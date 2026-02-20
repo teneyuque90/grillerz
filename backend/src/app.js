@@ -7,6 +7,7 @@ import { getDatabasePath, initializeDatabase } from './db.js';
 import { authRoutes } from './routes/authRoutes.js';
 import { bookingsRoutes } from './routes/bookingsRoutes.js';
 import { chefsRoutes } from './routes/chefsRoutes.js';
+import { eventsRoutes } from './routes/eventsRoutes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -59,6 +60,7 @@ export function createApp() {
   app.use('/auth', authRoutes);
   app.use('/chefs', chefsRoutes);
   app.use('/bookings', bookingsRoutes);
+  app.use('/events', eventsRoutes);
 
   return app;
 }

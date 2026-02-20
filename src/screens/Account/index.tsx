@@ -13,13 +13,14 @@ import { ReliableImage } from '../../components/ui/ReliableImage';
 import { ReliableImageBackground } from '../../components/ui/ReliableImageBackground';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import { OFFLINE_DEMO_MODE } from '../../config/api';
+import { getFallbackEventsByChef } from '../../data/grillerEvents';
 import { getFallbackChefPackages } from '../../data/chefPackages';
 import { getLocalAvatarUriByChef, getLocalCoverUriByChef, getLocalGalleryUriByChef, getLocalVideoThumbUri } from '../../data/localMedia';
 import { getGrillerVideos, getYouTubeThumbnail } from '../../data/mediaLibrary';
 import { RootStackParamList } from '../../navigation/screenConfig';
 import { useAppState } from '../../state/AppStateContext';
 import { colors } from '../../theme/colors';
-import { Chef, ChefPackage, ChefVideo } from '../../types/domain';
+import { Chef, ChefPackage, ChefVideo, GrillerEvent } from '../../types/domain';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Account'>;
 
@@ -48,6 +49,20 @@ type ProfileDraft = {
   basePrice: string;
   bio: string;
   specialtiesText: string;
+};
+
+type EventDraft = {
+  title: string;
+  description: string;
+  venueName: string;
+  address: string;
+  dateKey: string;
+  timeLabel: string;
+  capacityTotal: string;
+  pricePerPerson: string;
+  minSeatsPerReservation: string;
+  maxSeatsPerReservation: string;
+  menuText: string;
 };
 
 const roleLabel: Record<'client' | 'griller' | 'admin', string> = {
@@ -111,6 +126,22 @@ function toProfileDraft(chef: Chef): ProfileDraft {
     basePrice: String(chef.basePrice),
     bio: chef.bio,
     specialtiesText: chef.specialties.join(', ')
+  };
+}
+
+function toEventDraft(chef: Chef): EventDraft {
+  return {
+    title: '',
+    description: '',
+    venueName: `${chef.city} · Terraza del griller`,
+    address: '',
+    dateKey: '',
+    timeLabel: '7:00 PM',
+    capacityTotal: '12',
+    pricePerPerson: '700',
+    minSeatsPerReservation: '1',
+    maxSeatsPerReservation: '6',
+    menuText: chef.specialties.join(', ')
   };
 }
 
@@ -288,10 +319,15 @@ export function Account({ navigation }: Props) {
   const [isSavingPackages, setIsSavingPackages] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isSavingAvailability, setIsSavingAvailability] = useState(false);
+  const [isSavingEvent, setIsSavingEvent] = useState(false);
+  const [isLoadingEvents, setIsLoadingEvents] = useState(false);
+  const [updatingEventId, setUpdatingEventId] = useState<string | null>(null);
   const [panelNotice, setPanelNotice] = useState<string | null>(null);
   const [quickVideoUrl, setQuickVideoUrl] = useState('');
   const [quickVideoTitle, setQuickVideoTitle] = useState('');
   const [quickVideoSubtitle, setQuickVideoSubtitle] = useState('');
+  const [grillerEvents, setGrillerEvents] = useState<GrillerEvent[]>([]);
+  const [eventDraft, setEventDraft] = useState<EventDraft | null>(managedChef ? toEventDraft(managedChef) : null);
 
   useEffect(() => {
     if (manageableChefs.length === 0) {
@@ -313,6 +349,7 @@ export function Account({ navigation }: Props) {
     }
 
     setProfileDraft(toProfileDraft(managedChef));
+    setEventDraft(toEventDraft(managedChef));
     setAvailabilityWeekdays(managedChef.availability?.weekdays ?? [1, 2, 3, 4, 5, 6, 0]);
     setAvailabilityTimesText((managedChef.availability?.times ?? ['6:00 PM']).join(', '));
     setBlockedDatesText((managedChef.availability?.blockedDates ?? []).join(', '));
@@ -363,6 +400,52 @@ export function Account({ navigation }: Props) {
     }
 
     void loadChefVideos();
+
+    return () => {
+      active = false;
+    };
+  }, [canManagePanel, managedChef]);
+
+  useEffect(() => {
+    let active = true;
+
+    if (!canManagePanel || !managedChef) {
+      setGrillerEvents([]);
+      setIsLoadingEvents(false);
+      return () => {
+        active = false;
+      };
+    }
+
+    const chefId = managedChef.id;
+    setIsLoadingEvents(true);
+
+    if (OFFLINE_DEMO_MODE) {
+      setGrillerEvents(getFallbackEventsByChef(chefId));
+      setIsLoadingEvents(false);
+      return () => {
+        active = false;
+      };
+    }
+
+    async function loadChefEvents() {
+      try {
+        const remoteEvents = await grillerzApi.getMyGrillerEvents(chefId);
+        if (active) {
+          setGrillerEvents(remoteEvents);
+        }
+      } catch {
+        if (active) {
+          setGrillerEvents(getFallbackEventsByChef(chefId));
+        }
+      } finally {
+        if (active) {
+          setIsLoadingEvents(false);
+        }
+      }
+    }
+
+    void loadChefEvents();
 
     return () => {
       active = false;
@@ -813,6 +896,141 @@ export function Account({ navigation }: Props) {
     }
   }
 
+  async function publishEvent() {
+    if (!managedChef || !eventDraft || isSavingEvent) {
+      return;
+    }
+
+    const title = eventDraft.title.trim();
+    const description = eventDraft.description.trim();
+    const venueName = eventDraft.venueName.trim();
+    const address = eventDraft.address.trim();
+    const dateKey = eventDraft.dateKey.trim();
+    const timeLabel = eventDraft.timeLabel.trim();
+    const capacityTotal = Number(eventDraft.capacityTotal);
+    const pricePerPerson = Number(eventDraft.pricePerPerson);
+    const minSeatsPerReservation = Number(eventDraft.minSeatsPerReservation);
+    const maxSeatsPerReservation = Number(eventDraft.maxSeatsPerReservation);
+    const menu = parseCommaList(eventDraft.menuText);
+
+    if (!title || !venueName || !address || !dateKey || !timeLabel) {
+      setPanelNotice('Completa titulo, lugar, direccion, fecha y hora del evento.');
+      return;
+    }
+
+    if (parseDateKeys(dateKey).length === 0) {
+      setPanelNotice('La fecha del evento debe ir en formato YYYY-MM-DD.');
+      return;
+    }
+
+    if (!Number.isFinite(capacityTotal) || capacityTotal < 2) {
+      setPanelNotice('La capacidad total debe ser minimo 2 personas.');
+      return;
+    }
+
+    if (!Number.isFinite(pricePerPerson) || pricePerPerson < 100) {
+      setPanelNotice('Precio por persona invalido.');
+      return;
+    }
+
+    if (menu.length === 0) {
+      setPanelNotice('Agrega al menos un platillo o corte en el menu del evento.');
+      return;
+    }
+
+    setIsSavingEvent(true);
+    setPanelNotice(null);
+
+    try {
+      if (OFFLINE_DEMO_MODE) {
+        const now = new Date().toISOString();
+        const localEvent: GrillerEvent = {
+          id: `evt-local-${Date.now()}`,
+          chefId: managedChef.id,
+          chefName: managedChef.name,
+          createdByUserId: authUser?.id ?? 'local-user',
+          title,
+          description: description || 'Evento especial del griller',
+          city: managedChef.city,
+          venueName,
+          address,
+          dateKey,
+          timeLabel,
+          capacityTotal: Math.round(capacityTotal),
+          seatsAvailable: Math.round(capacityTotal),
+          pricePerPerson: Math.round(pricePerPerson),
+          minSeatsPerReservation: Math.max(1, Math.round(minSeatsPerReservation || 1)),
+          maxSeatsPerReservation: Math.max(1, Math.round(maxSeatsPerReservation || 6)),
+          menu,
+          status: 'Publicado',
+          createdAt: now,
+          updatedAt: now
+        };
+        setGrillerEvents((prev) => [localEvent, ...prev]);
+      } else {
+        const created = await grillerzApi.createGrillerEvent({
+          chefId: managedChef.id,
+          title,
+          description: description || 'Evento especial del griller',
+          city: managedChef.city,
+          venueName,
+          address,
+          dateKey,
+          timeLabel,
+          capacityTotal: Math.round(capacityTotal),
+          pricePerPerson: Math.round(pricePerPerson),
+          minSeatsPerReservation: Math.max(1, Math.round(minSeatsPerReservation || 1)),
+          maxSeatsPerReservation: Math.max(1, Math.round(maxSeatsPerReservation || 6)),
+          menu,
+          status: 'Publicado'
+        });
+        setGrillerEvents((prev) => [created, ...prev]);
+      }
+
+      setEventDraft(toEventDraft(managedChef));
+      setPanelNotice('Evento publicado correctamente.');
+    } catch (error) {
+      setPanelNotice(error instanceof Error ? error.message : 'No se pudo publicar el evento.');
+    } finally {
+      setIsSavingEvent(false);
+    }
+  }
+
+  async function changeEventStatus(event: GrillerEvent, nextStatus: 'Cerrado' | 'Cancelado' | 'Publicado') {
+    if (updatingEventId) {
+      return;
+    }
+
+    setUpdatingEventId(event.id);
+    setPanelNotice(null);
+
+    try {
+      if (OFFLINE_DEMO_MODE) {
+        setGrillerEvents((prev) =>
+          prev.map((item) => {
+            if (item.id !== event.id) {
+              return item;
+            }
+
+            return {
+              ...item,
+              status: nextStatus,
+              updatedAt: new Date().toISOString()
+            };
+          })
+        );
+      } else {
+        const updated = await grillerzApi.updateEventStatus(event.id, nextStatus);
+        setGrillerEvents((prev) => prev.map((item) => (item.id === event.id ? updated : item)));
+      }
+      setPanelNotice(`Evento actualizado: ${nextStatus}.`);
+    } catch (error) {
+      setPanelNotice(error instanceof Error ? error.message : 'No se pudo actualizar el evento.');
+    } finally {
+      setUpdatingEventId(null);
+    }
+  }
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.screen}>
@@ -1087,6 +1305,176 @@ export function Account({ navigation }: Props) {
                           compact
                           onPress={() => navigation.navigate('Bookings')}
                         />
+                      </View>
+
+                      <View style={styles.subBlock}>
+                        <Text style={styles.subBlockTitle}>Eventos del griller</Text>
+                        <Text style={styles.panelHint}>Publica eventos por cupos para pagos anticipados por persona.</Text>
+
+                        {eventDraft ? (
+                          <View style={styles.eventEditorCard}>
+                            <TextInput
+                              value={eventDraft.title}
+                              onChangeText={(value) => setEventDraft((prev) => (prev ? { ...prev, title: value } : prev))}
+                              placeholder="Titulo del evento"
+                              placeholderTextColor={colors.textSoft}
+                              style={styles.input}
+                            />
+                            <TextInput
+                              value={eventDraft.description}
+                              onChangeText={(value) => setEventDraft((prev) => (prev ? { ...prev, description: value } : prev))}
+                              placeholder="Descripcion breve"
+                              placeholderTextColor={colors.textSoft}
+                              style={[styles.input, styles.textArea]}
+                              multiline
+                            />
+                            <TextInput
+                              value={eventDraft.venueName}
+                              onChangeText={(value) => setEventDraft((prev) => (prev ? { ...prev, venueName: value } : prev))}
+                              placeholder="Lugar / terraza"
+                              placeholderTextColor={colors.textSoft}
+                              style={styles.input}
+                            />
+                            <TextInput
+                              value={eventDraft.address}
+                              onChangeText={(value) => setEventDraft((prev) => (prev ? { ...prev, address: value } : prev))}
+                              placeholder="Direccion del evento"
+                              placeholderTextColor={colors.textSoft}
+                              style={styles.input}
+                            />
+                            <View style={styles.eventRow}>
+                              <TextInput
+                                value={eventDraft.dateKey}
+                                onChangeText={(value) => setEventDraft((prev) => (prev ? { ...prev, dateKey: value } : prev))}
+                                placeholder="Fecha YYYY-MM-DD"
+                                placeholderTextColor={colors.textSoft}
+                                style={[styles.input, styles.eventRowItem]}
+                                autoCapitalize="none"
+                              />
+                              <TextInput
+                                value={eventDraft.timeLabel}
+                                onChangeText={(value) => setEventDraft((prev) => (prev ? { ...prev, timeLabel: value } : prev))}
+                                placeholder="Hora 7:00 PM"
+                                placeholderTextColor={colors.textSoft}
+                                style={[styles.input, styles.eventRowItem]}
+                              />
+                            </View>
+                            <View style={styles.eventRow}>
+                              <TextInput
+                                value={eventDraft.capacityTotal}
+                                onChangeText={(value) => setEventDraft((prev) => (prev ? { ...prev, capacityTotal: value } : prev))}
+                                placeholder="Capacidad"
+                                placeholderTextColor={colors.textSoft}
+                                keyboardType="numeric"
+                                style={[styles.input, styles.eventRowItem]}
+                              />
+                              <TextInput
+                                value={eventDraft.pricePerPerson}
+                                onChangeText={(value) => setEventDraft((prev) => (prev ? { ...prev, pricePerPerson: value } : prev))}
+                                placeholder="Precio por persona"
+                                placeholderTextColor={colors.textSoft}
+                                keyboardType="numeric"
+                                style={[styles.input, styles.eventRowItem]}
+                              />
+                            </View>
+                            <View style={styles.eventRow}>
+                              <TextInput
+                                value={eventDraft.minSeatsPerReservation}
+                                onChangeText={(value) => setEventDraft((prev) => (prev ? { ...prev, minSeatsPerReservation: value } : prev))}
+                                placeholder="Min por reserva"
+                                placeholderTextColor={colors.textSoft}
+                                keyboardType="numeric"
+                                style={[styles.input, styles.eventRowItem]}
+                              />
+                              <TextInput
+                                value={eventDraft.maxSeatsPerReservation}
+                                onChangeText={(value) => setEventDraft((prev) => (prev ? { ...prev, maxSeatsPerReservation: value } : prev))}
+                                placeholder="Max por reserva"
+                                placeholderTextColor={colors.textSoft}
+                                keyboardType="numeric"
+                                style={[styles.input, styles.eventRowItem]}
+                              />
+                            </View>
+                            <TextInput
+                              value={eventDraft.menuText}
+                              onChangeText={(value) => setEventDraft((prev) => (prev ? { ...prev, menuText: value } : prev))}
+                              placeholder="Menu del evento (separado por comas)"
+                              placeholderTextColor={colors.textSoft}
+                              style={[styles.input, styles.textArea]}
+                              multiline
+                            />
+                            <PrimaryButton
+                              label={isSavingEvent ? 'Publicando evento...' : 'Publicar evento'}
+                              compact
+                              onPress={() => {
+                                void publishEvent();
+                              }}
+                            />
+                          </View>
+                        ) : null}
+
+                        {isLoadingEvents ? (
+                          <View style={styles.loadingRow}>
+                            <ActivityIndicator color={colors.primary} />
+                            <Text style={styles.loadingText}>Cargando eventos...</Text>
+                          </View>
+                        ) : (
+                          <View style={styles.eventsManagerList}>
+                            {grillerEvents.map((event) => {
+                              const sold = Math.max(0, event.capacityTotal - event.seatsAvailable);
+                              const canClose = event.status === 'Publicado';
+                              const canReopen = event.status === 'Cerrado';
+
+                              return (
+                                <View key={event.id} style={styles.eventManagerCard}>
+                                  <View style={styles.eventManagerHeader}>
+                                    <Text style={styles.videoEditorTitle}>{event.title}</Text>
+                                    <Text style={styles.eventStatus}>{event.status}</Text>
+                                  </View>
+                                  <Text style={styles.panelHint}>{event.dateKey} · {event.timeLabel} · {event.venueName}</Text>
+                                  <Text style={styles.panelHint}>Cupos: {event.seatsAvailable}/{event.capacityTotal} · Vendidos: {sold}</Text>
+                                  <Text style={styles.panelHint}>Precio: ${event.pricePerPerson.toLocaleString('es-MX')} MXN por persona</Text>
+                                  <View style={styles.eventManagerActions}>
+                                    {canClose ? (
+                                      <Pressable
+                                        style={styles.quickTime}
+                                        onPress={() => {
+                                          void changeEventStatus(event, 'Cerrado');
+                                        }}
+                                      >
+                                        <Text style={styles.quickTimeText}>Cerrar evento</Text>
+                                      </Pressable>
+                                    ) : null}
+                                    {canReopen ? (
+                                      <Pressable
+                                        style={styles.quickTime}
+                                        onPress={() => {
+                                          void changeEventStatus(event, 'Publicado');
+                                        }}
+                                      >
+                                        <Text style={styles.quickTimeText}>Reabrir</Text>
+                                      </Pressable>
+                                    ) : null}
+                                    {event.status !== 'Cancelado' ? (
+                                      <Pressable
+                                        style={styles.quickTime}
+                                        onPress={() => {
+                                          void changeEventStatus(event, 'Cancelado');
+                                        }}
+                                      >
+                                        <Text style={styles.quickTimeText}>Cancelar</Text>
+                                      </Pressable>
+                                    ) : null}
+                                    {updatingEventId === event.id ? <Text style={styles.loadingText}>Actualizando...</Text> : null}
+                                  </View>
+                                </View>
+                              );
+                            })}
+                            {grillerEvents.length === 0 ? (
+                              <Text style={styles.panelHint}>Todavia no has publicado eventos.</Text>
+                            ) : null}
+                          </View>
+                        )}
                       </View>
 
                       <View style={styles.subBlock}>
@@ -1589,6 +1977,54 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 12,
     fontWeight: '700'
+  },
+  eventEditorCard: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#FFD4CC',
+    backgroundColor: '#FFF9F8',
+    padding: 10,
+    gap: 8
+  },
+  eventRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8
+  },
+  eventRowItem: {
+    flex: 1
+  },
+  eventsManagerList: {
+    gap: 8
+  },
+  eventManagerCard: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: '#FFFFFF',
+    padding: 10,
+    gap: 6
+  },
+  eventManagerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8
+  },
+  eventStatus: {
+    color: colors.primaryDark,
+    fontSize: 12,
+    fontWeight: '800',
+    backgroundColor: colors.primarySoft,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4
+  },
+  eventManagerActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    alignItems: 'center'
   },
   loadingRow: {
     minHeight: 56,

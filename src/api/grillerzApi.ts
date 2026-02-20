@@ -1,5 +1,5 @@
 import { http } from './client';
-import { Booking, BookingStatus, Chef, ChefPackage, ChefReview, ChefSpecialDate, ChefVideo, User } from '../types/domain';
+import { Booking, BookingStatus, Chef, ChefPackage, ChefReview, ChefSpecialDate, ChefVideo, GrillerEvent, GrillerEventReservation, GrillerEventStatus, User } from '../types/domain';
 
 type LoginPayload = {
   email: string;
@@ -45,6 +45,26 @@ type UpdateChefAvailabilityPayload = {
   times: string[];
   blockedDates?: string[];
   specialDates?: ChefSpecialDate[];
+};
+type CreateGrillerEventPayload = {
+  chefId?: string;
+  title: string;
+  description: string;
+  city: string;
+  venueName: string;
+  address: string;
+  dateKey: string;
+  timeLabel: string;
+  capacityTotal: number;
+  pricePerPerson: number;
+  minSeatsPerReservation?: number;
+  maxSeatsPerReservation?: number;
+  menu: string[];
+  status?: GrillerEventStatus;
+};
+type ReserveEventSeatsPayload = {
+  seats: number;
+  paymentStatus?: 'Pagado' | 'Pendiente';
 };
 
 export const grillerzApi = {
@@ -134,5 +154,47 @@ export const grillerzApi = {
   async updateBookingStatus(bookingId: string, status: BookingStatus): Promise<Booking> {
     const response = await http.put<{ booking: Booking }>(`/bookings/${encodeURIComponent(bookingId)}/status`, { status });
     return response.booking;
+  },
+
+  async getEvents(filters?: { city?: string; chefId?: string; status?: GrillerEventStatus }): Promise<GrillerEvent[]> {
+    const search = new URLSearchParams();
+    if (filters?.city) {
+      search.set('city', filters.city);
+    }
+    if (filters?.chefId) {
+      search.set('chefId', filters.chefId);
+    }
+    if (filters?.status) {
+      search.set('status', filters.status);
+    }
+
+    const path = search.size > 0 ? `/events?${search.toString()}` : '/events';
+    const response = await http.get<{ events: GrillerEvent[] }>(path);
+    return response.events;
+  },
+
+  async getMyGrillerEvents(chefId?: string): Promise<GrillerEvent[]> {
+    const path = chefId ? `/events/chef/me?chefId=${encodeURIComponent(chefId)}` : '/events/chef/me';
+    const response = await http.get<{ events: GrillerEvent[] }>(path);
+    return response.events;
+  },
+
+  async createGrillerEvent(payload: CreateGrillerEventPayload): Promise<GrillerEvent> {
+    const response = await http.post<{ event: GrillerEvent }>('/events', payload);
+    return response.event;
+  },
+
+  async reserveEventSeats(eventId: string, payload: ReserveEventSeatsPayload): Promise<{ event: GrillerEvent; reservation: GrillerEventReservation }> {
+    return http.post<{ event: GrillerEvent; reservation: GrillerEventReservation }>(`/events/${encodeURIComponent(eventId)}/reservations`, payload);
+  },
+
+  async getEventReservations(eventId: string): Promise<GrillerEventReservation[]> {
+    const response = await http.get<{ reservations: GrillerEventReservation[] }>(`/events/${encodeURIComponent(eventId)}/reservations`);
+    return response.reservations;
+  },
+
+  async updateEventStatus(eventId: string, status: GrillerEventStatus): Promise<GrillerEvent> {
+    const response = await http.put<{ event: GrillerEvent }>(`/events/${encodeURIComponent(eventId)}/status`, { status });
+    return response.event;
   }
 };

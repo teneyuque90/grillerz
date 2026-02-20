@@ -777,6 +777,124 @@ const migrations = [
         });
       }
     }
+  },
+  {
+    id: '016_create_griller_events',
+    up(db) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS griller_events (
+          id TEXT PRIMARY KEY,
+          chef_id TEXT NOT NULL,
+          chef_name TEXT NOT NULL,
+          created_by_user_id TEXT NOT NULL,
+          title TEXT NOT NULL,
+          description TEXT NOT NULL,
+          city TEXT NOT NULL,
+          venue_name TEXT NOT NULL,
+          address TEXT NOT NULL,
+          date_key TEXT NOT NULL,
+          time_label TEXT NOT NULL,
+          capacity_total INTEGER NOT NULL,
+          seats_available INTEGER NOT NULL,
+          price_per_person INTEGER NOT NULL,
+          min_seats_per_reservation INTEGER NOT NULL DEFAULT 1,
+          max_seats_per_reservation INTEGER NOT NULL DEFAULT 6,
+          menu_json TEXT NOT NULL DEFAULT '[]',
+          status TEXT NOT NULL DEFAULT 'Publicado',
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_griller_events_chef_id ON griller_events(chef_id);
+        CREATE INDEX IF NOT EXISTS idx_griller_events_city ON griller_events(city);
+        CREATE INDEX IF NOT EXISTS idx_griller_events_status ON griller_events(status);
+        CREATE INDEX IF NOT EXISTS idx_griller_events_date_key ON griller_events(date_key);
+
+        CREATE TABLE IF NOT EXISTS griller_event_reservations (
+          id TEXT PRIMARY KEY,
+          event_id TEXT NOT NULL,
+          user_id TEXT NOT NULL,
+          seats INTEGER NOT NULL,
+          amount_total INTEGER NOT NULL,
+          payment_status TEXT NOT NULL DEFAULT 'Pagado',
+          status TEXT NOT NULL DEFAULT 'Confirmada',
+          created_at TEXT NOT NULL,
+          FOREIGN KEY (event_id) REFERENCES griller_events(id) ON DELETE CASCADE
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_griller_event_reservations_event_id ON griller_event_reservations(event_id);
+        CREATE INDEX IF NOT EXISTS idx_griller_event_reservations_user_id ON griller_event_reservations(user_id);
+      `);
+
+      const eventsCount = db.prepare('SELECT COUNT(*) AS total FROM griller_events').get().total;
+      if (eventsCount > 0) {
+        return;
+      }
+
+      const seedEvents = [
+        {
+          id: 'EVT-1001',
+          chefId: 'erick-martinez',
+          chefName: 'Erick Martinez',
+          createdByUserId: 'erick@grillerz.app',
+          title: 'Noche de Costillas Ahumadas',
+          description: 'Evento en terraza con menu premium y ambiente familiar.',
+          city: 'Nuevo Laredo',
+          venueName: 'Terraza Norte',
+          address: 'Av. Reforma 120, Nuevo Laredo',
+          dateKey: '2026-05-10',
+          timeLabel: '7:30 PM',
+          capacityTotal: 12,
+          seatsAvailable: 12,
+          pricePerPerson: 750,
+          minSeatsPerReservation: 1,
+          maxSeatsPerReservation: 6,
+          menuJson: JSON.stringify(['Costillas Ahumadas', 'Brisket', 'Guarniciones', 'Bebida artesanal']),
+          status: 'Publicado'
+        },
+        {
+          id: 'EVT-1002',
+          chefId: 'carlos-bbq',
+          chefName: 'Carlos BBQ',
+          createdByUserId: 'admin@grillerz.app',
+          title: 'Parrilla Mixta en Terraza',
+          description: 'Evento abierto con cortes premium para grupos.',
+          city: 'Monterrey',
+          venueName: 'Patio BBQ',
+          address: 'Centro 405, Monterrey',
+          dateKey: '2026-05-17',
+          timeLabel: '8:00 PM',
+          capacityTotal: 18,
+          seatsAvailable: 18,
+          pricePerPerson: 820,
+          minSeatsPerReservation: 1,
+          maxSeatsPerReservation: 8,
+          menuJson: JSON.stringify(['Parrilla Mixta', 'Tomahawk', 'Salsas', 'Postre']),
+          status: 'Publicado'
+        }
+      ];
+
+      const insertEvent = db.prepare(`
+        INSERT INTO griller_events (
+          id, chef_id, chef_name, created_by_user_id, title, description, city, venue_name, address,
+          date_key, time_label, capacity_total, seats_available, price_per_person,
+          min_seats_per_reservation, max_seats_per_reservation, menu_json, status, created_at, updated_at
+        ) VALUES (
+          @id, @chefId, @chefName, @createdByUserId, @title, @description, @city, @venueName, @address,
+          @dateKey, @timeLabel, @capacityTotal, @seatsAvailable, @pricePerPerson,
+          @minSeatsPerReservation, @maxSeatsPerReservation, @menuJson, @status, @createdAt, @updatedAt
+        )
+      `);
+
+      const now = new Date().toISOString();
+      seedEvents.forEach((event) => {
+        insertEvent.run({
+          ...event,
+          createdAt: now,
+          updatedAt: now
+        });
+      });
+    }
   }
 ];
 

@@ -185,10 +185,11 @@ async function run() {
       .send({ email: uniqueEmail, code: '1234' });
     assert.equal(verify.status, 200);
     assert.ok(verify.body.token);
+    const clientToken = verify.body.token;
 
     const forbidden = await request
       .get(`/bookings?userId=${encodeURIComponent(SEED_EMAIL)}`)
-      .set('Authorization', `Bearer ${verify.body.token}`);
+      .set('Authorization', `Bearer ${clientToken}`);
     assert.equal(forbidden.status, 403);
 
     logStep('flujo de estados de reserva para griller');
@@ -214,6 +215,63 @@ async function run() {
       .set('Authorization', `Bearer ${grillerToken}`)
       .send({ status: 'Confirmada' });
     assert.equal(invalidTransition.status, 400);
+
+    logStep('flujo de eventos del griller');
+    const createEvent = await request
+      .post('/events')
+      .set('Authorization', `Bearer ${grillerToken}`)
+      .send({
+        title: 'Evento Smoke Test',
+        description: 'Evento para validar reserva por lugares.',
+        city: 'Nuevo Laredo',
+        venueName: 'Terraza Test',
+        address: 'Av. Reforma 100, Nuevo Laredo',
+        dateKey: '2026-06-01',
+        timeLabel: '7:00 PM',
+        capacityTotal: 12,
+        pricePerPerson: 700,
+        minSeatsPerReservation: 1,
+        maxSeatsPerReservation: 4,
+        menu: ['Brisket', 'Costillas', 'Guarniciones']
+      });
+    assert.equal(createEvent.status, 201);
+    assert.equal(createEvent.body.event.chefId, 'erick-martinez');
+    assert.equal(createEvent.body.event.seatsAvailable, 12);
+
+    const eventId = createEvent.body.event.id;
+
+    const listEvents = await request
+      .get('/events?city=Nuevo%20Laredo')
+      .set('Authorization', `Bearer ${clientToken}`);
+    assert.equal(listEvents.status, 200);
+    assert.ok(listEvents.body.events.some((item) => item.id === eventId));
+
+    const reserveSeats = await request
+      .post(`/events/${eventId}/reservations`)
+      .set('Authorization', `Bearer ${clientToken}`)
+      .send({ seats: 3 });
+    assert.equal(reserveSeats.status, 201);
+    assert.equal(reserveSeats.body.reservation.seats, 3);
+    assert.equal(reserveSeats.body.event.seatsAvailable, 9);
+
+    const eventReservations = await request
+      .get(`/events/${eventId}/reservations`)
+      .set('Authorization', `Bearer ${grillerToken}`);
+    assert.equal(eventReservations.status, 200);
+    assert.equal(eventReservations.body.reservations.length, 1);
+
+    const closeEvent = await request
+      .put(`/events/${eventId}/status`)
+      .set('Authorization', `Bearer ${grillerToken}`)
+      .send({ status: 'Cerrado' });
+    assert.equal(closeEvent.status, 200);
+    assert.equal(closeEvent.body.event.status, 'Cerrado');
+
+    const reserveClosedEvent = await request
+      .post(`/events/${eventId}/reservations`)
+      .set('Authorization', `Bearer ${clientToken}`)
+      .send({ seats: 1 });
+    assert.equal(reserveClosedEvent.status, 400);
 
     logStep('OK - todas las validaciones pasaron');
   } finally {

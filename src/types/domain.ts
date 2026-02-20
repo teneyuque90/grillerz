@@ -2,6 +2,7 @@ export type ServiceMode = 'A domicilio' | 'En terraza del griller';
 export type PaymentMethod = 'Tarjeta' | 'Transferencia' | 'Efectivo';
 export type BookingStatus = 'Pendiente' | 'Confirmada' | 'En camino' | 'En servicio' | 'Completada' | 'Cancelada';
 export type UserRole = 'client' | 'griller' | 'admin';
+export type GrillerEventStatus = 'Publicado' | 'Cerrado' | 'Cancelado' | 'Finalizado';
 export type ChefSpecialDate = {
   date: string;
   times: string[];
@@ -76,6 +77,40 @@ export type ChefPackage = {
   displayOrder: number;
   createdAt: string;
   updatedAt: string;
+};
+
+export type GrillerEvent = {
+  id: string;
+  chefId: string;
+  chefName: string;
+  createdByUserId: string;
+  title: string;
+  description: string;
+  city: string;
+  venueName: string;
+  address: string;
+  dateKey: string;
+  timeLabel: string;
+  capacityTotal: number;
+  seatsAvailable: number;
+  pricePerPerson: number;
+  minSeatsPerReservation: number;
+  maxSeatsPerReservation: number;
+  menu: string[];
+  status: GrillerEventStatus;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type GrillerEventReservation = {
+  id: string;
+  eventId: string;
+  userId: string;
+  seats: number;
+  amountTotal: number;
+  paymentStatus: 'Pagado' | 'Pendiente';
+  status: 'Confirmada' | 'Cancelada';
+  createdAt: string;
 };
 
 export type BookingDraft = {
