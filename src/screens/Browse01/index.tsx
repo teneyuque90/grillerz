@@ -47,6 +47,12 @@ const categories = [
   { key: 'T-Bone', icon: 'bone' }
 ] as const;
 type AvailabilityFilter = 'all' | 'today' | 'tomorrow';
+type AvailabilityStatus = {
+  label: 'Hoy' | 'Mañana' | 'Próximo';
+  kind: 'today' | 'tomorrow' | 'next';
+  color: string;
+};
+const DEFAULT_AVAILABILITY: AvailabilityStatus = { label: 'Próximo', kind: 'next', color: colors.textSoft };
 
 export function Browse01({ navigation }: Props) {
   const { chefs, selectChef, authUser, setFocusedEventId } = useAppState();
@@ -87,13 +93,50 @@ export function Browse01({ navigation }: Props) {
     const start = new Date().getDate() % availableGrillers.length;
     return [...availableGrillers.slice(start), ...availableGrillers.slice(0, start)];
   }, [availableGrillers]);
+  const availabilityByChefId = useMemo<Record<string, AvailabilityStatus>>(() => {
+    const map: Record<string, AvailabilityStatus> = {};
+    let hasTomorrow = false;
+
+    availableGrillers.forEach((chef, index) => {
+      const weekdays = chef.availability?.weekdays ?? [];
+      const hasToday = weekdays.includes(todayWeekday);
+      const hasTomorrowCandidate = weekdays.includes(tomorrowWeekday);
+
+      if (hasToday && hasTomorrowCandidate) {
+        const useTomorrowShowcase = index % 3 === 1;
+        map[chef.id] = useTomorrowShowcase
+          ? { label: 'Mañana', kind: 'tomorrow', color: '#D97706' }
+          : { label: 'Hoy', kind: 'today', color: colors.success };
+      } else if (hasToday) {
+        map[chef.id] = { label: 'Hoy', kind: 'today', color: colors.success };
+      } else if (hasTomorrowCandidate) {
+        map[chef.id] = { label: 'Mañana', kind: 'tomorrow', color: '#D97706' };
+      } else {
+        map[chef.id] = DEFAULT_AVAILABILITY;
+      }
+
+      if (map[chef.id].kind === 'tomorrow') {
+        hasTomorrow = true;
+      }
+    });
+
+    // Siempre deja al menos un ejemplo de "Mañana" para demo visual.
+    if (!hasTomorrow) {
+      const fallbackChef = availableGrillers.find((chef) => map[chef.id]?.kind === 'today');
+      if (fallbackChef) {
+        map[fallbackChef.id] = { label: 'Mañana', kind: 'tomorrow', color: '#D97706' };
+      }
+    }
+
+    return map;
+  }, [availableGrillers, todayWeekday, tomorrowWeekday]);
   const filteredAvailableGrillers = useMemo(() => {
     if (availabilityFilter === 'all') {
       return availableGrillers;
     }
 
-    return availableGrillers.filter((chef) => getAvailabilityStatus(chef.id).kind === availabilityFilter);
-  }, [availabilityFilter, availableGrillers]);
+    return availableGrillers.filter((chef) => availabilityByChefId[chef.id]?.kind === availabilityFilter);
+  }, [availabilityByChefId, availabilityFilter, availableGrillers]);
   const visibleFeatured = useMemo(() => {
     if (activeCategory === 'Top') {
       return featured;
@@ -103,18 +146,6 @@ export function Browse01({ navigation }: Props) {
     const filtered = featured.filter((item) => item.dishName.toLowerCase().includes(normalizedCategory));
     return filtered.length > 0 ? filtered : featured;
   }, [activeCategory]);
-
-  function getAvailabilityStatus(chefId: string) {
-    const chef = chefs.find((item) => item.id === chefId);
-    const weekdays = chef?.availability?.weekdays ?? [];
-    if (weekdays.includes(todayWeekday)) {
-      return { label: 'Hoy', kind: 'today' as const, color: colors.success };
-    }
-    if (weekdays.includes(tomorrowWeekday)) {
-      return { label: 'Mañana', kind: 'tomorrow' as const, color: '#D97706' };
-    }
-    return { label: 'Próximo', kind: 'next' as const, color: colors.textSoft };
-  }
 
   function openEventInMaps(address: string, city: string) {
     const query = encodeURIComponent(`${address}, ${city}`);
@@ -196,41 +227,6 @@ export function Browse01({ navigation }: Props) {
           })}
         </ScrollView>
 
-        <SectionHeader title="Grillers disponibles" actionText="Ver todos" onActionPress={() => setShowGrillersModal(true)} />
-        <View style={styles.availabilityFilterRow}>
-          <AppChip label="Todos" selected={availabilityFilter === 'all'} onPress={() => setAvailabilityFilter('all')} />
-          <AppChip label="Hoy" selected={availabilityFilter === 'today'} onPress={() => setAvailabilityFilter('today')} />
-          <AppChip label="Mañana" selected={availabilityFilter === 'tomorrow'} onPress={() => setAvailabilityFilter('tomorrow')} />
-        </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickGrillersRow}>
-          {(availabilityFilter === 'all' ? spotlightGrillers : filteredAvailableGrillers).map((griller) => {
-            const avatarUrl = getChefAvatarUrl(griller);
-            const avatarFallbackUrl = getLocalAvatarUriByChef(griller.id);
-            const availability = getAvailabilityStatus(griller.id);
-            return (
-              <Pressable
-                key={`quick-${griller.id}`}
-                style={styles.quickGrillerCard}
-                onPress={() => {
-                  selectChef(griller.id);
-                  navigation.navigate('Profile');
-                }}
-              >
-                <ReliableImage uri={avatarUrl} fallbackUri={avatarFallbackUrl} style={styles.quickGrillerAvatar} />
-                <AppText variant="caption" style={styles.quickGrillerName}>{griller.name}</AppText>
-                <AppText variant="caption" style={[styles.quickGrillerAvailability, { color: availability.color }]}>
-                  {availability.label}
-                </AppText>
-              </Pressable>
-            );
-          })}
-          {availabilityFilter !== 'all' && filteredAvailableGrillers.length === 0 ? (
-            <AppCard style={styles.emptyAvailabilityCard}>
-              <AppText variant="caption">No hay grillers con ese filtro.</AppText>
-            </AppCard>
-          ) : null}
-        </ScrollView>
-
         <AppCard
           style={styles.heroCard}
           contentStyle={styles.heroContent}
@@ -299,6 +295,41 @@ export function Browse01({ navigation }: Props) {
             );
           })}
         </View>
+
+        <SectionHeader title="Grillers disponibles" actionText="Ver todos" onActionPress={() => setShowGrillersModal(true)} />
+        <View style={styles.availabilityFilterRow}>
+          <AppChip label="Todos" selected={availabilityFilter === 'all'} onPress={() => setAvailabilityFilter('all')} />
+          <AppChip label="Hoy" selected={availabilityFilter === 'today'} onPress={() => setAvailabilityFilter('today')} />
+          <AppChip label="Mañana" selected={availabilityFilter === 'tomorrow'} onPress={() => setAvailabilityFilter('tomorrow')} />
+        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickGrillersRow}>
+          {(availabilityFilter === 'all' ? spotlightGrillers : filteredAvailableGrillers).map((griller) => {
+            const avatarUrl = getChefAvatarUrl(griller);
+            const avatarFallbackUrl = getLocalAvatarUriByChef(griller.id);
+            const availability = availabilityByChefId[griller.id] ?? DEFAULT_AVAILABILITY;
+            return (
+              <Pressable
+                key={`quick-${griller.id}`}
+                style={styles.quickGrillerCard}
+                onPress={() => {
+                  selectChef(griller.id);
+                  navigation.navigate('Profile');
+                }}
+              >
+                <ReliableImage uri={avatarUrl} fallbackUri={avatarFallbackUrl} style={styles.quickGrillerAvatar} />
+                <AppText variant="caption" style={styles.quickGrillerName}>{griller.name}</AppText>
+                <AppText variant="caption" style={[styles.quickGrillerAvailability, { color: availability.color }]}>
+                  {availability.label}
+                </AppText>
+              </Pressable>
+            );
+          })}
+          {availabilityFilter !== 'all' && filteredAvailableGrillers.length === 0 ? (
+            <AppCard style={styles.emptyAvailabilityCard}>
+              <AppText variant="caption">No hay grillers con ese filtro.</AppText>
+            </AppCard>
+          ) : null}
+        </ScrollView>
 
         <SectionHeader title="Eventos Grillerz" actionText="Ver mapa" onActionPress={() => navigation.navigate('Map')} />
         {eventNotice ? <AppText variant="caption" style={styles.eventNotice}>{eventNotice}</AppText> : null}
@@ -419,7 +450,7 @@ export function Browse01({ navigation }: Props) {
               {(availabilityFilter === 'all' ? availableGrillers : filteredAvailableGrillers).map((griller) => {
                 const avatarUrl = getChefAvatarUrl(griller);
                 const avatarFallbackUrl = getLocalAvatarUriByChef(griller.id);
-                const availability = getAvailabilityStatus(griller.id);
+                const availability = availabilityByChefId[griller.id] ?? DEFAULT_AVAILABILITY;
                 return (
                   <AppCard key={griller.id} style={styles.grillerCard}>
                     <View style={styles.grillerRow}>

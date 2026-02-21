@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { WebView } from 'react-native-webview';
@@ -194,6 +194,7 @@ const YOUTUBE_ERROR_INJECTED_SCRIPT = `
 `;
 
 export function Profile({ navigation }: Props) {
+  const insets = useSafeAreaInsets();
   const {
     selectedChef,
     isFavoriteChef,
@@ -711,7 +712,7 @@ export function Profile({ navigation }: Props) {
                 <>
                 <ScrollView
                   style={styles.eventModalContent}
-                  contentContainerStyle={styles.eventModalContentInner}
+                  contentContainerStyle={[styles.eventModalContentInner, { paddingBottom: 132 + insets.bottom }]}
                   showsVerticalScrollIndicator={false}
                   nestedScrollEnabled
                   keyboardShouldPersistTaps="handled"
@@ -812,7 +813,7 @@ export function Profile({ navigation }: Props) {
                     {eventNotice ? <Text style={styles.eventNoticeText}>{eventNotice}</Text> : null}
                   </View>
                 </ScrollView>
-                <View style={styles.eventModalFooter}>
+                <View style={[styles.eventModalFooter, { paddingBottom: Math.max(14, insets.bottom + 10) }]}>
                   <Text style={styles.eventModalFooterTotal}>
                     Total: ${(eventSeats * selectedEvent.pricePerPerson).toLocaleString('es-MX')} MXN
                   </Text>
@@ -1532,6 +1533,11 @@ const styles = StyleSheet.create({
     fontWeight: '700'
   },
   eventModalFooter: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 10,
     borderTopWidth: 1,
     borderTopColor: colors.border,
     backgroundColor: '#FFFFFF',
