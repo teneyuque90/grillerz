@@ -33,18 +33,18 @@ const featured = [
   { dishName: 'Costillas Ahumadas', chefId: 'martin-asador', price: '$3,600' }
 ];
 const categories = [
-  { key: 'Top', icon: 'fire' },
-  { key: 'Costillas', icon: 'food-drumstick' },
-  { key: 'Tomahawk', icon: 'knife' },
-  { key: 'Parrilla', icon: 'silverware-fork-knife' },
-  { key: 'Ahumados', icon: 'smoke' },
-  { key: 'Brisket', icon: 'chef-hat' },
-  { key: 'Cabrito', icon: 'cow' },
-  { key: 'Mariscos', icon: 'fish' },
-  { key: 'Rib Eyes', icon: 'food-steak' },
-  { key: 'Arrachera', icon: 'chef-hat' },
-  { key: 'Picana', icon: 'food-steak' },
-  { key: 'T-Bone', icon: 'bone' }
+  { key: 'Top', icon: 'fire', tint: '#E53935' },
+  { key: 'Costillas', icon: 'food-steak', tint: '#EF4444' },
+  { key: 'Tomahawk', icon: 'knife', tint: '#F97316' },
+  { key: 'Parrilla', icon: 'grill-outline', tint: '#DC2626' },
+  { key: 'Ahumados', icon: 'smoke', tint: '#B91C1C' },
+  { key: 'Brisket', icon: 'food', tint: '#E11D48' },
+  { key: 'Cabrito', icon: 'chef-hat', tint: '#EA580C' },
+  { key: 'Mariscos', icon: 'fish', tint: '#0EA5E9' },
+  { key: 'Rib Eyes', icon: 'silverware-fork-knife', tint: '#D97706' },
+  { key: 'Arrachera', icon: 'cow', tint: '#F43F5E' },
+  { key: 'Picana', icon: 'food-variant', tint: '#FB7185' },
+  { key: 'T-Bone', icon: 'food-drumstick', tint: '#C2410C' }
 ] as const;
 type AvailabilityFilter = 'all' | 'today' | 'tomorrow';
 type AvailabilityStatus = {
@@ -55,7 +55,7 @@ type AvailabilityStatus = {
 const DEFAULT_AVAILABILITY: AvailabilityStatus = { label: 'Próximo', kind: 'next', color: colors.textSoft };
 
 export function Browse01({ navigation }: Props) {
-  const { chefs, selectChef, authUser, setFocusedEventId } = useAppState();
+  const { chefs, selectChef, authUser } = useAppState();
   const [activeCategory, setActiveCategory] = useState<(typeof categories)[number]['key']>(categories[0].key);
   const [availabilityFilter, setAvailabilityFilter] = useState<AvailabilityFilter>('all');
   const [showGrillersModal, setShowGrillersModal] = useState(false);
@@ -212,16 +212,23 @@ export function Browse01({ navigation }: Props) {
                 style={styles.categoryPill}
                 onPress={() => setActiveCategory(item.key)}
               >
-                <View style={[styles.categoryIconWrap, selected ? styles.categoryIconWrapActive : null]}>
-                  <MaterialCommunityIcons
-                    name={item.icon}
-                    size={16}
-                    color={selected ? '#FFFFFF' : colors.primary}
-                  />
+                <View style={[styles.categoryPreviewWrap, selected ? styles.categoryPreviewWrapActive : null]}>
+                  <LinearGradient
+                    colors={selected ? ['#FFE9E6', '#FFF8F7'] : ['#FAFAFA', '#F2F4F7']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.categoryPreviewImage}
+                  >
+                    <View style={[styles.categoryIconBubble, { backgroundColor: `${item.tint}1F` }]}>
+                      <MaterialCommunityIcons name={item.icon} size={22} color={item.tint} />
+                    </View>
+                    <View style={styles.categoryPreviewFooter}>
+                      <AppText variant="caption" style={[styles.categoryPreviewLabel, selected ? styles.categoryPreviewLabelActive : null]}>
+                        {item.key}
+                      </AppText>
+                    </View>
+                  </LinearGradient>
                 </View>
-                <AppText variant="caption" style={[styles.categoryLabel, selected ? styles.categoryLabelActive : null]}>
-                  {item.key}
-                </AppText>
               </Pressable>
             );
           })}
@@ -399,8 +406,7 @@ export function Browse01({ navigation }: Props) {
                       onPress={() => {
                         if (chef) {
                           selectChef(chef.id);
-                          setFocusedEventId(event.id);
-                          navigation.navigate('Profile');
+                          navigation.navigate('EventDetails', { eventId: event.id, chefId: event.chefId });
                         }
                       }}
                     />
@@ -440,7 +446,7 @@ export function Browse01({ navigation }: Props) {
               </Pressable>
             </View>
             <AppText variant="caption" style={styles.modalHint}>Mostrando primero los cercanos/populares en {nearestCity}.</AppText>
-            <View style={styles.availabilityFilterRow}>
+            <View style={styles.modalAvailabilityFilterRow}>
               <AppChip label="Todos" selected={availabilityFilter === 'all'} onPress={() => setAvailabilityFilter('all')} />
               <AppChip label="Hoy" selected={availabilityFilter === 'today'} onPress={() => setAvailabilityFilter('today')} />
               <AppChip label="Mañana" selected={availabilityFilter === 'tomorrow'} onPress={() => setAvailabilityFilter('tomorrow')} />
@@ -523,32 +529,56 @@ const styles = StyleSheet.create({
     paddingRight: 24
   },
   categoryPill: {
-    width: 82,
-    alignItems: 'center',
-    gap: 6
+    width: 98
   },
-  categoryIconWrap: {
-    width: 42,
-    height: 42,
-    borderRadius: 42,
+  categoryPreviewWrap: {
+    height: 106,
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: '#E5E7EB',
     backgroundColor: '#FFFFFF',
+    overflow: 'hidden',
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 5
+  },
+  categoryPreviewWrapActive: {
+    borderColor: colors.primary,
+    shadowColor: colors.primarySoft,
+    shadowOpacity: 0.35
+  },
+  categoryPreviewImage: {
+    flex: 1,
+    borderRadius: 18,
     alignItems: 'center',
-    justifyContent: 'center'
+    justifyContent: 'center',
+    paddingHorizontal: 8
   },
-  categoryIconWrapActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary
+  categoryIconBubble: {
+    width: 46,
+    height: 46,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#FFFFFF'
   },
-  categoryLabel: {
-    textAlign: 'center',
-    color: colors.textMuted,
-    fontWeight: '700'
+  categoryPreviewFooter: {
+    minHeight: 32,
+    paddingHorizontal: 6,
+    marginTop: 8,
+    justifyContent: 'center',
+    alignItems: 'center'
   },
-  categoryLabelActive: {
-    color: colors.primaryDark,
-    fontWeight: '800'
+  categoryPreviewLabel: {
+    color: colors.textStrong,
+    fontWeight: '800',
+    textAlign: 'center'
+  },
+  categoryPreviewLabelActive: {
+    color: colors.primaryDark
   },
   availabilityFilterRow: {
     marginTop: -4,
@@ -802,10 +832,16 @@ const styles = StyleSheet.create({
     fontWeight: '800'
   },
   modalHint: {
-    marginTop: 4
+    marginTop: 4,
+    marginBottom: 10
+  },
+  modalAvailabilityFilterRow: {
+    marginBottom: 10,
+    flexDirection: 'row',
+    gap: 8
   },
   modalList: {
-    marginTop: 10
+    marginTop: 2
   },
   modalListContent: {
     gap: 8,

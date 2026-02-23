@@ -150,7 +150,8 @@ export const createInitialDraft = (chefId: string): BookingDraft => ({
   packageName: 'Basico',
   guests: 10,
   durationHours: 4,
-  transferFee: 300
+  transferFee: 300,
+  customServiceFee: null
 });
 
 export const seedBookings = (userId: string): Booking[] => [

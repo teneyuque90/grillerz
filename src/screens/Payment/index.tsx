@@ -20,9 +20,11 @@ export function Payment({ navigation }: Props) {
   const [isPaying, setIsPaying] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const isEventPayment = Boolean(eventCheckout);
-  const payableService = isEventPayment ? eventCheckout?.total ?? 0 : bookingSummary.serviceFee;
+  const eventSeatsTotal = eventCheckout?.seatsTotal ?? eventCheckout?.total ?? 0;
+  const eventAddOnsTotal = eventCheckout?.addOnsTotal ?? 0;
+  const payableService = isEventPayment ? eventSeatsTotal : bookingSummary.serviceFee;
   const payableTransfer = isEventPayment ? 0 : bookingSummary.transferFee;
-  const payableTotal = isEventPayment ? eventCheckout?.total ?? 0 : bookingSummary.total;
+  const payableTotal = isEventPayment ? eventCheckout?.total ?? eventSeatsTotal + eventAddOnsTotal : bookingSummary.total;
 
   async function handlePay() {
     if (isPaying) {
@@ -87,10 +89,26 @@ export function Payment({ navigation }: Props) {
                   <Text style={styles.summaryLabel}>{isEventPayment ? 'Evento' : 'Servicio'}</Text>
                   <Text style={styles.summaryValue}>${payableService}</Text>
                 </View>
+                {isEventPayment && eventAddOnsTotal > 0 ? (
+                  <View style={styles.summaryRow}>
+                    <Text style={styles.summaryLabel}>Extras menu</Text>
+                    <Text style={styles.summaryValue}>${eventAddOnsTotal}</Text>
+                  </View>
+                ) : null}
                 <View style={styles.summaryRow}>
                   <Text style={styles.summaryLabel}>Traslado</Text>
                   <Text style={styles.summaryValue}>${payableTransfer}</Text>
                 </View>
+                {isEventPayment && (eventCheckout?.addOns?.length ?? 0) > 0 ? (
+                  <View style={styles.eventAddOnsList}>
+                    {eventCheckout?.addOns.map((item) => (
+                      <View key={item.id} style={styles.eventAddOnRow}>
+                        <Text style={styles.eventAddOnLabel}>{item.quantity}x {item.name}</Text>
+                        <Text style={styles.eventAddOnValue}>${item.total}</Text>
+                      </View>
+                    ))}
+                  </View>
+                ) : null}
                 <View style={styles.summaryRow}>
                   <Text style={styles.summaryLabel}>Descuento</Text>
                   <Text style={styles.summaryValue}>$0</Text>
@@ -232,6 +250,31 @@ const styles = StyleSheet.create({
   summaryValueStrong: {
     color: colors.primaryDark,
     fontWeight: '900'
+  },
+  eventAddOnsList: {
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.backgroundMuted,
+    padding: 8,
+    gap: 6
+  },
+  eventAddOnRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8
+  },
+  eventAddOnLabel: {
+    flex: 1,
+    color: colors.textMuted,
+    fontSize: 12,
+    fontWeight: '700'
+  },
+  eventAddOnValue: {
+    color: colors.textStrong,
+    fontSize: 12,
+    fontWeight: '800'
   },
   eventCancelLink: {
     marginTop: 10,

@@ -36,7 +36,7 @@ type SearchItem = {
 const initialRecent = ['Costillas en Nuevo Laredo', 'Asador para 25 personas', 'Tomahawk premium'];
 
 export function Search({ navigation }: Props) {
-  const { chefs, selectChef, setFocusedEventId } = useAppState();
+  const { chefs, selectChef } = useAppState();
   const [query, setQuery] = useState('');
   const [activeType, setActiveType] = useState<SearchType>('all');
   const [recent, setRecent] = useState(initialRecent);
@@ -191,7 +191,10 @@ export function Search({ navigation }: Props) {
 
   function openResult(item: SearchItem) {
     selectChef(item.chefId);
-    setFocusedEventId(item.eventId ?? null);
+    if (item.type === 'event' && item.eventId) {
+      navigation.navigate('EventDetails', { eventId: item.eventId, chefId: item.chefId });
+      return;
+    }
     navigation.navigate('Profile');
   }
 

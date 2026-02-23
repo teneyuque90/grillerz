@@ -21,6 +21,7 @@ import { Categories } from '../screens/Categories';
 import { Search } from '../screens/Search';
 import { Filter } from '../screens/Filter';
 import { Profile } from '../screens/Profile';
+import { EventDetails } from '../screens/EventDetails';
 import { Schedule } from '../screens/Schedule';
 import { ReviewBooking } from '../screens/ReviewBooking';
 import { Payment } from '../screens/Payment';
@@ -86,6 +87,7 @@ export function AppNavigator() {
       <Stack.Screen name="Search" component={Search} />
       <Stack.Screen name="Filter" component={Filter} />
       <Stack.Screen name="Profile" component={Profile} />
+      <Stack.Screen name="EventDetails" component={EventDetails} />
       <Stack.Screen name="Schedule" component={Schedule} />
       <Stack.Screen name="ReviewBooking" component={ReviewBooking} />
       <Stack.Screen name="Payment" component={Payment} />

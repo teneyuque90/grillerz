@@ -220,7 +220,7 @@ export function Schedule({ navigation }: Props) {
                 <Text style={styles.summaryName}>{selectedChef.name}</Text>
                 <Text style={styles.summaryMeta}>{selectedChef.title}</Text>
               </View>
-              <Text style={styles.summaryRate}>${selectedChef.basePrice}</Text>
+              <Text style={styles.summaryRate}>${bookingSummary.serviceFee}</Text>
             </View>
 
             <View style={styles.block}>

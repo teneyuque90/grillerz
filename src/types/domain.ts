@@ -123,6 +123,7 @@ export type BookingDraft = {
   guests: number;
   durationHours: number;
   transferFee: number;
+  customServiceFee?: number | null;
 };
 
 export type Booking = {

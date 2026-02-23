@@ -23,9 +23,20 @@ type ActionResult = {
   message?: string;
 };
 
+type EventCheckoutAddOn = {
+  id: string;
+  name: string;
+  unitPrice: number;
+  quantity: number;
+  total: number;
+};
+
 type EventCheckout = {
   event: GrillerEvent;
   seats: number;
+  seatsTotal: number;
+  addOnsTotal: number;
+  addOns: EventCheckoutAddOn[];
   total: number;
 };
 
@@ -46,7 +57,16 @@ type AppStateContextValue = {
   completeVerification: (code: string) => Promise<ActionResult>;
   signOut: () => Promise<void>;
   selectChef: (chefId: string) => void;
-  startEventCheckout: (event: GrillerEvent, seats: number) => void;
+  startEventCheckout: (
+    event: GrillerEvent,
+    seats: number,
+    options?: {
+      total?: number;
+      seatsTotal?: number;
+      addOnsTotal?: number;
+      addOns?: EventCheckoutAddOn[];
+    }
+  ) => void;
   completeEventCheckout: (paymentMethod: PaymentMethod) => Promise<Booking>;
   clearEventCheckout: () => void;
   setFocusedEventId: (eventId: string | null) => void;
@@ -220,7 +240,22 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         setBookingDraft(parsed.bookingDraft);
         setBookings(parsed.bookings);
         setSelectedBookingId(parsed.selectedBookingId);
-        setEventCheckout(parsed.eventCheckout ?? null);
+        if (parsed.eventCheckout) {
+          const storedEventCheckout = parsed.eventCheckout;
+          const addOns = Array.isArray(storedEventCheckout.addOns) ? storedEventCheckout.addOns : [];
+          const seatsTotal = storedEventCheckout.seatsTotal ?? storedEventCheckout.seats * storedEventCheckout.event.pricePerPerson;
+          const addOnsTotal = storedEventCheckout.addOnsTotal ?? addOns.reduce((sum, item) => sum + item.total, 0);
+          const total = storedEventCheckout.total ?? seatsTotal + addOnsTotal;
+          setEventCheckout({
+            ...storedEventCheckout,
+            addOns,
+            seatsTotal,
+            addOnsTotal,
+            total
+          });
+        } else {
+          setEventCheckout(null);
+        }
       }
 
       if (!OFFLINE_DEMO_MODE) {
@@ -262,7 +297,9 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   }, [chefs, selectedChefId]);
 
   const bookingSummary = useMemo<BookingSummary>(() => {
-    const serviceFee = selectedChef.basePrice;
+    const serviceFee = bookingDraft.customServiceFee && bookingDraft.customServiceFee > 0
+      ? bookingDraft.customServiceFee
+      : selectedChef.basePrice;
     const transferFee = bookingDraft.transferFee;
 
     return {
@@ -270,7 +307,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       transferFee,
       total: serviceFee + transferFee
     };
-  }, [bookingDraft.transferFee, selectedChef.basePrice]);
+  }, [bookingDraft.customServiceFee, bookingDraft.transferFee, selectedChef.basePrice]);
 
   const selectedBooking = useMemo(() => {
     if (!selectedBookingId) {
@@ -434,7 +471,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     setSelectedChefId(chef.id);
     setBookingDraft((prev) => ({
       ...prev,
-      chefId: chef.id
+      chefId: chef.id,
+      customServiceFee: null
     }));
   }, [chefs]);
 
@@ -481,12 +519,23 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
-  const startEventCheckout = useCallback((event: GrillerEvent, seats: number) => {
+  const startEventCheckout = useCallback((event: GrillerEvent, seats: number, options?: {
+    total?: number;
+    seatsTotal?: number;
+    addOnsTotal?: number;
+    addOns?: EventCheckoutAddOn[];
+  }) => {
     const safeSeats = Math.max(event.minSeatsPerReservation, Math.min(event.maxSeatsPerReservation, Math.round(seats)));
+    const seatsTotal = options?.seatsTotal ?? safeSeats * event.pricePerPerson;
+    const addOns = options?.addOns ?? [];
+    const addOnsTotal = options?.addOnsTotal ?? addOns.reduce((sum, item) => sum + item.total, 0);
     setEventCheckout({
       event,
       seats: safeSeats,
-      total: safeSeats * event.pricePerPerson
+      seatsTotal,
+      addOnsTotal,
+      addOns,
+      total: options?.total ?? seatsTotal + addOnsTotal
     });
   }, []);
 
@@ -556,6 +605,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
 
       const user = authUser ?? defaultUser;
       let reservationCode = '';
+      const checkoutAddOns = eventCheckout.addOns ?? [];
 
       if (!OFFLINE_DEMO_MODE) {
         const result = await grillerzApi.reserveEventSeats(eventCheckout.event.id, {
@@ -577,7 +627,9 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         timeLabel: eventCheckout.event.timeLabel,
         mode: 'En terraza del griller',
         address: eventCheckout.event.address,
-        packageName: `Evento: ${eventCheckout.event.title}`,
+        packageName: checkoutAddOns.length > 0
+          ? `Evento: ${eventCheckout.event.title} + ${checkoutAddOns.map((item) => `${item.quantity}x ${item.name}`).join(', ')}`
+          : `Evento: ${eventCheckout.event.title}`,
         guests: eventCheckout.seats,
         durationHours: 4,
         serviceFee: eventCheckout.total,

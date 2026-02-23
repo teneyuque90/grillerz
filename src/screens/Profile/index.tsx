@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { WebView } from 'react-native-webview';
@@ -27,6 +27,14 @@ import { getChefAvatarUrl, getChefCoverUrl } from '../../utils/chefMedia';
 import { getReliableMediaUrl } from '../../utils/reliableMedia';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
+
+type SelectedMenuItem = {
+  id: string;
+  name: string;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+};
 
 const fallbackReviewsByChefId: Record<string, ChefReview[]> = {
   'erick-martinez': [
@@ -145,64 +153,14 @@ function extractYouTubeVideoId(rawValue?: string) {
   return '';
 }
 
-const YOUTUBE_ERROR_INJECTED_SCRIPT = `
-  (function () {
-    function send(type, detail) {
-      if (window.ReactNativeWebView) {
-        window.ReactNativeWebView.postMessage(JSON.stringify({ type: type, detail: detail }));
-      }
-    }
-
-    function checkForKnownError() {
-      try {
-        var text = (document.body && document.body.innerText ? document.body.innerText : '').toLowerCase();
-        if (!text) {
-          return;
-        }
-
-        var patterns = [
-          'error 153',
-          'error 152',
-          'error code',
-          'video unavailable',
-          'playback on other websites has been disabled',
-          'este video no esta disponible',
-          'mirar el video en youtube'
-        ];
-
-        for (var i = 0; i < patterns.length; i += 1) {
-          if (text.indexOf(patterns[i]) !== -1) {
-            send('yt-error', patterns[i]);
-            return;
-          }
-        }
-      } catch (e) {}
-    }
-
-    setTimeout(checkForKnownError, 1200);
-    setTimeout(checkForKnownError, 2600);
-    setTimeout(checkForKnownError, 4200);
-
-    try {
-      if (document.body) {
-        var observer = new MutationObserver(checkForKnownError);
-        observer.observe(document.body, { childList: true, subtree: true, characterData: true });
-      }
-    } catch (e) {}
-  })();
-  true;
-`;
-
 export function Profile({ navigation }: Props) {
-  const insets = useSafeAreaInsets();
   const {
     selectedChef,
     isFavoriteChef,
     toggleFavoriteChef,
     focusedEventId,
     setFocusedEventId,
-    authUser,
-    startEventCheckout
+    updateBookingDraft
   } = useAppState();
   const isFavorite = isFavoriteChef(selectedChef.id);
   const coverUrl = getChefCoverUrl(selectedChef);
@@ -216,38 +174,57 @@ export function Profile({ navigation }: Props) {
     : [0, 1, 2].map((index) => getLocalGalleryUriByChef(selectedChef.id, index)));
   const [grillerVideos, setGrillerVideos] = useState<ChefVideo[]>(getGrillerVideos(selectedChef.id));
   const [chefMenuItems, setChefMenuItems] = useState(getFallbackChefMenuItems(selectedChef.id));
+  const [selectedMenuQuantities, setSelectedMenuQuantities] = useState<Record<string, number>>({});
   const [chefPackages, setChefPackages] = useState<ChefPackage[]>(getFallbackChefPackages(selectedChef.id));
   const [reviews, setReviews] = useState<ChefReview[]>(fallbackReviewsByChefId[selectedChef.id] ?? []);
-  const [selectedPackageId, setSelectedPackageId] = useState(chefPackages[0]?.id ?? '');
+  const [selectedPackageId, setSelectedPackageId] = useState('');
   const [selectedVideo, setSelectedVideo] = useState<ChefVideo | null>(null);
-  const [selectedEvent, setSelectedEvent] = useState<GrillerEvent | null>(null);
   const [chefEvents, setChefEvents] = useState<GrillerEvent[]>(getFallbackEventsByChef(selectedChef.id));
-  const [eventSeats, setEventSeats] = useState(1);
-  const [showEventModal, setShowEventModal] = useState(false);
-  const [eventNotice, setEventNotice] = useState<string | null>(null);
   const [showVideoModal, setShowVideoModal] = useState(false);
+  const [videoErrorNotice, setVideoErrorNotice] = useState<string | null>(null);
   const [isVideoLoading, setIsVideoLoading] = useState(true);
-  const [videoPlaybackMode, setVideoPlaybackMode] = useState<'embed' | 'watch'>('embed');
-  const [videoPlaybackNotice, setVideoPlaybackNotice] = useState<string | null>(null);
+  const [videoHasRendered, setVideoHasRendered] = useState(false);
   const activeVideoId = extractYouTubeVideoId(selectedVideo?.videoId) || extractYouTubeVideoId(selectedVideo?.youtubeUrl) || 'M7lc1UVf-VE';
-  const embedPlayerUrl = `https://www.youtube.com/embed/${activeVideoId}?autoplay=1&rel=0&modestbranding=1&playsinline=1&fs=1`;
-  const watchPlayerUrl = `https://m.youtube.com/watch?v=${activeVideoId}&autoplay=1&playsinline=1`;
+  const watchPlayerUrl = `https://www.youtube.com/watch?v=${activeVideoId}&autoplay=1&playsinline=1`;
+  const selectedMenuItems = useMemo<SelectedMenuItem[]>(() => {
+    return chefMenuItems
+      .map((item) => {
+        const quantity = selectedMenuQuantities[item.id] ?? 0;
+        return {
+          id: item.id,
+          name: item.name,
+          quantity,
+          unitPrice: item.price,
+          total: item.price * quantity
+        };
+      })
+      .filter((item) => item.quantity > 0);
+  }, [chefMenuItems, selectedMenuQuantities]);
+  const selectedPackage = useMemo(
+    () => chefPackages.find((item) => item.id === selectedPackageId && item.isActive) ?? null,
+    [chefPackages, selectedPackageId]
+  );
+  const packageSelectionTotal = selectedPackage?.price ?? 0;
+  const menuSelectionTotal = selectedMenuItems.reduce((sum, item) => sum + item.total, 0);
+  const combinedSelectionTotal = menuSelectionTotal + packageSelectionTotal;
+  const hasMenuSelection = selectedMenuItems.length > 0;
+  const hasAnySelection = Boolean(selectedPackage) || hasMenuSelection;
 
   useEffect(() => {
     setChefMenuItems(getFallbackChefMenuItems(selectedChef.id));
+    setSelectedMenuQuantities({});
     const nextPackages = getFallbackChefPackages(selectedChef.id);
     setChefPackages(nextPackages);
-    setSelectedPackageId(nextPackages[0]?.id ?? '');
+    setSelectedPackageId('');
   }, [selectedChef.id]);
 
   useEffect(() => {
-    if (chefPackages.length === 0) {
-      setSelectedPackageId('');
+    if (!selectedPackageId) {
       return;
     }
 
-    if (!chefPackages.some((item) => item.id === selectedPackageId)) {
-      setSelectedPackageId(chefPackages[0].id);
+    if (!chefPackages.some((item) => item.id === selectedPackageId && item.isActive)) {
+      setSelectedPackageId('');
     }
   }, [chefPackages, selectedPackageId]);
 
@@ -255,40 +232,51 @@ export function Profile({ navigation }: Props) {
     setSelectedVideo(video);
     setShowVideoModal(true);
     setIsVideoLoading(true);
-    setVideoPlaybackMode('embed');
-    setVideoPlaybackNotice(null);
+    setVideoHasRendered(false);
+    setVideoErrorNotice(null);
   }
 
   function closeVideoModal() {
     setShowVideoModal(false);
     setSelectedVideo(null);
-    setVideoPlaybackMode('embed');
-    setVideoPlaybackNotice(null);
-  }
-
-  function switchToCompatibleVideoMode(reason?: string) {
-    setVideoPlaybackMode((current) => {
-      if (current === 'watch') {
-        return current;
-      }
-
-      setIsVideoLoading(true);
-      setVideoPlaybackNotice(reason ?? 'Este video no permite embed directo. Activamos modo compatible dentro de la app.');
-      return 'watch';
-    });
+    setVideoHasRendered(false);
+    setVideoErrorNotice(null);
   }
 
   function openEventModal(event: GrillerEvent) {
-    setSelectedEvent(event);
-    setEventSeats(event.minSeatsPerReservation);
-    setEventNotice(null);
-    setShowEventModal(true);
+    navigation.navigate('EventDetails', { eventId: event.id, chefId: event.chefId });
   }
 
-  function closeEventModal() {
-    setShowEventModal(false);
-    setSelectedEvent(null);
-    setEventNotice(null);
+  function updateMenuItemQuantity(itemId: string, nextQuantity: number) {
+    const clamped = Math.max(0, Math.min(8, nextQuantity));
+    setSelectedMenuQuantities((prev) => {
+      if (clamped === 0) {
+        const { [itemId]: _removed, ...rest } = prev;
+        return rest;
+      }
+      return {
+        ...prev,
+        [itemId]: clamped
+      };
+    });
+  }
+
+  function reserveMenuSelection() {
+    const selections: string[] = [];
+    if (selectedPackage) {
+      selections.push(`Paquete: ${selectedPackage.name}`);
+    }
+    if (hasMenuSelection) {
+      selections.push(`Platillos: ${selectedMenuItems.map((item) => `${item.quantity}x ${item.name}`).join(', ')}`);
+    }
+    const packageName = selections.join(' + ') || 'Servicio personalizado';
+    const serviceFee = combinedSelectionTotal > 0 ? combinedSelectionTotal : selectedChef.basePrice;
+
+    updateBookingDraft({
+      packageName,
+      customServiceFee: serviceFee
+    });
+    navigation.navigate('Schedule');
   }
 
   useEffect(() => {
@@ -421,39 +409,18 @@ export function Profile({ navigation }: Props) {
   }, [chefEvents, focusedEventId, setFocusedEventId]);
 
   useEffect(() => {
-    if (focusedEventId) {
+    if (!showVideoModal || !isVideoLoading) {
       return;
     }
 
-    setShowEventModal(false);
-    setSelectedEvent(null);
-    setEventNotice(null);
-  }, [focusedEventId, selectedChef.id]);
+    const timeout = setTimeout(() => {
+      setIsVideoLoading(false);
+    }, 6000);
 
-  function openEventInMaps(address: string, city: string) {
-    const query = encodeURIComponent(`${address}, ${city}`);
-    void Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${query}`);
-  }
-
-  function beginEventCheckout() {
-    if (!selectedEvent) {
-      return;
-    }
-
-    if (authUser?.role === 'griller') {
-      setEventNotice('Aparta eventos desde una cuenta Cliente.');
-      return;
-    }
-
-    if (eventSeats > selectedEvent.seatsAvailable) {
-      setEventNotice('No hay suficientes lugares disponibles para ese evento.');
-      return;
-    }
-
-    startEventCheckout(selectedEvent, eventSeats);
-    closeEventModal();
-    navigation.navigate('Payment');
-  }
+    return () => {
+      clearTimeout(timeout);
+    };
+  }, [activeVideoId, isVideoLoading, showVideoModal]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -558,12 +525,41 @@ export function Profile({ navigation }: Props) {
                         <View style={styles.menuCardMeta}>
                           <AppChip label={item.category} />
                         </View>
+                        <View style={styles.menuQtyRow}>
+                          <View style={styles.menuQtyActions}>
+                            <Pressable
+                              style={[styles.eventSeatButton, (selectedMenuQuantities[item.id] ?? 0) === 0 ? styles.eventSeatButtonDisabled : null]}
+                              onPress={() => updateMenuItemQuantity(item.id, (selectedMenuQuantities[item.id] ?? 0) - 1)}
+                              disabled={(selectedMenuQuantities[item.id] ?? 0) === 0}
+                            >
+                              <Text style={styles.eventSeatButtonLabel}>-</Text>
+                            </Pressable>
+                            <Text style={styles.menuQtyValue}>{selectedMenuQuantities[item.id] ?? 0}</Text>
+                            <Pressable style={styles.eventSeatButton} onPress={() => updateMenuItemQuantity(item.id, (selectedMenuQuantities[item.id] ?? 0) + 1)}>
+                              <Text style={styles.eventSeatButtonLabel}>+</Text>
+                            </Pressable>
+                          </View>
+                          <Text style={styles.menuLineTotal}>
+                            ${(((selectedMenuQuantities[item.id] ?? 0) * item.price)).toLocaleString('es-MX')} MXN
+                          </Text>
+                        </View>
                       </View>
                     </View>
                   </AppCard>
                 ))}
                 {chefMenuItems.length === 0 ? (
                   <Text style={styles.emptyReviews}>Este griller aun no publica cortes o platillos.</Text>
+                ) : null}
+                {chefMenuItems.length > 0 ? (
+                  <AppCard style={styles.menuSelectionCard}>
+                    <Text style={styles.menuSelectionTitle}>Seleccion de cortes</Text>
+                    <Text style={styles.menuSelectionHint}>
+                      Elige uno o varios cortes/platillos y combínalos con paquete si lo deseas.
+                    </Text>
+                    <Text style={styles.menuSelectionTotal}>
+                      Total seleccionado: ${menuSelectionTotal.toLocaleString('es-MX')} MXN
+                    </Text>
+                  </AppCard>
                 ) : null}
               </View>
             </View>
@@ -574,7 +570,7 @@ export function Profile({ navigation }: Props) {
                 {chefPackages.filter((item) => item.isActive).map((item) => {
                   const selected = item.id === selectedPackageId;
                   return (
-                    <Pressable key={item.id} onPress={() => setSelectedPackageId(item.id)}>
+                    <Pressable key={item.id} onPress={() => setSelectedPackageId((prev) => (prev === item.id ? '' : item.id))}>
                       <AppCard style={[styles.packageCard, selected ? styles.packageCardSelected : null]}>
                         <View style={styles.packageTopRow}>
                           <Text style={styles.packageName}>{item.name}</Text>
@@ -589,6 +585,18 @@ export function Profile({ navigation }: Props) {
                 {chefPackages.filter((item) => item.isActive).length === 0 ? (
                   <Text style={styles.emptyReviews}>Este griller aun no publica paquetes.</Text>
                 ) : null}
+                <AppCard style={styles.menuSelectionCard}>
+                  <Text style={styles.menuSelectionTitle}>Resumen de compra</Text>
+                  <Text style={styles.menuSelectionHint}>
+                    Paquete: {selectedPackage ? selectedPackage.name : 'Ninguno'}
+                  </Text>
+                  <Text style={styles.menuSelectionHint}>
+                    Platillos: {hasMenuSelection ? selectedMenuItems.length : 0} seleccionado(s)
+                  </Text>
+                  <Text style={styles.menuSelectionTotal}>
+                    Total a cobrar: ${combinedSelectionTotal > 0 ? combinedSelectionTotal.toLocaleString('es-MX') : selectedChef.basePrice.toLocaleString('es-MX')} MXN
+                  </Text>
+                </AppCard>
               </View>
             </View>
 
@@ -694,163 +702,28 @@ export function Profile({ navigation }: Props) {
               </View>
             </View>
 
-            <PrimaryButton label="Reservar ahora" onPress={() => navigation.navigate('Schedule')} />
+            <PrimaryButton
+              label={hasAnySelection ? 'Continuar con selección' : 'Continuar sin selección'}
+              onPress={reserveMenuSelection}
+            />
           </ScrollView>
         </View>
-
-        <Modal visible={showEventModal} animationType="slide" transparent onRequestClose={closeEventModal}>
-          <View style={styles.eventModalBackdrop}>
-            <View style={styles.eventModalCard}>
-              <View style={styles.eventModalHeader}>
-                <Text style={styles.eventModalTitle}>Detalle del evento</Text>
-                <Pressable onPress={closeEventModal}>
-                  <Text style={styles.eventModalClose}>Cerrar</Text>
-                </Pressable>
-              </View>
-
-              {selectedEvent ? (
-                <>
-                <ScrollView
-                  style={styles.eventModalContent}
-                  contentContainerStyle={[styles.eventModalContentInner, { paddingBottom: 132 + insets.bottom }]}
-                  showsVerticalScrollIndicator={false}
-                  nestedScrollEnabled
-                  keyboardShouldPersistTaps="handled"
-                >
-                  <ReliableImageBackground
-                    uri={getDishImageByName(selectedEvent.menu[0] ?? selectedEvent.title)}
-                    fallbackUri={getLocalDishUriByName(selectedEvent.menu[0] ?? selectedEvent.title)}
-                    style={styles.eventModalMedia}
-                    imageStyle={styles.eventModalMediaImage}
-                  >
-                    <View style={styles.eventImageShade} />
-                    <View style={styles.eventModalMediaBottom}>
-                      <Text style={styles.eventModalEventTitle}>{selectedEvent.title}</Text>
-                      <Text style={styles.eventModalEventMeta}>
-                        {formatEventDateLabel(selectedEvent.dateKey)} · {selectedEvent.timeLabel} · {selectedEvent.city}
-                      </Text>
-                    </View>
-                  </ReliableImageBackground>
-
-                  <View style={styles.eventHostRow}>
-                    <MaterialCommunityIcons name="fire" size={16} color={colors.primary} />
-                    <Text style={styles.eventHostName}>{selectedEvent.chefName}</Text>
-                    <Text style={styles.eventHostCity}> · {selectedEvent.city}</Text>
-                  </View>
-                  <Text style={styles.eventModalText}>{selectedEvent.description}</Text>
-                  <View style={styles.eventLocationRow}>
-                    <MaterialCommunityIcons name="clock-time-four-outline" size={16} color={colors.primary} />
-                    <Text style={styles.eventLocationText}>{selectedEvent.timeLabel} · {formatEventDateLabel(selectedEvent.dateKey)}</Text>
-                  </View>
-                  <View style={styles.eventLocationRow}>
-                    <MaterialCommunityIcons name="map-marker-outline" size={16} color={colors.primary} />
-                    <Text style={styles.eventLocationText}>{selectedEvent.venueName} · {selectedEvent.address}</Text>
-                    <Pressable onPress={() => openEventInMaps(selectedEvent.address, selectedEvent.city)}>
-                      <Text style={styles.eventMapLink}>Abrir mapa</Text>
-                    </Pressable>
-                  </View>
-
-                  <View style={styles.eventModalStats}>
-                    <View style={styles.eventModalStatCard}>
-                      <Text style={styles.eventModalStatLabel}>Precio</Text>
-                      <Text style={styles.eventModalStatValue}>${selectedEvent.pricePerPerson.toLocaleString('es-MX')}</Text>
-                    </View>
-                    <View style={styles.eventModalStatCard}>
-                      <Text style={styles.eventModalStatLabel}>Disponibles</Text>
-                      <Text style={styles.eventModalStatValue}>{selectedEvent.seatsAvailable}</Text>
-                    </View>
-                    <View style={styles.eventModalStatCard}>
-                      <Text style={styles.eventModalStatLabel}>Capacidad</Text>
-                      <Text style={styles.eventModalStatValue}>{selectedEvent.capacityTotal}</Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.eventModalBlock}>
-                    <Text style={styles.eventModalBlockTitle}>Menu del evento</Text>
-                    <View style={styles.eventTagsRow}>
-                      {selectedEvent.menu.map((item) => (
-                        <AppChip key={`${selectedEvent.id}-menu-${item}`} label={item} selected />
-                      ))}
-                    </View>
-                  </View>
-
-                  {grillerVideos.length > 0 ? (
-                    <View style={styles.eventModalBlock}>
-                      <Text style={styles.eventModalBlockTitle}>Video del evento (opcional)</Text>
-                      <Text style={styles.eventModalTextMuted}>
-                        El griller puede mostrar un video destacado del estilo de cocción.
-                      </Text>
-                      <Pressable style={styles.eventVideoButton} onPress={() => openVideoModal(grillerVideos[0])}>
-                        <MaterialCommunityIcons name="play-circle-outline" size={16} color={colors.primaryDark} />
-                        <Text style={styles.eventVideoButtonLabel}>Ver video del griller</Text>
-                      </Pressable>
-                    </View>
-                  ) : null}
-
-                  <View style={styles.eventModalBlock}>
-                    <Text style={styles.eventModalBlockTitle}>Apartar y pagar</Text>
-                    <Text style={styles.eventModalTextMuted}>
-                      Serás dirigido al pago para confirmar tu lugar. Min: {selectedEvent.minSeatsPerReservation}, Max: {selectedEvent.maxSeatsPerReservation}.
-                    </Text>
-                    <View style={styles.eventSeatRow}>
-                      <Pressable
-                        style={styles.eventSeatButton}
-                        onPress={() => setEventSeats((prev) => Math.max(selectedEvent.minSeatsPerReservation, prev - 1))}
-                      >
-                        <Text style={styles.eventSeatButtonLabel}>-</Text>
-                      </Pressable>
-                      <Text style={styles.eventSeatValue}>{eventSeats}</Text>
-                      <Pressable
-                        style={styles.eventSeatButton}
-                        onPress={() => setEventSeats((prev) => Math.min(selectedEvent.maxSeatsPerReservation, prev + 1))}
-                      >
-                        <Text style={styles.eventSeatButtonLabel}>+</Text>
-                      </Pressable>
-                      <Text style={styles.eventSeatTotal}>
-                        Total: ${(eventSeats * selectedEvent.pricePerPerson).toLocaleString('es-MX')} MXN
-                      </Text>
-                    </View>
-                    {eventNotice ? <Text style={styles.eventNoticeText}>{eventNotice}</Text> : null}
-                  </View>
-                </ScrollView>
-                <View style={[styles.eventModalFooter, { paddingBottom: Math.max(14, insets.bottom + 10) }]}>
-                  <Text style={styles.eventModalFooterTotal}>
-                    Total: ${(eventSeats * selectedEvent.pricePerPerson).toLocaleString('es-MX')} MXN
-                  </Text>
-                  <PrimaryButton
-                    label="Continuar a pago"
-                    onPress={beginEventCheckout}
-                    compact
-                  />
-                </View>
-                </>
-              ) : null}
-            </View>
-          </View>
-        </Modal>
 
         <Modal visible={showVideoModal} animationType="fade" transparent onRequestClose={closeVideoModal}>
           <View style={styles.videoModalBackdrop}>
             <View style={styles.videoModalCard}>
               <View style={styles.videoModalHeader}>
-                <Text style={styles.videoModalTitle}>
-                  {videoPlaybackMode === 'embed' ? 'Video del griller' : 'Video del griller · Modo compatible'}
-                </Text>
-                {videoPlaybackMode === 'embed' ? (
-                  <Pressable onPress={() => switchToCompatibleVideoMode('Activaste modo compatible para mejorar compatibilidad.')}>
-                    <Text style={styles.videoModalCompat}>Compatible</Text>
-                  </Pressable>
-                ) : null}
+                <Text style={styles.videoModalTitle}>{selectedVideo?.title ?? 'Video del griller'}</Text>
                 <Pressable onPress={closeVideoModal}>
                   <Text style={styles.videoModalClose}>Cerrar</Text>
                 </Pressable>
               </View>
-              {videoPlaybackNotice ? <Text style={styles.videoNoticeText}>{videoPlaybackNotice}</Text> : null}
+              {videoErrorNotice ? <Text style={styles.videoNoticeText}>{videoErrorNotice}</Text> : null}
               {selectedVideo ? (
                 <View style={styles.videoPlayerWrap}>
                   <WebView
                     source={{
-                      uri: videoPlaybackMode === 'embed' ? embedPlayerUrl : watchPlayerUrl
+                      uri: watchPlayerUrl
                     }}
                     originWhitelist={['*']}
                     style={styles.videoWebview}
@@ -862,32 +735,34 @@ export function Profile({ navigation }: Props) {
                     setSupportMultipleWindows={false}
                     thirdPartyCookiesEnabled
                     sharedCookiesEnabled
-                    injectedJavaScript={videoPlaybackMode === 'embed' ? YOUTUBE_ERROR_INJECTED_SCRIPT : undefined}
-                    onLoadStart={() => setIsVideoLoading(true)}
-                    onLoadEnd={() => setIsVideoLoading(false)}
-                    onError={() => {
-                      if (videoPlaybackMode === 'embed') {
-                        switchToCompatibleVideoMode('Detectamos bloqueo del reproductor embed (Error 152/153).');
+                    onLoadStart={() => {
+                      if (!videoHasRendered) {
+                        setIsVideoLoading(true);
                       }
+                    }}
+                    onLoadEnd={() => {
+                      setVideoHasRendered(true);
+                      setIsVideoLoading(false);
+                    }}
+                    onLoadProgress={({ nativeEvent }) => {
+                      if (nativeEvent.progress >= 0.2) {
+                        setVideoHasRendered(true);
+                        setIsVideoLoading(false);
+                      }
+                    }}
+                    onNavigationStateChange={(state) => {
+                      if (!state.loading) {
+                        setVideoHasRendered(true);
+                        setIsVideoLoading(false);
+                      }
+                    }}
+                    onError={() => {
+                      setVideoErrorNotice('No se pudo reproducir el video dentro de la app. Puedes abrirlo directo en YouTube.');
+                      setIsVideoLoading(false);
                     }}
                     onHttpError={() => {
-                      if (videoPlaybackMode === 'embed') {
-                        switchToCompatibleVideoMode('Detectamos bloqueo HTTP del embed. Cambiamos a modo compatible.');
-                      }
-                    }}
-                    onMessage={(event) => {
-                      if (videoPlaybackMode !== 'embed') {
-                        return;
-                      }
-
-                      try {
-                        const payload = JSON.parse(event.nativeEvent.data) as { type?: string };
-                        if (payload.type === 'yt-error') {
-                          switchToCompatibleVideoMode('Ese video no permite embed directo. Mostramos modo compatible.');
-                        }
-                      } catch {
-                        // ignore malformed postMessage
-                      }
+                      setVideoErrorNotice('YouTube bloqueó ese enlace en WebView. Ábrelo en YouTube para ver el video completo.');
+                      setIsVideoLoading(false);
                     }}
                     onShouldStartLoadWithRequest={(request) => {
                       const url = request.url;
@@ -899,7 +774,7 @@ export function Profile({ navigation }: Props) {
                       void Linking.openURL(url);
                       return false;
                     }}
-                  />
+                    />
                   {isVideoLoading ? (
                     <View style={styles.videoLoadingOverlay}>
                       <ActivityIndicator color="#FFFFFF" />
@@ -907,6 +782,11 @@ export function Profile({ navigation }: Props) {
                     </View>
                   ) : null}
                 </View>
+              ) : null}
+              {selectedVideo ? (
+                <Pressable style={styles.videoExternalLink} onPress={() => Linking.openURL(selectedVideo.youtubeUrl)}>
+                  <Text style={styles.videoExternalLinkLabel}>Abrir en YouTube</Text>
+                </Pressable>
               ) : null}
             </View>
           </View>
@@ -1121,6 +1001,51 @@ const styles = StyleSheet.create({
   menuCardMeta: {
     marginTop: 2,
     flexDirection: 'row'
+  },
+  menuQtyRow: {
+    marginTop: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8
+  },
+  menuQtyActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8
+  },
+  menuQtyValue: {
+    minWidth: 22,
+    textAlign: 'center',
+    color: colors.textStrong,
+    fontSize: 15,
+    fontWeight: '900'
+  },
+  menuLineTotal: {
+    color: colors.primaryDark,
+    fontSize: 12,
+    fontWeight: '800'
+  },
+  menuSelectionCard: {
+    marginTop: 2,
+    gap: 8,
+    backgroundColor: '#FFF8F7'
+  },
+  menuSelectionTitle: {
+    color: colors.textStrong,
+    fontSize: 15,
+    fontWeight: '900'
+  },
+  menuSelectionHint: {
+    color: colors.textMuted,
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: '600'
+  },
+  menuSelectionTotal: {
+    color: colors.primaryDark,
+    fontSize: 14,
+    fontWeight: '900'
   },
   videosList: {
     gap: 10
@@ -1493,6 +1418,48 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800'
   },
+  eventAddOnList: {
+    gap: 8
+  },
+  eventAddOnRow: {
+    minHeight: 48,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.backgroundMuted,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8
+  },
+  eventAddOnCopy: {
+    flex: 1,
+    gap: 2
+  },
+  eventAddOnName: {
+    color: colors.textStrong,
+    fontSize: 13,
+    fontWeight: '800'
+  },
+  eventAddOnPrice: {
+    color: colors.primaryDark,
+    fontSize: 12,
+    fontWeight: '700'
+  },
+  eventAddOnActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8
+  },
+  eventAddOnQuantity: {
+    minWidth: 20,
+    textAlign: 'center',
+    color: colors.textStrong,
+    fontSize: 15,
+    fontWeight: '900'
+  },
   eventSeatRow: {
     minHeight: 42,
     flexDirection: 'row',
@@ -1508,6 +1475,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#FFFFFF'
+  },
+  eventSeatButtonDisabled: {
+    opacity: 0.4
   },
   eventSeatButtonLabel: {
     color: colors.textStrong,
@@ -1527,29 +1497,18 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     marginLeft: 4
   },
+  eventSeatBreakdown: {
+    color: colors.textMuted,
+    fontSize: 12,
+    fontWeight: '700'
+  },
   eventNoticeText: {
     color: colors.primaryDark,
     fontSize: 12,
     fontWeight: '700'
   },
-  eventModalFooter: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 10,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 14,
-    paddingTop: 10,
-    paddingBottom: 14,
-    gap: 8
-  },
-  eventModalFooterTotal: {
-    color: colors.primaryDark,
-    fontSize: 15,
-    fontWeight: '900'
+  eventCheckoutButtonWrap: {
+    marginTop: 4
   },
   videoModalBackdrop: {
     flex: 1,
@@ -1573,11 +1532,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '800',
     fontSize: 13
-  },
-  videoModalCompat: {
-    color: '#FDE68A',
-    fontWeight: '800',
-    fontSize: 12
   },
   videoModalClose: {
     color: colors.primary,
@@ -1611,5 +1565,18 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '700'
+  },
+  videoExternalLink: {
+    minHeight: 46,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.15)',
+    backgroundColor: '#080D17'
+  },
+  videoExternalLinkLabel: {
+    color: colors.primary,
+    fontSize: 15,
+    fontWeight: '800'
   }
 });

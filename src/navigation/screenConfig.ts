@@ -94,6 +94,11 @@ export const screenConfig = {
     subtitle: 'Perfil completo del griller con metrics.',
     badge: 'Griller profile'
   },
+  EventDetails: {
+    title: 'Event Details',
+    subtitle: 'Vista completa del evento con compra de lugares y extras.',
+    badge: 'Evento'
+  },
   Schedule: {
     title: 'Schedule',
     subtitle: 'Seleccion de fecha, hora y modalidad de servicio.',
@@ -163,6 +168,13 @@ export const screenConfig = {
 
 export type ScreenName = keyof typeof screenConfig;
 
+type ScreenParamOverrides = {
+  EventDetails: {
+    eventId: string;
+    chefId?: string;
+  };
+};
+
 export type RootStackParamList = {
-  [K in ScreenName]: undefined;
+  [K in ScreenName]: K extends keyof ScreenParamOverrides ? ScreenParamOverrides[K] : undefined;
 };
