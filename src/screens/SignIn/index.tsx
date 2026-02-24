@@ -36,7 +36,6 @@ export function SignIn({ navigation }: Props) {
     }
 
     setIsSubmitting(false);
-    navigation.navigate('Browse01');
   }
 
   async function handleOfflineDemoSignIn() {
@@ -61,7 +60,6 @@ export function SignIn({ navigation }: Props) {
     }
 
     setIsSubmitting(false);
-    navigation.navigate('Browse01');
   }
 
   return (

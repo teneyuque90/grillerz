@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -17,8 +17,11 @@ export function SplashScreen({ navigation }: Props) {
       <View style={styles.screen}>
         <View style={styles.headerCopy}>
           <Text style={styles.welcome}>Bienvenido a</Text>
-          <Text style={styles.brand}>GRILLERZ</Text>
-          <Text style={styles.location}>Nuevo Laredo, Tamaulipas</Text>
+          <View style={styles.brandRow}>
+            <Image source={require('../../../assets/icon.png')} style={styles.brandIcon} resizeMode="contain" />
+            <Text style={styles.brand}>GRILLERZ</Text>
+          </View>
+          <Text style={styles.location}>Tu ciudad se configura al iniciar sesion</Text>
         </View>
 
         <View style={styles.hero}>
@@ -50,26 +53,37 @@ const styles = StyleSheet.create({
   },
   headerCopy: {
     alignItems: 'center',
-    paddingTop: 36,
+    paddingTop: 28,
     paddingBottom: 28,
     gap: 8
   },
   welcome: {
-    fontSize: 36,
+    fontSize: 30,
     fontWeight: '300',
-    color: colors.textStrong
+    color: colors.textStrong,
+    letterSpacing: 0.2
+  },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10
+  },
+  brandIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 14
   },
   brand: {
-    fontSize: 58,
-    lineHeight: 64,
+    fontSize: 46,
+    lineHeight: 52,
     color: colors.primary,
-    letterSpacing: 1,
+    letterSpacing: 1.4,
     fontWeight: '900'
   },
   location: {
     color: colors.textMuted,
-    fontSize: 17,
-    fontWeight: '600'
+    fontSize: 14,
+    fontWeight: '700'
   },
   hero: {
     flex: 1,

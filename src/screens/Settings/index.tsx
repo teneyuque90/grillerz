@@ -46,7 +46,6 @@ export function Settings({ navigation }: Props) {
 
   async function handleSignOut() {
     await signOut();
-    navigation.navigate('SignIn');
   }
 
   return (
