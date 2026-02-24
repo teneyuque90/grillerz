@@ -5,8 +5,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../navigation/screenConfig';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import { BottomNav } from '../../components/ui/BottomNav';
-import { ReliableImageBackground } from '../../components/ui/ReliableImageBackground';
-import { getCategoryImageByName } from '../../data/mediaLibrary';
+import { ReliableImage } from '../../components/ui/ReliableImage';
 import { getLocalCategoryUriByName } from '../../data/localMedia';
 import { colors } from '../../theme/colors';
 
@@ -40,14 +39,14 @@ export function Categories({ navigation }: Props) {
                 style={[styles.card, index < 2 || index === 4 ? styles.cardActive : null]}
                 onPress={() => navigation.navigate('Browse02')}
               >
-                <ReliableImageBackground
-                  uri={getCategoryImageByName(category)}
-                  fallbackUri={getLocalCategoryUriByName(category)}
-                  style={styles.thumb}
-                  imageStyle={styles.thumbImage}
-                >
-                  <View style={styles.thumbShade} />
-                </ReliableImageBackground>
+                <View style={styles.thumbWrap}>
+                  <ReliableImage
+                    uri={getLocalCategoryUriByName(category)}
+                    fallbackUri={getLocalCategoryUriByName(category)}
+                    style={styles.thumb}
+                    resizeMode="contain"
+                  />
+                </View>
                 <Text style={[styles.cardLabel, index < 2 || index === 4 ? styles.cardLabelActive : null]}>{category}</Text>
               </Pressable>
             ))}
@@ -102,22 +101,20 @@ const styles = StyleSheet.create({
     borderColor: colors.primary,
     backgroundColor: colors.backgroundMuted
   },
+  thumbWrap: {
+    height: 88,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
   thumb: {
-    height: 74,
-    borderRadius: 10,
-    overflow: 'hidden'
-  },
-  thumbImage: {
-    borderRadius: 10
-  },
-  thumbShade: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(15, 10, 8, 0.22)'
+    width: 84,
+    height: 84
   },
   cardLabel: {
     color: colors.textStrong,
     fontWeight: '700',
-    fontSize: 14
+    fontSize: 14,
+    textAlign: 'center'
   },
   cardLabelActive: {
     color: colors.primaryDark

@@ -12,7 +12,7 @@ import { ReliableImageBackground } from '../../components/ui/ReliableImageBackgr
 import { OFFLINE_DEMO_MODE } from '../../config/api';
 import { getFallbackEvents } from '../../data/grillerEvents';
 import { getDishImageByName } from '../../data/mediaLibrary';
-import { getLocalAvatarUriByChef, getLocalCoverUriByChef, getLocalDishUriByName } from '../../data/localMedia';
+import { getLocalAvatarUriByChef, getLocalCategoryUriByName, getLocalCoverUriByChef, getLocalDishUriByName } from '../../data/localMedia';
 import { useAppState } from '../../state/AppStateContext';
 import { colors } from '../../theme/colors';
 import { AppSpacing } from '../../theme/grillerzTheme';
@@ -206,8 +206,7 @@ export function Browse01({ navigation }: Props) {
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoriesRow}>
           {categories.map((item) => {
             const selected = item.key === activeCategory;
-            const previewUrl = getDishImageByName(item.previewDish);
-            const previewFallbackUrl = getLocalDishUriByName(item.previewDish);
+            const previewIconUri = getLocalCategoryUriByName(item.key);
             return (
               <Pressable
                 key={item.key}
@@ -215,30 +214,16 @@ export function Browse01({ navigation }: Props) {
                 onPress={() => setActiveCategory(item.key)}
               >
                 <View style={[styles.categoryPreviewWrap, selected ? styles.categoryPreviewWrapActive : null]}>
-                  <ReliableImageBackground
-                    uri={previewUrl}
-                    fallbackUri={previewFallbackUrl}
+                  <ReliableImage
+                    uri={previewIconUri}
+                    fallbackUri={previewIconUri}
                     style={styles.categoryPreviewImage}
-                    imageStyle={styles.categoryPreviewImageAsset}
-                  >
-                    <LinearGradient
-                      colors={selected ? ['rgba(229, 57, 53, 0.12)', 'rgba(0, 0, 0, 0.72)'] : ['rgba(0, 0, 0, 0.08)', 'rgba(0, 0, 0, 0.65)']}
-                      start={{ x: 0.5, y: 0 }}
-                      end={{ x: 0.5, y: 1 }}
-                      style={styles.categoryPreviewShade}
-                    />
-                    {selected ? (
-                      <View style={styles.categoryActiveBadge}>
-                        <MaterialCommunityIcons name="fire" size={14} color="#FFFFFF" />
-                      </View>
-                    ) : null}
-                    <View style={[styles.categoryPreviewFooter, selected ? styles.categoryPreviewFooterActive : null]}>
-                      <AppText variant="caption" style={styles.categoryPreviewLabel}>
-                        {item.key}
-                      </AppText>
-                    </View>
-                  </ReliableImageBackground>
+                    resizeMode="contain"
+                  />
                 </View>
+                <AppText numberOfLines={2} variant="caption" style={[styles.categoryPillLabel, selected ? styles.categoryPillLabelActive : null]}>
+                  {item.key}
+                </AppText>
               </Pressable>
             );
           })}
@@ -533,69 +518,41 @@ const styles = StyleSheet.create({
     fontWeight: '800'
   },
   categoriesRow: {
-    marginTop: 8,
+    marginTop: 12,
     flexDirection: 'row',
-    gap: 12,
+    gap: 14,
+    alignItems: 'flex-start',
     paddingRight: 24
   },
   categoryPill: {
-    width: 98
-  },
-  categoryPreviewWrap: {
-    height: 106,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF',
-    overflow: 'hidden',
-    shadowColor: '#0F172A',
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 5
-  },
-  categoryPreviewWrapActive: {
-    borderColor: colors.primary,
-    shadowColor: colors.primarySoft,
-    shadowOpacity: 0.35
-  },
-  categoryPreviewImage: {
-    flex: 1,
-    borderRadius: 18
-  },
-  categoryPreviewImageAsset: {
-    borderRadius: 18
-  },
-  categoryPreviewShade: {
-    ...StyleSheet.absoluteFillObject
-  },
-  categoryActiveBadge: {
-    marginTop: 7,
-    marginRight: 7,
-    marginLeft: 'auto',
-    width: 24,
-    height: 24,
-    borderRadius: 999,
-    backgroundColor: 'rgba(229, 57, 53, 0.9)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.8)'
-  },
-  categoryPreviewFooter: {
-    marginTop: 'auto',
-    minHeight: 36,
-    paddingHorizontal: 6,
-    justifyContent: 'center',
+    width: 106,
+    gap: 6,
     alignItems: 'center'
   },
-  categoryPreviewFooterActive: {
-    backgroundColor: 'rgba(229, 57, 53, 0.24)'
+  categoryPreviewWrap: {
+    width: 86,
+    height: 86,
+    alignItems: 'center',
+    justifyContent: 'center'
   },
-  categoryPreviewLabel: {
-    color: '#FFFFFF',
+  categoryPreviewWrapActive: {
+    transform: [{ scale: 1.03 }]
+  },
+  categoryPreviewImage: {
+    width: 78,
+    height: 78
+  },
+  categoryPillLabel: {
+    color: colors.textStrong,
     fontWeight: '800',
-    textAlign: 'center'
+    textAlign: 'center',
+    fontSize: 12,
+    lineHeight: 15,
+    minHeight: 30,
+    paddingHorizontal: 2
+  },
+  categoryPillLabelActive: {
+    color: colors.primaryDark
   },
   availabilityFilterRow: {
     marginTop: -4,
@@ -850,7 +807,8 @@ const styles = StyleSheet.create({
   },
   modalHint: {
     marginTop: 4,
-    marginBottom: 10
+    marginBottom: 14,
+    lineHeight: 22
   },
   modalAvailabilityFilterRow: {
     marginBottom: 10,
