@@ -38,7 +38,7 @@ function SectionRow({
 }
 
 export function Settings({ navigation }: Props) {
-  const { authUser, signOut } = useAppState();
+  const { authUser, signOut, promoNotificationsEnabled } = useAppState();
   const userName = authUser?.name ?? 'Usuario Grillerz';
   const userEmail = authUser?.email ?? 'guest@grillerz.app';
   const userRole = authUser?.role ?? 'client';
@@ -84,7 +84,7 @@ export function Settings({ navigation }: Props) {
               <Text style={styles.sectionTitle}>Preferencias</Text>
               <SectionRow label="Idioma" value="Espanol" onPress={() => navigation.navigate('ChooseLanguage')} />
               <SectionRow label="Favoritos" value="3 grillers" onPress={() => navigation.navigate('Favorites')} />
-              <SectionRow label="Notificaciones" value="Activadas" onPress={() => navigation.navigate('Notifications')} />
+              <SectionRow label="Notificaciones" value={promoNotificationsEnabled ? 'Activadas' : 'Desactivadas'} onPress={() => navigation.navigate('Notifications')} />
             </View>
 
             <View style={styles.section}>

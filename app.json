@@ -30,6 +30,7 @@
     "owner": "teneyuque90",
     "plugins": [
       "expo-font",
+      "expo-notifications",
       [
         "expo-build-properties",
         {

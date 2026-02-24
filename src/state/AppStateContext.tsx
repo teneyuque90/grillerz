@@ -5,6 +5,7 @@ import { grillerzApi } from '../api/grillerzApi';
 import { setAuthToken } from '../api/client';
 import { OFFLINE_DEMO_MODE } from '../config/api';
 import { createInitialDraft, defaultUser, mockChefs, seedBookings } from '../data/mockData';
+import { syncPromoNotifications } from '../services/promoNotifications';
 import { Booking, BookingDraft, BookingSummary, Chef, GrillerEvent, PaymentMethod, User } from '../types/domain';
 
 type SignInPayload = {
@@ -22,6 +23,8 @@ type ActionResult = {
   ok: boolean;
   message?: string;
 };
+
+type PushPermissionStatus = 'granted' | 'denied' | 'undetermined';
 
 type EventCheckoutAddOn = {
   id: string;
@@ -43,6 +46,8 @@ type EventCheckout = {
 type AppStateContextValue = {
   isHydrated: boolean;
   authUser: User | null;
+  promoNotificationsEnabled: boolean;
+  pushPermissionStatus: PushPermissionStatus;
   chefs: Chef[];
   favoriteChefIds: string[];
   selectedChef: Chef;
@@ -56,6 +61,7 @@ type AppStateContextValue = {
   beginSignUp: (payload: SignUpPayload) => Promise<ActionResult>;
   completeVerification: (code: string) => Promise<ActionResult>;
   signOut: () => Promise<void>;
+  setPromoNotificationsEnabled: (enabled: boolean) => Promise<ActionResult>;
   selectChef: (chefId: string) => void;
   startEventCheckout: (
     event: GrillerEvent,
@@ -82,6 +88,7 @@ type AppStateContextValue = {
 type PersistedState = {
   authUser: User | null;
   authToken: string | null;
+  promoNotificationsEnabled: boolean;
   favoriteChefIds: string[];
   bookingDraft: BookingDraft;
   selectedChefId: string;
@@ -99,6 +106,7 @@ type PendingRegistration = {
 const STORAGE_KEY = 'grillerz.app.state.v1';
 const DEFAULT_CHEF_ID = mockChefs[0].id;
 const DEFAULT_FAVORITES = ['erick-martinez', 'carlos-bbq'];
+const DEFAULT_PROMO_NOTIFICATIONS_ENABLED = true;
 const WAIT_MS = 260;
 const DEMO_ACCOUNTS = [
   {
@@ -209,6 +217,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [isHydrated, setIsHydrated] = useState(false);
   const [authUser, setAuthUser] = useState<User | null>(null);
   const [authToken, setAuthTokenState] = useState<string | null>(null);
+  const [promoNotificationsEnabled, setPromoNotificationsEnabledState] = useState<boolean>(DEFAULT_PROMO_NOTIFICATIONS_ENABLED);
+  const [pushPermissionStatus, setPushPermissionStatus] = useState<PushPermissionStatus>('undetermined');
   const [chefs, setChefs] = useState<Chef[]>(mockChefs);
   const [favoriteChefIds, setFavoriteChefIds] = useState<string[]>(DEFAULT_FAVORITES);
   const [selectedChefId, setSelectedChefId] = useState<string>(DEFAULT_CHEF_ID);
@@ -235,6 +245,11 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         setAuthUser(parsed.authUser);
         setAuthTokenState(parsed.authToken ?? null);
         setAuthToken(parsed.authToken ?? null);
+        setPromoNotificationsEnabledState(
+          typeof parsed.promoNotificationsEnabled === 'boolean'
+            ? parsed.promoNotificationsEnabled
+            : DEFAULT_PROMO_NOTIFICATIONS_ENABLED
+        );
         setFavoriteChefIds(parsed.favoriteChefIds ?? DEFAULT_FAVORITES);
         setSelectedChefId(parsed.selectedChefId);
         setBookingDraft(parsed.bookingDraft);
@@ -322,9 +337,45 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    let active = true;
+
+    async function syncPushState() {
+      if (!authUser || authUser.role !== 'client') {
+        await syncPromoNotifications(false);
+        if (active) {
+          setPushPermissionStatus('undetermined');
+        }
+        return;
+      }
+
+      const result = await syncPromoNotifications(promoNotificationsEnabled);
+      if (!active) {
+        return;
+      }
+
+      setPushPermissionStatus(result.permissionStatus);
+
+      if (!result.ok && promoNotificationsEnabled && result.permissionStatus === 'denied') {
+        setPromoNotificationsEnabledState(false);
+      }
+    }
+
+    void syncPushState();
+
+    return () => {
+      active = false;
+    };
+  }, [authUser, isHydrated, promoNotificationsEnabled]);
+
+  useEffect(() => {
+    if (!isHydrated) {
+      return;
+    }
+
     const payload: PersistedState = {
       authUser,
       authToken,
+      promoNotificationsEnabled,
       favoriteChefIds,
       selectedChefId,
       bookingDraft,
@@ -334,7 +385,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     };
 
     void AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-  }, [authToken, authUser, bookingDraft, bookings, eventCheckout, favoriteChefIds, isHydrated, selectedBookingId, selectedChefId]);
+  }, [authToken, authUser, bookingDraft, bookings, eventCheckout, favoriteChefIds, isHydrated, promoNotificationsEnabled, selectedBookingId, selectedChefId]);
 
   const signIn = useCallback(async ({ email, password }: SignInPayload): Promise<ActionResult> => {
     if (!email.trim() || !password.trim()) {
@@ -449,6 +500,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     setAuthUser(null);
     setAuthTokenState(null);
     setAuthToken(null);
+    setPromoNotificationsEnabledState(DEFAULT_PROMO_NOTIFICATIONS_ENABLED);
+    setPushPermissionStatus('undetermined');
     setFavoriteChefIds(DEFAULT_FAVORITES);
     setPendingRegistration(null);
     setSelectedChefId(DEFAULT_CHEF_ID);
@@ -460,6 +513,11 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
 
     await AsyncStorage.removeItem(STORAGE_KEY);
   }, [authToken]);
+
+  const setPromoNotificationsEnabled = useCallback(async (enabled: boolean): Promise<ActionResult> => {
+    setPromoNotificationsEnabledState(enabled);
+    return { ok: true };
+  }, []);
 
   const selectChef = useCallback((chefId: string) => {
     const chef = chefs.find((candidate) => candidate.id === chefId);
@@ -652,6 +710,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     () => ({
       isHydrated,
       authUser,
+      promoNotificationsEnabled,
+      pushPermissionStatus,
       chefs,
       favoriteChefIds,
       selectedChef,
@@ -665,6 +725,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       beginSignUp,
       completeVerification,
       signOut,
+      setPromoNotificationsEnabled,
       selectChef,
       startEventCheckout,
       completeEventCheckout,
@@ -694,8 +755,11 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       clearEventCheckout,
       isHydrated,
       isFavoriteChef,
+      promoNotificationsEnabled,
+      pushPermissionStatus,
       selectBooking,
       selectChef,
+      setPromoNotificationsEnabled,
       startEventCheckout,
       setFocusedEventId,
       toggleFavoriteChef,

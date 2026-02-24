@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -5,6 +6,8 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../navigation/screenConfig';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import { BottomNav } from '../../components/ui/BottomNav';
+import { sendPromoTestNotification } from '../../services/promoNotifications';
+import { useAppState } from '../../state/AppStateContext';
 import { colors } from '../../theme/colors';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Notifications'>;
@@ -20,6 +23,34 @@ const previousItems = [
 ];
 
 export function Notifications({ navigation }: Props) {
+  const {
+    authUser,
+    promoNotificationsEnabled,
+    pushPermissionStatus,
+    setPromoNotificationsEnabled
+  } = useAppState();
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const isClient = authUser?.role === 'client';
+
+  async function handleEnablePromos() {
+    const result = await setPromoNotificationsEnabled(true);
+    setFeedback(result.ok ? 'Notificaciones promocionales activadas.' : (result.message ?? 'No se pudieron activar.'));
+  }
+
+  async function handleDisablePromos() {
+    const result = await setPromoNotificationsEnabled(false);
+    setFeedback(result.ok ? 'Notificaciones promocionales desactivadas.' : (result.message ?? 'No se pudieron desactivar.'));
+  }
+
+  async function handleSendTest() {
+    try {
+      await sendPromoTestNotification();
+      setFeedback('Notificacion de prueba enviada.');
+    } catch {
+      setFeedback('No se pudo enviar la prueba en este dispositivo.');
+    }
+  }
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.screen}>
@@ -27,6 +58,43 @@ export function Notifications({ navigation }: Props) {
           <ScreenHeader title="Notificaciones" rightAction="Limpiar" onRightAction={() => {}} />
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+            <View style={styles.preferencesCard}>
+              <Text style={styles.preferencesTitle}>Promociones y novedades</Text>
+              <Text style={styles.preferencesText}>
+                {isClient
+                  ? 'Recibe ofertas, disponibilidad y recomendaciones para reservar mas rapido.'
+                  : 'Las promociones push se muestran en cuentas de cliente.'}
+              </Text>
+              <View style={styles.statusRow}>
+                <Text style={styles.statusLabel}>Estado:</Text>
+                <Text style={[styles.statusValue, promoNotificationsEnabled ? styles.statusOn : styles.statusOff]}>
+                  {promoNotificationsEnabled ? 'Activadas' : 'Desactivadas'}
+                </Text>
+              </View>
+              <View style={styles.statusRow}>
+                <Text style={styles.statusLabel}>Permiso:</Text>
+                <Text style={styles.statusValue}>
+                  {pushPermissionStatus === 'granted'
+                    ? 'Concedido'
+                    : pushPermissionStatus === 'denied'
+                      ? 'Denegado'
+                      : 'Pendiente'}
+                </Text>
+              </View>
+              <View style={styles.actionsRow}>
+                <Pressable style={[styles.actionButton, styles.actionButtonPrimary]} onPress={() => void handleEnablePromos()} disabled={!isClient}>
+                  <Text style={styles.actionButtonPrimaryText}>Activar</Text>
+                </Pressable>
+                <Pressable style={styles.actionButton} onPress={() => void handleDisablePromos()}>
+                  <Text style={styles.actionButtonText}>Desactivar</Text>
+                </Pressable>
+                <Pressable style={styles.actionButton} onPress={() => void handleSendTest()} disabled={!isClient}>
+                  <Text style={styles.actionButtonText}>Prueba</Text>
+                </Pressable>
+              </View>
+              {feedback ? <Text style={styles.feedback}>{feedback}</Text> : null}
+            </View>
+
             <Text style={styles.sectionTitle}>Hoy</Text>
             {todayItems.map((item) => (
               <Pressable key={item.title} style={styles.item} onPress={() => navigation.navigate(item.route)}>
@@ -78,6 +146,77 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     gap: 10,
     paddingBottom: 12
+  },
+  preferencesCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.backgroundMuted,
+    padding: 12,
+    gap: 8
+  },
+  preferencesTitle: {
+    color: colors.textStrong,
+    fontSize: 16,
+    fontWeight: '900'
+  },
+  preferencesText: {
+    color: colors.textMuted,
+    fontSize: 13,
+    fontWeight: '600',
+    lineHeight: 18
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8
+  },
+  statusLabel: {
+    color: colors.textMuted,
+    fontSize: 12,
+    fontWeight: '700'
+  },
+  statusValue: {
+    color: colors.textStrong,
+    fontSize: 12,
+    fontWeight: '800'
+  },
+  statusOn: {
+    color: '#1C9C4D'
+  },
+  statusOff: {
+    color: colors.primaryDark
+  },
+  actionsRow: {
+    flexDirection: 'row',
+    gap: 8
+  },
+  actionButton: {
+    minHeight: 36,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    paddingHorizontal: 12,
+    justifyContent: 'center'
+  },
+  actionButtonPrimary: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primary
+  },
+  actionButtonText: {
+    color: colors.textStrong,
+    fontSize: 12,
+    fontWeight: '800'
+  },
+  actionButtonPrimaryText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '800'
+  },
+  feedback: {
+    color: colors.textMuted,
+    fontSize: 12,
+    fontWeight: '700'
   },
   sectionTitle: {
     marginTop: 6,
