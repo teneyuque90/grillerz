@@ -14,3 +14,7 @@ backend/data/*.sqlite
 backend/data/*.sqlite-shm
 backend/data/*.sqlite-wal
 assets/images/generated
+
+# Build artifacts
+*.apk
+android/app/build/
