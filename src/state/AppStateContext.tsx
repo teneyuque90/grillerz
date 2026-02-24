@@ -22,6 +22,7 @@ type SignUpPayload = {
 type ActionResult = {
   ok: boolean;
   message?: string;
+  nextRoute?: 'Browse01' | 'Account';
 };
 
 type PushPermissionStatus = 'granted' | 'denied' | 'undetermined';
@@ -404,7 +405,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       setAuthToken(localToken);
       setAuthUser(user);
       setBookings(seedBookings(user.id));
-      return { ok: true };
+      return { ok: true, nextRoute: user.role === 'griller' ? 'Account' : 'Browse01' };
     }
 
     try {
@@ -420,7 +421,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         setBookings(seedBookings(user.id));
       }
 
-      return { ok: true };
+      return { ok: true, nextRoute: user.role === 'griller' ? 'Account' : 'Browse01' };
     } catch (error) {
       const demoAccount = findDemoAccount(normalizedEmail, password);
       if (demoAccount) {
@@ -430,7 +431,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         setAuthUser(demoAccount.user);
         setBookings(seedBookings(demoAccount.user.id));
 
-        return { ok: true };
+        return { ok: true, nextRoute: demoAccount.user.role === 'griller' ? 'Account' : 'Browse01' };
       }
 
       setAuthTokenState(null);

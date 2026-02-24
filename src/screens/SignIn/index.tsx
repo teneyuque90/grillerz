@@ -36,6 +36,10 @@ export function SignIn({ navigation }: Props) {
     }
 
     setIsSubmitting(false);
+    navigation.reset({
+      index: 0,
+      routes: [{ name: result.nextRoute ?? 'Browse01' }]
+    });
   }
 
   async function handleOfflineDemoSignIn() {
@@ -60,6 +64,10 @@ export function SignIn({ navigation }: Props) {
     }
 
     setIsSubmitting(false);
+    navigation.reset({
+      index: 0,
+      routes: [{ name: result.nextRoute ?? 'Browse01' }]
+    });
   }
 
   return (

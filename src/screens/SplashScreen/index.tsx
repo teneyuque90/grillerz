@@ -17,11 +17,10 @@ export function SplashScreen({ navigation }: Props) {
       <View style={styles.screen}>
         <View style={styles.headerCopy}>
           <Text style={styles.welcome}>Bienvenido a</Text>
-          <View style={styles.brandRow}>
-            <Image source={require('../../../assets/icon.png')} style={styles.brandIcon} resizeMode="contain" />
-            <Text style={styles.brand}>GRILLERZ</Text>
+          <View style={styles.logoGlow}>
+            <Image source={require('../../../assets/images/grillerz-logo-horizontal.png')} style={styles.brandLockup} resizeMode="contain" />
           </View>
-          <Text style={styles.location}>Tu ciudad se configura al iniciar sesion</Text>
+          <Text style={styles.location}>Tu ciudad se configura despues de iniciar sesion</Text>
         </View>
 
         <View style={styles.hero}>
@@ -53,36 +52,32 @@ const styles = StyleSheet.create({
   },
   headerCopy: {
     alignItems: 'center',
-    paddingTop: 28,
+    paddingTop: 22,
     paddingBottom: 28,
     gap: 8
   },
   welcome: {
-    fontSize: 30,
-    fontWeight: '300',
+    fontSize: 26,
+    fontWeight: '700',
     color: colors.textStrong,
     letterSpacing: 0.2
   },
-  brandRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10
+  logoGlow: {
+    borderRadius: 18,
+    overflow: 'hidden',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.28,
+    shadowRadius: 20,
+    elevation: 6
   },
-  brandIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 14
-  },
-  brand: {
-    fontSize: 46,
-    lineHeight: 52,
-    color: colors.primary,
-    letterSpacing: 1.4,
-    fontWeight: '900'
+  brandLockup: {
+    width: 320,
+    height: 168
   },
   location: {
     color: colors.textMuted,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700'
   },
   hero: {
