@@ -36,6 +36,14 @@ type SelectedMenuItem = {
   total: number;
 };
 
+type CartLine = {
+  id: string;
+  name: string;
+  quantity: number;
+  total: number;
+  kind: 'package' | 'dish';
+};
+
 const fallbackReviewsByChefId: Record<string, ChefReview[]> = {
   'erick-martinez': [
     {
@@ -209,6 +217,35 @@ export function Profile({ navigation }: Props) {
   const combinedSelectionTotal = menuSelectionTotal + packageSelectionTotal;
   const hasMenuSelection = selectedMenuItems.length > 0;
   const hasAnySelection = Boolean(selectedPackage) || hasMenuSelection;
+  const cartLines = useMemo<CartLine[]>(() => {
+    const lines: CartLine[] = [];
+
+    if (selectedPackage) {
+      lines.push({
+        id: `package-${selectedPackage.id}`,
+        name: selectedPackage.name,
+        quantity: 1,
+        total: selectedPackage.price,
+        kind: 'package'
+      });
+    }
+
+    selectedMenuItems.forEach((item) => {
+      lines.push({
+        id: `dish-${item.id}`,
+        name: item.name,
+        quantity: item.quantity,
+        total: item.total,
+        kind: 'dish'
+      });
+    });
+
+    return lines;
+  }, [selectedMenuItems, selectedPackage]);
+  const cartUnitsCount = useMemo(
+    () => cartLines.reduce((sum, line) => sum + line.quantity, 0),
+    [cartLines]
+  );
 
   useEffect(() => {
     setChefMenuItems(getFallbackChefMenuItems(selectedChef.id));
@@ -262,6 +299,10 @@ export function Profile({ navigation }: Props) {
   }
 
   function reserveMenuSelection() {
+    if (!hasAnySelection) {
+      return;
+    }
+
     const selections: string[] = [];
     if (selectedPackage) {
       selections.push(`Paquete: ${selectedPackage.name}`);
@@ -550,17 +591,6 @@ export function Profile({ navigation }: Props) {
                 {chefMenuItems.length === 0 ? (
                   <Text style={styles.emptyReviews}>Este griller aun no publica cortes o platillos.</Text>
                 ) : null}
-                {chefMenuItems.length > 0 ? (
-                  <AppCard style={styles.menuSelectionCard}>
-                    <Text style={styles.menuSelectionTitle}>Seleccion de cortes</Text>
-                    <Text style={styles.menuSelectionHint}>
-                      Elige uno o varios cortes/platillos y combínalos con paquete si lo deseas.
-                    </Text>
-                    <Text style={styles.menuSelectionTotal}>
-                      Total seleccionado: ${menuSelectionTotal.toLocaleString('es-MX')} MXN
-                    </Text>
-                  </AppCard>
-                ) : null}
               </View>
             </View>
 
@@ -585,19 +615,44 @@ export function Profile({ navigation }: Props) {
                 {chefPackages.filter((item) => item.isActive).length === 0 ? (
                   <Text style={styles.emptyReviews}>Este griller aun no publica paquetes.</Text>
                 ) : null}
-                <AppCard style={styles.menuSelectionCard}>
-                  <Text style={styles.menuSelectionTitle}>Resumen de compra</Text>
-                  <Text style={styles.menuSelectionHint}>
-                    Paquete: {selectedPackage ? selectedPackage.name : 'Ninguno'}
-                  </Text>
-                  <Text style={styles.menuSelectionHint}>
-                    Platillos: {hasMenuSelection ? selectedMenuItems.length : 0} seleccionado(s)
-                  </Text>
-                  <Text style={styles.menuSelectionTotal}>
-                    Total a cobrar: ${combinedSelectionTotal > 0 ? combinedSelectionTotal.toLocaleString('es-MX') : selectedChef.basePrice.toLocaleString('es-MX')} MXN
-                  </Text>
-                </AppCard>
               </View>
+            </View>
+
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Carrito unificado</Text>
+              <AppCard style={styles.cartCard}>
+                {cartLines.length > 0 ? (
+                  <View style={styles.cartList}>
+                    {cartLines.map((line) => (
+                      <View key={line.id} style={styles.cartRow}>
+                        <View style={styles.cartRowCopy}>
+                          <Text style={styles.cartRowName}>{line.quantity}x {line.name}</Text>
+                          <Text style={styles.cartRowType}>{line.kind === 'package' ? 'Paquete' : 'Platillo'}</Text>
+                        </View>
+                        <Text style={styles.cartRowPrice}>${line.total.toLocaleString('es-MX')} MXN</Text>
+                      </View>
+                    ))}
+                  </View>
+                ) : (
+                  <Text style={styles.emptyReviews}>Selecciona paquete y/o platillos para armar tu orden.</Text>
+                )}
+
+                <View style={styles.cartDivider} />
+                <View style={styles.cartTotals}>
+                  <View style={styles.cartTotalRow}>
+                    <Text style={styles.cartTotalLabel}>Paquete</Text>
+                    <Text style={styles.cartTotalValue}>${packageSelectionTotal.toLocaleString('es-MX')} MXN</Text>
+                  </View>
+                  <View style={styles.cartTotalRow}>
+                    <Text style={styles.cartTotalLabel}>Platillos</Text>
+                    <Text style={styles.cartTotalValue}>${menuSelectionTotal.toLocaleString('es-MX')} MXN</Text>
+                  </View>
+                  <View style={styles.cartTotalRow}>
+                    <Text style={styles.cartTotalLabelStrong}>Total carrito</Text>
+                    <Text style={styles.cartTotalValueStrong}>${combinedSelectionTotal.toLocaleString('es-MX')} MXN</Text>
+                  </View>
+                </View>
+              </AppCard>
             </View>
 
             <View style={styles.section}>
@@ -703,7 +758,8 @@ export function Profile({ navigation }: Props) {
             </View>
 
             <PrimaryButton
-              label={hasAnySelection ? 'Continuar con selección' : 'Continuar sin selección'}
+              label={hasAnySelection ? `Ir a agenda (${cartUnitsCount} item${cartUnitsCount === 1 ? '' : 's'})` : 'Selecciona paquete o platillo'}
+              disabled={!hasAnySelection}
               onPress={reserveMenuSelection}
             />
           </ScrollView>
@@ -1131,6 +1187,78 @@ const styles = StyleSheet.create({
   },
   packagesList: {
     gap: 10
+  },
+  cartCard: {
+    gap: 10,
+    backgroundColor: '#FFF8F7',
+    borderColor: '#F7D5D0'
+  },
+  cartList: {
+    gap: 8
+  },
+  cartRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#F3DDDA',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 10,
+    paddingVertical: 8
+  },
+  cartRowCopy: {
+    flex: 1,
+    gap: 2
+  },
+  cartRowName: {
+    color: colors.textStrong,
+    fontSize: 14,
+    fontWeight: '800'
+  },
+  cartRowType: {
+    color: colors.textMuted,
+    fontSize: 12,
+    fontWeight: '700'
+  },
+  cartRowPrice: {
+    color: colors.primaryDark,
+    fontSize: 13,
+    fontWeight: '900'
+  },
+  cartDivider: {
+    height: 1,
+    backgroundColor: '#F1CCC7'
+  },
+  cartTotals: {
+    gap: 6
+  },
+  cartTotalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8
+  },
+  cartTotalLabel: {
+    color: colors.textMuted,
+    fontSize: 13,
+    fontWeight: '700'
+  },
+  cartTotalValue: {
+    color: colors.textStrong,
+    fontSize: 13,
+    fontWeight: '800'
+  },
+  cartTotalLabelStrong: {
+    color: colors.textStrong,
+    fontSize: 14,
+    fontWeight: '900'
+  },
+  cartTotalValueStrong: {
+    color: colors.primaryDark,
+    fontSize: 18,
+    fontWeight: '900'
   },
   packageCard: {
     gap: 6,

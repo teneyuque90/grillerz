@@ -9,6 +9,7 @@ import { RootStackParamList } from '../../navigation/screenConfig';
 import { BottomNav } from '../../components/ui/BottomNav';
 import { ReliableImage } from '../../components/ui/ReliableImage';
 import { OFFLINE_DEMO_MODE } from '../../config/api';
+import { getFallbackChefMenuItems } from '../../data/chefMenuItems';
 import { getFallbackEvents } from '../../data/grillerEvents';
 import { getDishImageByName } from '../../data/mediaLibrary';
 import { getLocalAvatarUriByChef, getLocalDishUriByName } from '../../data/localMedia';
@@ -30,10 +31,22 @@ type SearchItem = {
   city: string;
   imageUrl: string;
   fallbackUrl: string;
+  keywords: string[];
+  rank: number;
   eventId?: string;
 };
 
 const initialRecent = ['Costillas en Nuevo Laredo', 'Asador para 25 personas', 'Tomahawk premium'];
+
+function normalizeText(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\w\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
 
 export function Search({ navigation }: Props) {
   const { chefs, selectChef } = useAppState();
@@ -81,10 +94,12 @@ export function Search({ navigation }: Props) {
         type: 'griller',
         chefId: chef.id,
         title: chef.name,
-        subtitle: `${chef.title} · ${chef.rating.toFixed(1)} 🔥`,
+        subtitle: `${chef.title} · ${chef.rating.toFixed(1)} 🔥 · Desde $${chef.basePrice.toLocaleString('es-MX')} MXN`,
         city: chef.city,
         imageUrl: avatarUrl,
-        fallbackUrl: avatarFallbackUrl
+        fallbackUrl: avatarFallbackUrl,
+        keywords: [...chef.specialties, chef.title, 'griller', 'parrillero', 'asador'],
+        rank: Math.round(chef.rating * 100)
       });
 
       chef.specialties.forEach((specialty, index) => {
@@ -92,11 +107,28 @@ export function Search({ navigation }: Props) {
           id: `dish-${chef.id}-${index}`,
           type: 'dish',
           chefId: chef.id,
-          title: chef.name,
-          subtitle: specialty,
+          title: specialty,
+          subtitle: `${chef.name} · ${chef.city}`,
           city: chef.city,
           imageUrl: getDishImageByName(specialty),
-          fallbackUrl: getLocalDishUriByName(specialty)
+          fallbackUrl: getLocalDishUriByName(specialty),
+          keywords: [chef.name, chef.title, ...chef.specialties, 'platillo', 'corte'],
+          rank: 170 - index * 4
+        });
+      });
+
+      getFallbackChefMenuItems(chef.id).forEach((menuItem, index) => {
+        items.push({
+          id: `menu-${menuItem.id}`,
+          type: 'dish',
+          chefId: chef.id,
+          title: menuItem.name,
+          subtitle: `${chef.name} · ${menuItem.category} · $${menuItem.price.toLocaleString('es-MX')} MXN`,
+          city: chef.city,
+          imageUrl: getDishImageByName(menuItem.name),
+          fallbackUrl: getLocalDishUriByName(menuItem.name),
+          keywords: [menuItem.details, menuItem.category, chef.name, chef.title, ...chef.specialties, 'menu', 'platillo', 'corte'],
+          rank: 160 - index * 3
         });
       });
 
@@ -108,37 +140,37 @@ export function Search({ navigation }: Props) {
         subtitle: `${chef.name} · Desde $${chef.basePrice.toLocaleString('es-MX')} MXN`,
         city: chef.city,
         imageUrl: avatarUrl,
-        fallbackUrl: avatarFallbackUrl
+        fallbackUrl: avatarFallbackUrl,
+        keywords: [chef.name, ...chef.specialties, chef.title, 'ciudad', 'zona', 'cerca'],
+        rank: 80
       });
     });
 
     events.forEach((event) => {
-      const chef = chefs.find((item) => item.id === event.chefId);
       const mediaSeed = event.menu[0] ?? event.title;
       items.push({
         id: `event-${event.id}`,
         type: 'event',
         chefId: event.chefId,
-        title: event.chefName,
-        subtitle: `Evento: ${event.title} · ${event.dateKey} · ${event.timeLabel}`,
+        title: event.title,
+        subtitle: `${event.chefName} · ${event.dateKey} · ${event.timeLabel}`,
         city: event.city,
         imageUrl: getDishImageByName(mediaSeed),
         fallbackUrl: getLocalDishUriByName(mediaSeed),
+        keywords: [event.description, event.venueName, event.address, ...event.menu, event.chefName, 'evento', 'reservacion', 'apartar'],
+        rank: 220 - event.seatsAvailable,
         eventId: event.id
       });
-
-      if (!chef) {
-        return;
-      }
     });
 
     return items;
   }, [chefs, events]);
 
   const visibleResults = useMemo(() => {
-    const normalized = query.trim().toLowerCase();
+    const normalized = normalizeText(query);
+    const queryTokens = normalized.split(' ').filter(Boolean);
 
-    const filteredByType =
+    const typedItems =
       activeType === 'all'
         ? allItems
         : allItems.filter((item) => {
@@ -149,31 +181,80 @@ export function Search({ navigation }: Props) {
               return item.type === 'dish';
             }
             if (activeType === 'event') {
-              return item.type === 'event';
-            }
-            return item.type === 'city';
-          });
+            return item.type === 'event';
+          }
+          return item.type === 'city';
+        });
 
-    if (!normalized) {
-      return filteredByType.slice(0, 14);
+    if (queryTokens.length === 0) {
+      return [...typedItems]
+        .sort((a, b) => b.rank - a.rank)
+        .slice(0, 16);
     }
 
-    return filteredByType
+    return typedItems
       .filter((item) => {
+        const title = normalizeText(item.title);
+        const subtitle = normalizeText(item.subtitle);
+        const city = normalizeText(item.city);
+        const keywords = normalizeText(item.keywords.join(' '));
+
+        return queryTokens.every((token) => {
+          return title.includes(token) || subtitle.includes(token) || city.includes(token) || keywords.includes(token);
+        });
+      })
+      .map((item) => {
+        const title = normalizeText(item.title);
+        const subtitle = normalizeText(item.subtitle);
+        const city = normalizeText(item.city);
+        const keywords = normalizeText(item.keywords.join(' '));
+
+        let score = item.rank;
+        if (title.startsWith(normalized)) {
+          score += 120;
+        }
+        if (title.includes(normalized)) {
+          score += 90;
+        }
+        if (subtitle.includes(normalized)) {
+          score += 45;
+        }
+        if (city.includes(normalized)) {
+          score += 30;
+        }
+        if (keywords.includes(normalized)) {
+          score += 20;
+        }
+
+        queryTokens.forEach((token) => {
+          if (title.includes(token)) {
+            score += 18;
+          }
+          if (subtitle.includes(token)) {
+            score += 10;
+          }
+          if (city.includes(token)) {
+            score += 8;
+          }
+          if (keywords.includes(token)) {
+            score += 7;
+          }
+        });
+
         return (
-          item.title.toLowerCase().includes(normalized) ||
-          item.subtitle.toLowerCase().includes(normalized) ||
-          item.city.toLowerCase().includes(normalized)
+          {
+            ...item,
+            _score: score
+          } as SearchItem & { _score: number }
         );
       })
       .sort((a, b) => {
-        const aStarts = a.title.toLowerCase().startsWith(normalized) ? 1 : 0;
-        const bStarts = b.title.toLowerCase().startsWith(normalized) ? 1 : 0;
-        if (aStarts !== bStarts) {
-          return bStarts - aStarts;
+        if (a._score !== b._score) {
+          return b._score - a._score;
         }
         return a.title.localeCompare(b.title);
-      });
+      })
+      .slice(0, 40);
   }, [activeType, allItems, query]);
 
   function submitRecent(value: string) {

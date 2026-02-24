@@ -7,11 +7,21 @@ type PrimaryButtonProps = {
   label: string;
   onPress: () => void;
   compact?: boolean;
+  disabled?: boolean;
 };
 
-export function PrimaryButton({ label, onPress, compact = false }: PrimaryButtonProps) {
+export function PrimaryButton({ label, onPress, compact = false, disabled = false }: PrimaryButtonProps) {
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.button, compact ? styles.compact : null, pressed ? styles.pressed : null]}>
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      style={({ pressed }) => [
+        styles.button,
+        compact ? styles.compact : null,
+        pressed && !disabled ? styles.pressed : null,
+        disabled ? styles.disabled : null
+      ]}
+    >
       <Text style={styles.label}>{label}</Text>
     </Pressable>
   );
@@ -28,6 +38,9 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.92,
     transform: [{ scale: 0.995 }]
+  },
+  disabled: {
+    opacity: 0.55
   },
   label: {
     ...textTheme.bodyLarge,

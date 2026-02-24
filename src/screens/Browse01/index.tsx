@@ -33,18 +33,18 @@ const featured = [
   { dishName: 'Costillas Ahumadas', chefId: 'martin-asador', price: '$3,600' }
 ];
 const categories = [
-  { key: 'Top', icon: 'fire', tint: '#E53935' },
-  { key: 'Costillas', icon: 'food-steak', tint: '#EF4444' },
-  { key: 'Tomahawk', icon: 'knife', tint: '#F97316' },
-  { key: 'Parrilla', icon: 'grill-outline', tint: '#DC2626' },
-  { key: 'Ahumados', icon: 'smoke', tint: '#B91C1C' },
-  { key: 'Brisket', icon: 'food', tint: '#E11D48' },
-  { key: 'Cabrito', icon: 'chef-hat', tint: '#EA580C' },
-  { key: 'Mariscos', icon: 'fish', tint: '#0EA5E9' },
-  { key: 'Rib Eyes', icon: 'silverware-fork-knife', tint: '#D97706' },
-  { key: 'Arrachera', icon: 'cow', tint: '#F43F5E' },
-  { key: 'Picana', icon: 'food-variant', tint: '#FB7185' },
-  { key: 'T-Bone', icon: 'food-drumstick', tint: '#C2410C' }
+  { key: 'Top', previewDish: 'Ribeye Jugoso' },
+  { key: 'Costillas', previewDish: 'Costillas a la Parrilla' },
+  { key: 'Tomahawk', previewDish: 'Tomahawk al Carbon' },
+  { key: 'Parrilla', previewDish: 'Parrilla Mixta' },
+  { key: 'Ahumados', previewDish: 'Costillas Ahumadas' },
+  { key: 'Brisket', previewDish: 'Brisket' },
+  { key: 'Cabrito', previewDish: 'Asado Regio' },
+  { key: 'Mariscos', previewDish: 'Parrilla Mixta' },
+  { key: 'Rib Eyes', previewDish: 'Ribeye Jugoso' },
+  { key: 'Arrachera', previewDish: 'Asado Regio' },
+  { key: 'Picana', previewDish: 'Parrilla Mixta' },
+  { key: 'T-Bone', previewDish: 'Tomahawk al Carbon' }
 ] as const;
 type AvailabilityFilter = 'all' | 'today' | 'tomorrow';
 type AvailabilityStatus = {
@@ -206,6 +206,8 @@ export function Browse01({ navigation }: Props) {
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoriesRow}>
           {categories.map((item) => {
             const selected = item.key === activeCategory;
+            const previewUrl = getDishImageByName(item.previewDish);
+            const previewFallbackUrl = getLocalDishUriByName(item.previewDish);
             return (
               <Pressable
                 key={item.key}
@@ -213,21 +215,29 @@ export function Browse01({ navigation }: Props) {
                 onPress={() => setActiveCategory(item.key)}
               >
                 <View style={[styles.categoryPreviewWrap, selected ? styles.categoryPreviewWrapActive : null]}>
-                  <LinearGradient
-                    colors={selected ? ['#FFE9E6', '#FFF8F7'] : ['#FAFAFA', '#F2F4F7']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
+                  <ReliableImageBackground
+                    uri={previewUrl}
+                    fallbackUri={previewFallbackUrl}
                     style={styles.categoryPreviewImage}
+                    imageStyle={styles.categoryPreviewImageAsset}
                   >
-                    <View style={[styles.categoryIconBubble, { backgroundColor: `${item.tint}1F` }]}>
-                      <MaterialCommunityIcons name={item.icon} size={22} color={item.tint} />
-                    </View>
-                    <View style={styles.categoryPreviewFooter}>
-                      <AppText variant="caption" style={[styles.categoryPreviewLabel, selected ? styles.categoryPreviewLabelActive : null]}>
+                    <LinearGradient
+                      colors={selected ? ['rgba(229, 57, 53, 0.12)', 'rgba(0, 0, 0, 0.72)'] : ['rgba(0, 0, 0, 0.08)', 'rgba(0, 0, 0, 0.65)']}
+                      start={{ x: 0.5, y: 0 }}
+                      end={{ x: 0.5, y: 1 }}
+                      style={styles.categoryPreviewShade}
+                    />
+                    {selected ? (
+                      <View style={styles.categoryActiveBadge}>
+                        <MaterialCommunityIcons name="fire" size={14} color="#FFFFFF" />
+                      </View>
+                    ) : null}
+                    <View style={[styles.categoryPreviewFooter, selected ? styles.categoryPreviewFooterActive : null]}>
+                      <AppText variant="caption" style={styles.categoryPreviewLabel}>
                         {item.key}
                       </AppText>
                     </View>
-                  </LinearGradient>
+                  </ReliableImageBackground>
                 </View>
               </Pressable>
             );
@@ -551,34 +561,41 @@ const styles = StyleSheet.create({
   },
   categoryPreviewImage: {
     flex: 1,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 8
+    borderRadius: 18
   },
-  categoryIconBubble: {
-    width: 46,
-    height: 46,
+  categoryPreviewImageAsset: {
+    borderRadius: 18
+  },
+  categoryPreviewShade: {
+    ...StyleSheet.absoluteFillObject
+  },
+  categoryActiveBadge: {
+    marginTop: 7,
+    marginRight: 7,
+    marginLeft: 'auto',
+    width: 24,
+    height: 24,
     borderRadius: 999,
+    backgroundColor: 'rgba(229, 57, 53, 0.9)',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#FFFFFF'
+    borderColor: 'rgba(255, 255, 255, 0.8)'
   },
   categoryPreviewFooter: {
-    minHeight: 32,
+    marginTop: 'auto',
+    minHeight: 36,
     paddingHorizontal: 6,
-    marginTop: 8,
     justifyContent: 'center',
     alignItems: 'center'
   },
+  categoryPreviewFooterActive: {
+    backgroundColor: 'rgba(229, 57, 53, 0.24)'
+  },
   categoryPreviewLabel: {
-    color: colors.textStrong,
+    color: '#FFFFFF',
     fontWeight: '800',
     textAlign: 'center'
-  },
-  categoryPreviewLabelActive: {
-    color: colors.primaryDark
   },
   availabilityFilterRow: {
     marginTop: -4,
